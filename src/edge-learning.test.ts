@@ -81,9 +81,9 @@ describe('edge learning pipeline', () => {
   it('trains only in shadow and passes gates on a strong time-split synthetic signal', () => {
     const start = Date.parse('2025-01-01T00:00:00Z')
     const examples = Array.from({ length: 300 }, (_, index): EdgeTrainingExample => {
-      const edgeScore = 10 + (index * 17) % 90
-      const uncertaintyPenalty = (index * 29) % 70
-      const actualReturn = 0.02 + edgeScore / 100 * 0.3 - uncertaintyPenalty / 100 * 0.16
+      const age = 20 + (index * 7) % 20
+      const lineupDelta = -2 + ((index * 11) % 50) / 10
+      const actualReturn = 0.18 - (age - 20) * 0.008 + lineupDelta * 0.025
       const capturedAt = new Date(start + index * 86_400_000).toISOString()
       return {
         assetId: `asset-${index}`,
@@ -94,11 +94,11 @@ describe('edge learning pipeline', () => {
         newsDirection: 'none',
         capturedAt,
         outcomeAt: new Date(Date.parse(capturedAt) + 30 * 86_400_000).toISOString(),
-        currentValue: 100,
-        outcomeValue: Math.round(100 * (1 + actualReturn)),
+        currentValue: 1000,
+        outcomeValue: Math.round(1000 * (1 + actualReturn)),
         actualReturn,
         ruleReturn: 0,
-        features: { ...features, edgeScore, uncertaintyPenalty, ruleGain30: 0 },
+        features: { ...features, age, lineupDelta, ruleGain30: 0 },
       }
     })
     const { health, artifact } = trainShadowModel(examples, new Date('2026-01-01T00:00:00Z'))
@@ -117,4 +117,3 @@ describe('edge learning pipeline', () => {
     expect(health.productionEnabled).toBe(false)
   })
 })
-
