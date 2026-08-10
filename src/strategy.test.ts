@@ -9,28 +9,28 @@ function team(id: number, players: Asset[], picks: Asset[] = [], contender = 50,
   return { rosterId: id, ownerId: String(id), ownerName: String(id), teamName: `Team ${id}`, avatar: null, players, picks, optimizedStarters: players.filter((item) => item.isStarter || item.depthChartOrder === 1).slice(0, 4), metrics: { lineupRaw: 0, coreRaw: 0, depthRaw: 0, picksRaw: 0, liquidityRaw: 0, marketRaw: 0, lineup: contender, core: future, depth: 50, picks: 50, liquidity: 50, market: 50, overall: 50, contender, future } }
 }
 
-describe('deterministic strategy engine', () => {
+describe('evidence-only strategy inventory', () => {
   const rosterPositions = ['QB', 'RB', 'WR', 'TE', 'FLEX']
-  it('ranks a lineup need above an equally valued luxury target', () => {
+  it('orders targets by observed current market value only', () => {
     const mine = team(1, [asset('qb', 'QB', 500), asset('wr', 'WR', 500), asset('te', 'TE', 500)])
-    const theirs = team(2, [asset('rb-target', 'RB', 600), asset('wr-luxury', 'WR', 600), asset('rb-depth', 'RB', 520)])
+    const theirs = team(2, [asset('rb-target', 'RB', 600), asset('wr-luxury', 'WR', 650), asset('rb-depth', 'RB', 520)])
     expect(findTargets([mine, theirs], {
       myRosterId: 1,
       counterpartRosterId: 2,
       rosterPositions,
       teamStrategy: { mode: 'contender', horizonYears: 1, flipPriority: 0.25 },
-    })[0].asset.id).toBe('rb-target')
+    })[0].asset.id).toBe('wr-luxury')
   })
 
-  it('changes timeline preference between contender and future build', () => {
+  it('does not let an unvalidated age curve change target ordering', () => {
     const theirs = team(2, [asset('old', 'WR', 600, { age: 31 }), asset('young', 'WR', 600, { age: 22 })])
     const contender = team(1, [asset('qb', 'QB', 700), asset('rb', 'RB', 650), asset('te', 'TE', 500)], [], 80, 45)
     const rebuild = team(1, contender.players, [], 35, 85)
     expect(findTargets([contender, theirs], { myRosterId: 1, counterpartRosterId: 2, rosterPositions })[0].asset.id).toBe('old')
-    expect(findTargets([rebuild, theirs], { myRosterId: 1, counterpartRosterId: 2, rosterPositions })[0].asset.id).toBe('young')
+    expect(findTargets([rebuild, theirs], { myRosterId: 1, counterpartRosterId: 2, rosterPositions })[0].asset.id).toBe('old')
   })
 
-  it('keeps a three-year rebuild away from high-decay veteran flips', () => {
+  it('shows factual age at the declared horizon without creating a decay score', () => {
     const mine = team(1, [asset('young-qb', 'QB', 500)], [asset('future-first', 'PICK', 450)], 20, 90)
     const theirs = team(2, [
       asset('dak-profile', 'QB', 620, { age: 33 }),
@@ -43,28 +43,26 @@ describe('deterministic strategy engine', () => {
       teamStrategy: { mode: 'rebuilding', horizonYears: 3, flipPriority: 0.9 },
     })
     expect(targets.map((target) => target.asset.id)).toContain('young-market-qb')
-    expect(targets.map((target) => target.asset.id)).not.toContain('dak-profile')
-    expect(targets[0].profitScore).toBeGreaterThan(targets[0].decayRisk)
+    expect(targets.map((target) => target.asset.id)).toContain('dak-profile')
+    expect(targets.find((target) => target.asset.id === 'dak-profile')?.ageAtHorizon).toBe(36)
   })
 
-  it('returns stable, capped packages and honors the walk-away price cap', () => {
+  it('does not generate packages without real response labels', () => {
     const mine = team(1, [asset('bench', 'WR', 300, { depthChartOrder: 3 }), asset('pick', 'PICK', 300), asset('starter', 'QB', 700)])
     const theirs = team(2, [asset('target', 'RB', 300), asset('rb2', 'RB', 260)])
     const options = { myRosterId: 1, counterpartRosterId: 2, rosterPositions, manager: { pickAffinity: 1, sampleWeight: 1 } }
     const first = buildTradePlan([mine, theirs], options)
     const second = buildTradePlan([mine, theirs], options)
     expect(first.packages).toEqual(second.packages)
-    expect(first.packages.length).toBeGreaterThan(0)
-    expect(first.packages.every((item) => item.send.reduce((sum, asset) => sum + asset.value, 0) <= item.receive.reduce((sum, asset) => sum + asset.value, 0) * 1.08)).toBe(true)
-    expect(first.packages.every((item) => item.send.length <= 3)).toBe(true)
-    expect(first.packages.every((item) => item.acceptanceScore >= ({ opening: 42, target: 48, counter: 54, 'walk-away': 60 }[item.stage]))).toBe(true)
+    expect(first.packages).toEqual([])
+    expect(first.evidenceNote).toContain('Automated offers are off')
   })
 
-  it('makes pick affinity observable in the opening offer when values are interchangeable', () => {
+  it('does not turn manager affinity into a fake acceptance prediction', () => {
     const mine = team(1, [asset('player', 'WR', 300, { depthChartOrder: 3 }), asset('pick', 'PICK', 300)])
     const theirs = team(2, [asset('target', 'RB', 300), asset('depth', 'RB', 260)])
     const plan = buildTradePlan([mine, theirs], { myRosterId: 1, counterpartRosterId: 2, rosterPositions, manager: { pickAffinity: 1, playerAffinity: 0, sampleWeight: 1 } })
-    expect(plan.packages[0].send[0].id).toBe('pick')
+    expect(plan.packages).toEqual([])
   })
 
   it('returns no staged package when every option misses the partner-fit floor', () => {

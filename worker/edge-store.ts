@@ -63,7 +63,7 @@ export function normalizeOpportunityInput(input: unknown, now = new Date()): Edg
   if (!/^[\w:.\-]+$/.test(assetId)) throw new Error('Invalid asset ID')
   const ownerRosterId = Math.round(boundedNumber(value.ownerRosterId, 'owner roster', 1, 100))
   const categories = Array.isArray(value.categories)
-    ? [...new Set(value.categories.filter((category): category is 'value' | 'points' | 'intel' => ['value', 'points', 'intel'].includes(String(category))))].slice(0, 3)
+    ? [...new Set(value.categories.filter((category): category is 'value' | 'flip' | 'points' | 'intel' => ['value', 'flip', 'points', 'intel'].includes(String(category))))].slice(0, 4)
     : []
   if (!categories.length) throw new Error('Invalid categories')
   const capturedAt = now.toISOString()

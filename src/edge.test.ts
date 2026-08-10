@@ -28,22 +28,22 @@ describe('league-wide edge engine', () => {
   it('uses recent trade flow and an explicit override for team direction', () => {
     const teams = [team(2, [asset('veteran', 'RB', 600)], [], 55, 55), team(3, [], [], 55, 55)]
     const automatic = buildTeamDirections({ teams, transactions: [trade(Date.UTC(2026, 7, 1))], picks, now: new Date('2026-08-10T00:00:00Z') })
-    expect(automatic.find((item) => item.rosterId === 2)?.label).toBe('contender')
+    expect(automatic.find((item) => item.rosterId === 2)?.label).toBe('retooling')
     expect(automatic.find((item) => item.rosterId === 2)?.recentTrades).toBe(1)
     const overridden = buildTeamDirections({ teams, transactions: [], picks, overrides: { '2': 'rebuilding' } })
-    expect(overridden.find((item) => item.rosterId === 2)).toMatchObject({ label: 'rebuilding', manual: true, confidence: 96 })
+    expect(overridden.find((item) => item.rosterId === 2)).toMatchObject({ label: 'rebuilding', manual: true, confidence: 0 })
   })
 
-  it('reprices an unresolved pick from the original manager direction', () => {
+  it('does not reprice an unresolved pick from an inferred manager direction', () => {
     const futurePick = asset('pick', 'PICK', 450, { year: '2027', round: 1, originalRosterId: 2, projectedTier: 'mid' })
     const teams = [team(1, [], [futurePick]), team(2, [])]
     const directions = buildTeamDirections({ teams, transactions: [], picks, overrides: { '2': 'rebuilding' } })
     const projected = applyDirectionPickProjections(teams, directions, picks)
-    expect(projected[0].picks[0].projectedTier).toBe('early')
-    expect(projected[0].picks[0].value).toBeGreaterThan(450)
+    expect(projected[0].picks[0].projectedTier).toBe('mid')
+    expect(projected[0].picks[0].value).toBe(450)
   })
 
-  it('scans every opponent and lets unabsorbed intel move a target up', () => {
+  it('scans every opponent but never lets unvalidated news move market ordering', () => {
     const mine = team(1, [asset('qb', 'QB', 500), asset('wr', 'WR', 450), asset('te', 'TE', 350)], [], 65, 50)
     const ownerA = team(2, [asset('rb-news', 'RB', 420, { age: 22 }), asset('rb-depth', 'RB', 300)])
     const ownerB = team(3, [asset('rb-quiet', 'RB', 430), asset('rb-depth-2', 'RB', 300)])
@@ -55,8 +55,8 @@ describe('league-wide edge engine', () => {
       action: 'Quietly inquire', rationale: 'Role expanded before the market moved.', add24: 2, drop24: 0, acceleration: 2, ownerTeam: ownerA, isMine: false,
     } satisfies IntelSignal
     const board = buildEdgeBoard([mine, ownerA, ownerB], { myRosterId: 1, rosterPositions: ['QB', 'RB', 'WR', 'TE'], directions, profiles: [], intelSignals: [signal], now: new Date('2026-08-10T00:00:00Z') })
-    expect(board[0].asset.id).toBe('rb-news')
-    expect(board[0].categories).toContain('intel')
+    expect(board[0].asset.id).toBe('rb-quiet')
+    expect(board.find((item) => item.asset.id === 'rb-news')?.categories).toContain('intel')
     expect(board.some((item) => item.owner.rosterId === 3)).toBe(true)
   })
 

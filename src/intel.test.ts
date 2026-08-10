@@ -36,7 +36,7 @@ describe('intel matching', () => {
     expect(matchArticlePlayers(article('Lions worked out free agent CB Trevon Diggs'), players)).toEqual([])
   })
 
-  it('builds league-aware actions from headlines and trends', () => {
+  it('joins factual headlines and trend counts without manufacturing an action score', () => {
     const feed: IntelFeed = {
       generatedAt: '2026-08-09T12:00:00.000Z',
       articles: [article('Joe Burrow cleared and healthy'), article('Higgins suffers injury setback')],
@@ -52,16 +52,18 @@ describe('intel matching', () => {
     const burrow = signals.find((signal) => signal.player.name === 'Joe Burrow')!
     const higgins = signals.find((signal) => signal.player.name === 'Tee Higgins')!
 
-    expect(burrow.direction).toBe('up')
-    expect(burrow.impactScore).toBeGreaterThan(0)
-    expect(burrow.marketReactionScore).toBeGreaterThan(0)
+    expect(burrow.direction).toBe('watch')
+    expect(burrow.impactScore).toBe(0)
+    expect(burrow.marketReactionScore).toBe(0)
     expect(burrow.isMine).toBe(true)
-    expect(burrow.action).toContain('Hold')
-    expect(higgins.direction).toBe('down')
+    expect(burrow.action).toBe('Watch only')
+    expect(burrow.add24).toBe(40)
+    expect(higgins.direction).toBe('watch')
+    expect(higgins.drop24).toBe(25)
     expect(higgins.ownerTeam).toBeNull()
   })
 
-  it('reduces remaining edge after the Sleeper market has already reacted', () => {
+  it('keeps raw Sleeper activity separate from an unvalidated edge estimate', () => {
     const quietFeed: IntelFeed = {
       generatedAt: '2026-08-09T12:00:00.000Z',
       articles: [article('Joe Burrow cleared and healthy')],
@@ -80,8 +82,10 @@ describe('intel matching', () => {
     const quiet = buildIntelSignals(quietFeed, players, [team], 7)[0]
     const reacted = buildIntelSignals(reactedFeed, players, [team], 7)[0]
 
-    expect(reacted.marketReactionScore).toBeGreaterThan(quiet.marketReactionScore)
-    expect(reacted.edgeScore).toBeLessThan(quiet.edgeScore)
+    expect(reacted.add24).toBe(1000)
+    expect(quiet.add24).toBe(0)
+    expect(reacted.marketReactionScore).toBe(0)
+    expect(reacted.edgeScore).toBe(0)
   })
 
   it('does not treat the word out as an injury by itself', () => {

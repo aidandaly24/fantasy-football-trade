@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildOwnedPicks, currentRoleValue, evaluateTrade, futurePickContext, optimizeLineup, packageValue, projectedLineupPpg, projectPickProjections, rosterProfile, scoreTeams } from './rankings'
+import { buildOwnedPicks, currentRoleValue, evaluateTrade, futurePickContext, optimizeLineup, packageValue, projectedLineupPpg, rosterProfile, scoreTeams } from './rankings'
 import type { Asset, LeagueBundle, PickValue, Team } from './types'
 
 function asset(id: string, position: Asset['position'], value: number): Asset {
@@ -47,14 +47,14 @@ describe('optimizeLineup', () => {
     expect(new Set(lineup.map((player) => player.id)).size).toBe(lineup.length)
   })
 
-  it('does not present an NFL backup as a full-value current starter', () => {
+  it('does not silently discount current market value from a depth-chart heuristic', () => {
     const starter = asset('starter', 'RB', 240)
     starter.depthChartOrder = 1
     const expensiveBackup = asset('backup', 'RB', 420)
     expensiveBackup.depthChartOrder = 2
 
-    expect(currentRoleValue(expensiveBackup)).toBe(168)
-    expect(optimizeLineup([starter, expensiveBackup], ['RB']).map((player) => player.id)).toEqual(['starter'])
+    expect(currentRoleValue(expensiveBackup)).toBe(420)
+    expect(optimizeLineup([starter, expensiveBackup], ['RB']).map((player) => player.id)).toEqual(['backup'])
   })
 })
 
@@ -109,10 +109,7 @@ describe('buildOwnedPicks', () => {
     expect(picks[0].name).toBe('2027 1st · from Alpha')
   })
 
-  it('projects every future pick from the strength of its original roster', () => {
-    const strong = team(1, [asset('elite-qb', 'QB', 900), asset('elite-rb', 'RB', 850)])
-    const weak = team(2, [asset('thin-qb', 'QB', 250), asset('thin-rb', 'RB', 180)])
-    const projections = projectPickProjections([strong, weak])
+  it('keeps every unresolved future pick at the provider midpoint with a factual range', () => {
     const scenarioValues: PickValue[] = [
       { id: 'pick_2027_1_01', name: '2027 Pick 1.01', round: 1, slot: 1, year: '2027', tier: 'early', composite: 600, position: 'PICK' },
       { id: 'pick_2027_1_06', name: '2027 Pick 1.06', round: 1, slot: 6, year: '2027', tier: 'mid', composite: 450, position: 'PICK' },
@@ -127,42 +124,43 @@ describe('buildOwnedPicks', () => {
       rosterIds: [1, 2],
       tradedPicks: [],
       pickValues: scenarioValues,
-      pickProjections: projections,
       teamNames: new Map([[1, 'Strong'], [2, 'Weak']]),
     })
     const strongPicks = picks.get(1) ?? []
     const weakPicks = picks.get(2) ?? []
 
-    expect(strongPicks.every((pick) => pick.projectedTier === 'late')).toBe(true)
-    expect(weakPicks.every((pick) => pick.projectedTier === 'early')).toBe(true)
-    expect(strongPicks.find((pick) => pick.round === 1)!.value)
-      .toBeLessThan(weakPicks.find((pick) => pick.round === 1)!.value)
+    expect(strongPicks.every((pick) => pick.projectedTier === 'mid')).toBe(true)
+    expect(weakPicks.every((pick) => pick.projectedTier === 'mid')).toBe(true)
+    expect(strongPicks.find((pick) => pick.round === 1)!.value).toBe(450)
+    expect(weakPicks.find((pick) => pick.round === 1)!.value).toBe(450)
+    expect(strongPicks.find((pick) => pick.round === 1)).toMatchObject({ valueLow: 375, valueHigh: 600 })
   })
 })
 
 describe('trade evaluation', () => {
-  it('applies diminishing weight to additional package pieces', () => {
+  it('adds observed package values without hidden compression or elite bonuses', () => {
     const elite = [asset('elite', 'WR', 900)]
     const packageAssets = [asset('a', 'RB', 260), asset('b', 'WR', 260), asset('c', 'TE', 260)]
 
-    expect(packageValue(elite)).toBeGreaterThan(packageValue(packageAssets))
+    expect(packageValue(elite)).toBe(900)
+    expect(packageValue(packageAssets)).toBe(780)
     expect(evaluateTrade(elite, packageAssets).verdict).toContain('Side B')
   })
 
-  it('calls nearly equal adjusted packages fair', () => {
+  it('reports the literal current-market gap without inventing a fair zone', () => {
     const result = evaluateTrade([asset('a', 'QB', 500)], [asset('b', 'RB', 490)])
-    expect(result.fair).toBe(true)
-    expect(result.verdict).toBe('Dead even')
+    expect(result.marketNetA).toBe(-10)
+    expect(result.verdict).toBe('Side B receives 10 more current market value')
   })
 
-  it('improves a team rating when value is added to what it receives', () => {
+  it('changes only the observed market net when value is added to what it receives', () => {
     const baseline = evaluateTrade([asset('sent', 'QB', 500)], [asset('received', 'RB', 490)])
     const improved = evaluateTrade(
       [asset('sent', 'QB', 500)],
       [asset('received', 'RB', 490), asset('extra', 'WR', 120)],
     )
 
-    expect(improved.ratingA).toBeGreaterThan(baseline.ratingA)
+    expect(improved.marketNetA).toBeGreaterThan(baseline.marketNetA)
   })
 
   it('reports lineup impact and pick-value uncertainty separately from market value', () => {
@@ -181,9 +179,9 @@ describe('trade evaluation', () => {
       rosterPositions: ['QB'],
     })
 
-    expect(result.lineupImpactA).toBeGreaterThan(0)
+    expect(result.lineupImpactA).toBe(0)
     expect(result.rangeA.worst).toBeLessThan(result.rangeA.best)
-    expect(result.confidence).toBeLessThan(100)
+    expect(result.projectionCoverage).toBe(0)
   })
 
   it('uses held-out production projections only for lineup impact', () => {
@@ -207,7 +205,7 @@ describe('trade evaluation', () => {
     expect(result.marketNetA).toBe(0)
   })
 
-  it('downgrades a market win when much of the return is contingent backup value', () => {
+  it('keeps current price and factual role warnings separate', () => {
     const lateFirst = asset('1.12', 'PICK', 360)
     lateFirst.kind = 'pick'
     lateFirst.projectionConfidence = 0.95
@@ -232,10 +230,12 @@ describe('trade evaluation', () => {
     })
 
     expect(result.marketNetA).toBeGreaterThan(0)
-    expect(result.ratingA).toBeLessThan(64)
-    expect(result.gradeA).not.toMatch(/^A/)
     expect(result.riskNotesA[0]).toContain('RB2')
-    expect(result.incomingStabilityA).toBeLessThan(result.incomingStabilityB)
+    expect(result.verdict).toContain('Team 1 receives')
+  })
+
+  it('does not convert market value into fallback fantasy points', () => {
+    expect(projectedLineupPpg(asset('uncovered', 'WR', 900))).toBe(0)
   })
 })
 
@@ -244,6 +244,9 @@ describe('league-relative roster scoring', () => {
     const strong = team(1, [asset('s-qb', 'QB', 900), asset('s-rb', 'RB', 800)], [asset('s-depth', 'RB', 650)])
     const thin = team(2, [asset('t-qb', 'QB', 900)], [asset('t-depth', 'RB', 100)])
     const middle = team(3, [asset('m-qb', 'QB', 650), asset('m-rb', 'RB', 550)], [asset('m-depth', 'RB', 300)])
+    strong.players.forEach((player) => { player.projectedPpg = 10 })
+    thin.players.forEach((player) => { player.projectedPpg = 10 })
+    middle.players.forEach((player) => { player.projectedPpg = 8 })
     const scored = scoreTeams([strong, thin, middle])
 
     expect(scored[0].metrics.lineup).toBeGreaterThan(scored[1].metrics.lineup)

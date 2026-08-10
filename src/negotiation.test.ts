@@ -34,7 +34,7 @@ function trade(id: string): SleeperTransaction {
 }
 
 describe('negotiation profiles', () => {
-  it('classifies repeated pick acquisition from completed trades', () => {
+  it('reports repeated pick acquisition without inventing an archetype', () => {
     const profiles = buildManagerProfiles(
       Array.from({ length: 8 }, (_, index) => trade(String(index))),
       teams,
@@ -44,17 +44,25 @@ describe('negotiation profiles', () => {
 
     const alpha = profiles.find((profile) => profile.rosterId === 1)
     const beta = profiles.find((profile) => profile.rosterId === 2)
-    expect(alpha?.archetype).toBe('Pick collector')
-    expect(beta?.archetype).toBe('Player buyer')
-    expect(alpha?.confidence).toBe('medium')
+    expect(alpha?.archetype).toBe('Unmodeled')
+    expect(beta?.archetype).toBe('Unmodeled')
+    expect(alpha?.confidence).toBe('unmodeled')
     expect(alpha?.receivedPicks).toBe(8)
+    expect(alpha?.evidenceNote).toContain('do not reveal rejected offers')
   })
 
-  it('labels sparse histories as low confidence', () => {
+  it('leaves negotiation outputs unavailable when no offer labels exist', () => {
     const [profile] = buildManagerProfiles([], teams, players, picks)
 
-    expect(profile.archetype).toBe('Unproven market')
-    expect(profile.confidence).toBe('low')
-    expect(profile.evidenceNote).toContain('fewer than eight')
+    expect(profile.archetype).toBe('Unmodeled')
+    expect(profile.confidence).toBe('unmodeled')
+    expect(profile.opening).toContain('Unavailable')
+  })
+
+  it('excludes startup-draft pick swaps from the dynasty trade profile', () => {
+    const startup = trade('startup')
+    startup.draft_picks[0].round = 17
+    const [profile] = buildManagerProfiles([startup], teams, players, picks)
+    expect(profile.tradeCount).toBe(0)
   })
 })

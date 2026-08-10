@@ -2,7 +2,6 @@ import type {
   Asset,
   LeagueBundle,
   LeagueUser,
-  PickProjection,
   PickTier,
   PickValue,
   PlayerProjection,
@@ -136,7 +135,6 @@ export function buildOwnedPicks(options: {
   rosterIds: number[]
   tradedPicks: TradedPick[]
   pickValues: PickValue[]
-  pickProjections?: Map<number, PickProjection>
   slotToRosterId?: Record<string, number> | null
   teamNames: Map<number, string>
 }): Map<number, Asset[]> {
@@ -162,9 +160,8 @@ export function buildOwnedPicks(options: {
         const key = `${year}:${round}:${originalRosterId}`
         const ownerRosterId = currentOwners.get(key) ?? originalRosterId
         const exactSlot = year === exactSlotSeason ? slotsByRoster.get(originalRosterId) : undefined
-        const projection = exactSlot ? undefined : options.pickProjections?.get(originalRosterId)
         const valueSlot = exactSlot ?? midSlot
-        const probabilities = projection?.probabilities ?? { early: 0, mid: 1, late: 0 }
+        const probabilities = { early: 0, mid: 1, late: 0 }
         const projectedValue = exactSlot
           ? null
           : projectedPickValue(options.pickValues, year, round, probabilities)
@@ -181,7 +178,7 @@ export function buildOwnedPicks(options: {
           position: 'PICK',
           team: null,
           value: exactSlot ? (marketPick?.composite ?? 0) : (projectedValue?.expected ?? marketPick?.composite ?? 0),
-          confidence: exactSlot ? 0.95 : projection ? 0.72 : 0.6,
+          confidence: exactSlot ? 1 : 0,
           age: null,
           rank: null,
           sourceValue: null,
@@ -190,13 +187,13 @@ export function buildOwnedPicks(options: {
           year: String(year),
           round,
           slot: exactSlot,
-          projectedTier: exactSlot ? 'known' : (projection?.tier ?? 'mid'),
+          projectedTier: exactSlot ? 'known' : 'mid',
           tierProbabilities: exactSlot ? undefined : probabilities,
           valueLow: exactSlot ? marketPick?.composite : projectedValue?.low,
           valueHigh: exactSlot ? marketPick?.composite : projectedValue?.high,
           projectionConfidence: exactSlot
-            ? 0.95
-            : Math.max(probabilities.early, probabilities.mid, probabilities.late),
+            ? 1
+            : 0,
         }
         const list = owned.get(ownerRosterId) ?? []
         list.push(asset)
@@ -233,32 +230,8 @@ export function futurePickContext(
   return { firstSeason, seasons, exactSlotSeason }
 }
 
-function availabilityMultiplier(asset: Asset): number {
-  if (asset.active === false) return 0.18
-  const status = `${asset.nflStatus ?? ''} ${asset.injuryStatus ?? ''}`.toLowerCase()
-  if (/injured reserve|\bir\b|pup|suspend/.test(status)) return 0.35
-  if (/\bout\b/.test(status)) return 0.5
-  if (/doubtful/.test(status)) return 0.65
-  if (/questionable/.test(status)) return 0.85
-  return 1
-}
-
-export function currentRoleMultiplier(asset: Asset): number {
-  if (asset.kind === 'pick') return 1
-  const order = asset.depthChartOrder
-  if (!order || order < 1) return availabilityMultiplier(asset)
-  const byPosition: Partial<Record<Asset['position'], number[]>> = {
-    QB: [1, 0.45, 0.2, 0.12],
-    RB: [1, 0.4, 0.22, 0.14],
-    WR: [1, 0.9, 0.74, 0.45],
-    TE: [1, 0.7, 0.4, 0.24],
-  }
-  const roleMultiplier = byPosition[asset.position]?.[Math.min(order, 4) - 1] ?? 1
-  return roleMultiplier * availabilityMultiplier(asset)
-}
-
 export function currentRoleValue(asset: Asset): number {
-  return Math.round(asset.value * currentRoleMultiplier(asset))
+  return Math.round(asset.value)
 }
 
 export function assetRoleLabel(asset: Asset): string | null {
@@ -270,47 +243,9 @@ export function assetRoleLabel(asset: Asset): string | null {
   return null
 }
 
-export function assetStability(asset: Asset): number {
-  if (asset.kind === 'pick') {
-    return Math.max(0.35, Math.min(0.98, asset.projectionConfidence ?? asset.confidence ?? 0.6))
-  }
-  const order = asset.depthChartOrder
-  if (!order || order < 1) return 0.62 * availabilityMultiplier(asset)
-  const byPosition: Partial<Record<Asset['position'], number[]>> = {
-    QB: [0.92, 0.45, 0.28, 0.2],
-    RB: [0.78, 0.48, 0.3, 0.2],
-    WR: [0.84, 0.72, 0.58, 0.4],
-    TE: [0.82, 0.58, 0.4, 0.28],
-  }
-  const roleStability = byPosition[asset.position]?.[Math.min(order, 4) - 1] ?? 0.62
-  return Math.max(0.12, Math.min(0.98, roleStability * availabilityMultiplier(asset)))
-}
-
-function projectedRoleMultiplier(asset: Asset): number {
-  const order = asset.depthChartOrder
-  if (!order || order < 1) return availabilityMultiplier(asset)
-  const byPosition: Partial<Record<Asset['position'], number[]>> = {
-    QB: [1, 0.3, 0.12, 0.08],
-    RB: [1, 0.75, 0.5, 0.35],
-    WR: [1, 0.95, 0.88, 0.65],
-    TE: [1, 0.72, 0.5, 0.35],
-  }
-  return (byPosition[asset.position]?.[Math.min(order, 4) - 1] ?? 1) * availabilityMultiplier(asset)
-}
-
-function marketImpliedPpg(asset: Asset): number {
-  const divisor: Partial<Record<Asset['position'], number>> = {
-    QB: 35,
-    RB: 32,
-    WR: 32,
-    TE: 30,
-  }
-  return Math.min(28, asset.value / (divisor[asset.position] ?? 35))
-}
-
 export function projectedLineupPpg(asset: Asset): number {
   if (asset.kind !== 'player') return 0
-  return (asset.projectedPpg ?? marketImpliedPpg(asset)) * projectedRoleMultiplier(asset)
+  return asset.projectedPpg ?? 0
 }
 
 function takeBest(
@@ -355,123 +290,39 @@ export function optimizeLineup(players: Asset[], rosterPositions: string[]): Ass
   return optimizeLineupBy(players, rosterPositions, currentRoleValue)
 }
 
-const PLAYER_WEIGHTS = [1, 0.97, 0.93, 0.89, 0.84, 0.79, 0.74, 0.69, 0.64, 0.59, 0.54, 0.5, 0.46, 0.42, 0.38, 0.34]
-const DEPTH_WEIGHTS = [1, 0.84, 0.7, 0.58, 0.48, 0.4]
-const PICK_WEIGHTS = [1, 0.96, 0.91, 0.86, 0.8, 0.74, 0.68, 0.62, 0.56, 0.5, 0.44, 0.38]
-
-function weightedSum(values: number[], weights: number[]): number {
-  return values.slice(0, weights.length).reduce((sum, value, index) => sum + value * weights[index], 0)
-}
-
-function ageResilience(asset: Asset): number {
-  if (!asset.age) return 0.86
-  const age = asset.age
-  if (asset.position === 'QB') return age <= 29 ? 1 : age <= 31 ? 0.96 : age <= 33 ? 0.88 : 0.76
-  if (asset.position === 'RB') return age <= 23 ? 1 : age <= 24 ? 0.94 : age <= 25 ? 0.86 : age <= 26 ? 0.76 : 0.64
-  if (asset.position === 'WR') return age <= 25 ? 1 : age <= 26 ? 0.96 : age <= 27 ? 0.91 : age <= 28 ? 0.84 : 0.73
-  if (asset.position === 'TE') return age <= 26 ? 1 : age <= 27 ? 0.96 : age <= 28 ? 0.91 : age <= 29 ? 0.84 : 0.74
-  return 0.8
-}
-
-function replacementLevels(teams: Team[]): Map<Asset['position'], number> {
-  const levels = new Map<Asset['position'], number>()
-  const positions: Asset['position'][] = ['QB', 'RB', 'WR', 'TE']
-
-  positions.forEach((position) => {
-    const values = teams
-      .flatMap((team) => team.players)
-      .filter((asset) => asset.position === position)
-      .map(currentRoleValue)
-      .sort((a, b) => b - a)
-    const starterCount = teams.flatMap((team) => team.optimizedStarters).filter((asset) => asset.position === position).length
-    const replacementIndex = Math.min(values.length - 1, Math.max(0, starterCount + Math.floor(teams.length / 2) - 1))
-    levels.set(position, values[replacementIndex] ?? 0)
-  })
-
-  return levels
-}
-
-function rawMetrics(
-  team: Team,
-  replacement: Map<Asset['position'], number>,
-  expectedStarters: number,
-): Pick<TeamMetrics, 'lineupRaw' | 'coreRaw' | 'depthRaw' | 'picksRaw' | 'liquidityRaw' | 'marketRaw'> {
+function rawMetrics(team: Team): Pick<TeamMetrics, 'lineupRaw' | 'coreRaw' | 'depthRaw' | 'picksRaw' | 'liquidityRaw' | 'marketRaw'> {
   const starters = team.optimizedStarters
   const starterIds = new Set(starters.map((asset) => asset.id))
-  const skillPlayers = team.players
-    .filter((asset) => SKILL_POSITIONS.has(asset.position))
-    .sort((a, b) => b.value - a.value)
-  const bench = skillPlayers
-    .filter((asset) => !starterIds.has(asset.id))
-    .sort((a, b) => currentRoleValue(b) - currentRoleValue(a))
-  const starterSurplus = starters.map((asset) => {
-    const baseline = replacement.get(asset.position) ?? 0
-    return Math.max(0, currentRoleValue(asset) - baseline * 0.45)
-  })
-  const depthSurplus = bench
-    .map((asset) => Math.max(0, currentRoleValue(asset) - (replacement.get(asset.position) ?? 0)))
-    .sort((a, b) => b - a)
-  const marketPlayers = skillPlayers.map((asset) => asset.value)
-  const liquidAssets = [...skillPlayers, ...team.picks]
-    .map((asset) => asset.value)
-    .sort((a, b) => b - a)
+  const skillPlayers = team.players.filter((asset) => SKILL_POSITIONS.has(asset.position))
+  const bench = skillPlayers.filter((asset) => !starterIds.has(asset.id))
+  const playerMarket = skillPlayers.reduce((sum, asset) => sum + asset.value, 0)
+  const pickMarket = team.picks.reduce((sum, asset) => sum + asset.value, 0)
 
   return {
-    lineupRaw: starterSurplus.reduce((sum, value) => sum + value, 0) / Math.max(1, expectedStarters),
-    coreRaw: weightedSum(
-      skillPlayers.map((asset) => asset.value),
-      PLAYER_WEIGHTS.slice(0, 10),
-    ) * 0.25 + weightedSum(
-      skillPlayers.map((asset) => asset.value * ageResilience(asset)),
-      PLAYER_WEIGHTS.slice(0, 10),
-    ) * 0.75,
-    depthRaw: weightedSum(depthSurplus, DEPTH_WEIGHTS),
-    picksRaw: weightedSum(team.picks.map((asset) => asset.value), PICK_WEIGHTS),
-    liquidityRaw: weightedSum(liquidAssets.slice(3), PLAYER_WEIGHTS.slice(0, 10)),
-    marketRaw: weightedSum(marketPlayers, PLAYER_WEIGHTS) + weightedSum(team.picks.map((asset) => asset.value), PICK_WEIGHTS) * 0.72,
+    lineupRaw: starters.reduce((sum, asset) => sum + projectedLineupPpg(asset), 0),
+    coreRaw: playerMarket,
+    depthRaw: bench.reduce((sum, asset) => sum + asset.value, 0),
+    picksRaw: pickMarket,
+    liquidityRaw: 0,
+    marketRaw: playerMarket + pickMarket,
   }
 }
 
-function leaguePercentile(values: number[], value: number): number {
-  if (values.length <= 1) return 50
-  const below = values.filter((item) => item < value).length
-  const tied = values.filter((item) => item === value).length
-  const percentile = (below + Math.max(0, tied - 1) / 2) / (values.length - 1)
-  return 15 + percentile * 80
-}
-
-function roundScore(value: number): number {
-  return Math.round(Math.max(0, Math.min(100, value)))
-}
-
 export function scoreTeams(teams: Team[]): Team[] {
-  const replacement = replacementLevels(teams)
-  const expectedStarters = Math.max(1, ...teams.map((team) => team.optimizedStarters.length))
-  const raw = teams.map((team) => rawMetrics(team, replacement, expectedStarters))
-  const fields = ['lineupRaw', 'coreRaw', 'depthRaw', 'picksRaw', 'liquidityRaw', 'marketRaw'] as const
-  const ranges = Object.fromEntries(
-    fields.map((field) => [field, raw.map((metrics) => metrics[field])]),
-  ) as Record<(typeof fields)[number], number[]>
-
+  const raw = teams.map(rawMetrics)
   return teams.map((team, index) => {
     const current = raw[index]
-    const lineup = leaguePercentile(ranges.lineupRaw, current.lineupRaw)
-    const core = leaguePercentile(ranges.coreRaw, current.coreRaw)
-    const depth = leaguePercentile(ranges.depthRaw, current.depthRaw)
-    const picks = leaguePercentile(ranges.picksRaw, current.picksRaw)
-    const liquidity = leaguePercentile(ranges.liquidityRaw, current.liquidityRaw)
-    const market = leaguePercentile(ranges.marketRaw, current.marketRaw)
     const metrics: TeamMetrics = {
       ...current,
-      lineup: roundScore(lineup),
-      core: roundScore(core),
-      depth: roundScore(depth),
-      picks: roundScore(picks),
-      liquidity: roundScore(liquidity),
-      market: roundScore(market),
-      overall: roundScore(lineup * 0.43 + market * 0.25 + depth * 0.12 + core * 0.12 + picks * 0.08),
-      contender: roundScore(lineup * 0.8 + depth * 0.15 + liquidity * 0.05),
-      future: roundScore(core * 0.45 + picks * 0.35 + liquidity * 0.2),
+      lineup: Number(current.lineupRaw.toFixed(1)),
+      core: Math.round(current.coreRaw),
+      depth: Math.round(current.depthRaw),
+      picks: Math.round(current.picksRaw),
+      liquidity: 0,
+      market: Math.round(current.marketRaw),
+      overall: Math.round(current.marketRaw),
+      contender: Number(current.lineupRaw.toFixed(1)),
+      future: Math.round(current.picksRaw),
     }
     return { ...team, metrics }
   })
@@ -483,73 +334,11 @@ export function rosterProfile(team: Team, teams: Team[]): { label: string; descr
   const overall = rank('overall')
   const lineup = rank('lineup')
   const depth = rank('depth')
-  const future = rank('future')
   const picks = rank('picks')
-
-  if (lineup <= 3 && future <= 4) {
-    return { label: 'Two-window strength', description: `The lineup ranks #${lineup} and the two-year asset base ranks #${future}.` }
+  return {
+    label: 'Observed roster snapshot',
+    description: `Current market ranks #${overall}; covered lineup PPG ranks #${lineup}; bench market ranks #${depth}; draft-capital market ranks #${picks}.`,
   }
-  if (lineup <= 4 && depth >= Math.max(8, teams.length - 3)) {
-    return { label: 'High ceiling, low cover', description: `The lineup ranks #${lineup}, but replacement-adjusted depth falls to #${depth}.` }
-  }
-  if (lineup <= 4 && picks >= Math.max(8, teams.length - 3)) {
-    return { label: 'Starter-heavy build', description: `The lineup ranks #${lineup}; draft capital ranks #${picks}, limiting optionality.` }
-  }
-  if (picks <= 3 && lineup >= Math.ceil(teams.length / 2)) {
-    return { label: 'Capital-first build', description: `Draft capital ranks #${picks}, while the current lineup sits #${lineup}.` }
-  }
-  if (future <= 3 && lineup >= Math.ceil(teams.length / 2)) {
-    return { label: 'Young value, thinner lineup', description: `The two-year asset base ranks #${future}; the current lineup ranks #${lineup}.` }
-  }
-  if (depth <= 3 && lineup >= Math.ceil(teams.length / 2)) {
-    return { label: 'Deep, star-light', description: `Depth ranks #${depth}, but the best legal lineup ranks #${lineup}.` }
-  }
-  if (overall <= 4) {
-    return { label: 'Upper-tier balance', description: `The roster is #${overall} overall without a single category doing all the work.` }
-  }
-  if (overall >= Math.max(8, teams.length - 3) && picks >= Math.max(8, teams.length - 3)) {
-    return { label: 'Low-leverage roster', description: `Overall strength ranks #${overall} and draft capital ranks #${picks}; create flexibility first.` }
-  }
-  return { label: 'Middle-tier leverage', description: `Overall strength ranks #${overall}; lineup #${lineup} and draft capital #${picks} show the clearest trade-offs.` }
-}
-
-export function projectPickProjections(teams: Team[]): Map<number, PickProjection> {
-  const playerOnly = scoreTeams(
-    teams.map((team) => ({
-      ...team,
-      picks: [],
-      metrics: { ...EMPTY_METRICS },
-    })),
-  ).sort((a, b) => b.metrics.contender - a.metrics.contender)
-  const tierSize = Math.max(1, Math.ceil(playerOnly.length / 3))
-  const projections = new Map<number, PickProjection>()
-
-  playerOnly.forEach((team, index) => {
-    const contenderRank = index + 1
-    if (index < tierSize) {
-      projections.set(team.rosterId, {
-        tier: 'late',
-        probabilities: { early: 0.12, mid: 0.28, late: 0.6 },
-        contenderRank,
-      })
-      return
-    }
-    if (index >= playerOnly.length - tierSize) {
-      projections.set(team.rosterId, {
-        tier: 'early',
-        probabilities: { early: 0.6, mid: 0.28, late: 0.12 },
-        contenderRank,
-      })
-      return
-    }
-    projections.set(team.rosterId, {
-      tier: 'mid',
-      probabilities: { early: 0.25, mid: 0.5, late: 0.25 },
-      contenderRank,
-    })
-  })
-
-  return projections
 }
 
 export function buildTeams(
@@ -596,11 +385,10 @@ export function buildTeams(
       optimizedStarters: [],
       metrics: { ...EMPTY_METRICS },
     }
-    team.optimizedStarters = optimizeLineup(players, leagueBundle.league.roster_positions)
+    team.optimizedStarters = optimizeLineupBy(players, leagueBundle.league.roster_positions, projectedLineupPpg)
     return team
   })
 
-  const pickProjections = projectPickProjections(baseTeams)
   const ownedPicks = buildOwnedPicks({
     season: pickContext.firstSeason,
     seasons: pickContext.seasons,
@@ -609,7 +397,6 @@ export function buildTeams(
     rosterIds: leagueBundle.rosters.map((roster) => roster.roster_id),
     tradedPicks: leagueBundle.tradedPicks,
     pickValues: values.picks,
-    pickProjections,
     slotToRosterId: pickContext.exactSlotSeason ? leagueBundle.draft?.slot_to_roster_id : null,
     teamNames,
   })
@@ -626,49 +413,21 @@ type PackageValueBound = 'expected' | 'low' | 'high'
 function assetValueAt(asset: Asset, bound: PackageValueBound): number {
   if (bound === 'low') {
     if (asset.valueLow !== undefined) return asset.valueLow
-    if (asset.kind === 'player') return Math.round(asset.value * (0.58 + assetStability(asset) * 0.38))
     return asset.value
   }
   if (bound === 'high') {
     if (asset.valueHigh !== undefined) return asset.valueHigh
-    if (asset.kind === 'player') return Math.round(asset.value * (1.24 - assetStability(asset) * 0.14))
     return asset.value
   }
   return asset.value
 }
 
 function packageValueAt(assets: Asset[], bound: PackageValueBound): number {
-  const sorted = [...assets].sort((a, b) => assetValueAt(b, bound) - assetValueAt(a, bound))
-  const multipliers = [1, 0.93, 0.85, 0.78, 0.72, 0.67, 0.62, 0.58]
-  const total = sorted.reduce(
-    (sum, asset, index) => sum + assetValueAt(asset, bound) * (multipliers[index] ?? 0.55),
-    0,
-  )
-  const eliteBonus = sorted[0] ? Math.max(0, assetValueAt(sorted[0], bound) - 700) * 0.18 : 0
-  return Math.round(total + eliteBonus)
+  return Math.round(assets.reduce((sum, asset) => sum + assetValueAt(asset, bound), 0))
 }
 
 export function packageValue(assets: Asset[]): number {
   return packageValueAt(assets, 'expected')
-}
-
-function normalizedConfidence(value: number): number {
-  return Math.max(0, Math.min(1, value > 1 ? value / 100 : value))
-}
-
-function packageConfidence(assets: Asset[]): number {
-  const totalValue = assets.reduce((sum, asset) => sum + asset.value, 0)
-  if (!totalValue) return 0
-  return assets.reduce(
-    (sum, asset) => sum + (normalizedConfidence(asset.confidence) * 0.7 + assetStability(asset) * 0.3) * asset.value,
-    0,
-  ) / totalValue
-}
-
-export function packageStability(assets: Asset[]): number {
-  const totalValue = assets.reduce((sum, asset) => sum + asset.value, 0)
-  if (!totalValue) return 0
-  return assets.reduce((sum, asset) => sum + assetStability(asset) * asset.value, 0) / totalValue
 }
 
 function projectedLineupTotal(players: Asset[], rosterPositions: string[]): number {
@@ -690,18 +449,6 @@ function lineupImpact(
   )
   return projectedLineupTotal([...remaining, ...additions], rosterPositions)
     - projectedLineupTotal(team.players, rosterPositions)
-}
-
-function tradeGrade(rating: number): string {
-  if (rating >= 88) return 'A+'
-  if (rating >= 76) return 'A'
-  if (rating >= 64) return 'A−'
-  if (rating >= 56) return 'B+'
-  if (rating >= 44) return 'B'
-  if (rating >= 36) return 'B−'
-  if (rating >= 26) return 'C'
-  if (rating >= 16) return 'D'
-  return 'F'
 }
 
 function packageRiskNotes(assets: Asset[]): string[] {
@@ -742,21 +489,12 @@ export function evaluateTrade(
   const total = valueA + valueB
   const difference = total ? (Math.abs(valueA - valueB) / ((valueA + valueB) / 2)) * 100 : 0
   const marketNetA = valueB - valueA
-  const marketEdgeA = total ? (marketNetA / ((valueA + valueB) / 2)) * 100 : 0
   const lineupImpactA = context?.teamA && context.rosterPositions
     ? lineupImpact(context.teamA, sideA, sideB, context.rosterPositions)
     : null
   const lineupImpactB = context?.teamB && context.rosterPositions
     ? lineupImpact(context.teamB, sideB, sideA, context.rosterPositions)
     : null
-  const lineupAdjustment = lineupImpactA === null || lineupImpactB === null
-    ? 0
-    : Math.max(-6, Math.min(6, (lineupImpactA - lineupImpactB) * 1.25))
-  const sentStabilityA = packageStability(sideA)
-  const sentStabilityB = packageStability(sideB)
-  const stabilityAdjustment = Math.max(-12, Math.min(12, (sentStabilityB - sentStabilityA) * 45))
-  const ratingA = Math.round(Math.max(0, Math.min(100, 50 + marketEdgeA * 0.75 + lineupAdjustment + stabilityAdjustment)))
-  const ratingB = 100 - ratingA
   const winner = marketNetA === 0 ? null : marketNetA > 0 ? 'A' : 'B'
   const winnerLabel = winner === 'A'
     ? (context?.teamA?.teamName ?? 'Side A')
@@ -764,23 +502,14 @@ export function evaluateTrade(
   const verdict =
     sideA.length === 0 || sideB.length === 0
       ? 'Build both sides'
-      : difference <= 6
-        ? 'Dead even'
-        : difference <= 14
-          ? `Slight edge: ${winnerLabel}`
-          : difference <= 26
-            ? `Strong edge: ${winnerLabel}`
-            : `Lopsided for ${winnerLabel}`
+      : marketNetA === 0
+        ? 'Current market values match'
+        : `${winnerLabel} receives ${Math.abs(marketNetA).toLocaleString()} more current market value`
 
   const sideALow = packageValueAt(sideA, 'low')
   const sideAHigh = packageValueAt(sideA, 'high')
   const sideBLow = packageValueAt(sideB, 'low')
   const sideBHigh = packageValueAt(sideB, 'high')
-  const uncertainty = total
-    ? ((sideAHigh - sideALow + sideBHigh - sideBLow) / total) * 100
-    : 0
-  const baseConfidence = ((packageConfidence(sideA) + packageConfidence(sideB)) / 2) * 100
-  const confidence = Math.round(Math.max(0, Math.min(99, baseConfidence - Math.min(18, uncertainty * 0.32))))
   const playersInDeal = [...sideA, ...sideB].filter((asset) => asset.kind === 'player')
   const projectionCoverage = playersInDeal.length
     ? Math.round((playersInDeal.filter((asset) => asset.projectedPpg !== undefined).length / playersInDeal.length) * 100)
@@ -790,21 +519,12 @@ export function evaluateTrade(
     valueA,
     valueB,
     marketNetA,
-    marketEdgeA,
     difference,
     verdict,
-    fair: sideA.length > 0 && sideB.length > 0 && difference <= 14,
     winner,
-    ratingA,
-    ratingB,
-    gradeA: tradeGrade(ratingA),
-    gradeB: tradeGrade(ratingB),
-    confidence,
     projectionCoverage,
     lineupImpactA,
     lineupImpactB,
-    incomingStabilityA: Math.round(sentStabilityB * 100),
-    incomingStabilityB: Math.round(sentStabilityA * 100),
     riskNotesA: packageRiskNotes(sideB),
     riskNotesB: packageRiskNotes(sideA),
     projectionNotesA: packageProjectionNotes(sideB),

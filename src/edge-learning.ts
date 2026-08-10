@@ -54,21 +54,10 @@ export type EdgeLearningReport = {
 }
 
 const FEATURE_NAMES = [
-  'ruleGain30',
-  'edgeScore',
+  'logCurrentValue',
   'lineupDelta',
-  'catalystScore',
-  'sellerFit',
-  'liquidityScore',
-  'timingScore',
-  'uncertaintyPenalty',
-  'confidence',
+  'sourceConfidence',
   'age',
-  'contenderProbability',
-  'rebuildingProbability',
-  'profitScore',
-  'resaleScore',
-  'decayRisk',
   'horizonYears',
   'isPick',
   'isQB',
@@ -85,24 +74,13 @@ function daysBetween(a: string, b: string): number {
   return (Date.parse(b) - Date.parse(a)) / DAY_MS
 }
 
-function valuesFor(input: Pick<MarketSnapshotRecord, 'features' | 'kind' | 'position'>): number[] {
+function valuesFor(input: Pick<MarketSnapshotRecord, 'currentValue' | 'features' | 'kind' | 'position'>): number[] {
   const features = input.features
   return [
-    clamp(features.ruleGain30, -0.8, 1.5),
-    features.edgeScore / 100,
+    Math.log1p(Math.max(0, input.currentValue)) / 10,
     clamp(features.lineupDelta / 10, -2, 2),
-    features.catalystScore / 100,
-    features.sellerFit / 100,
-    features.liquidityScore / 100,
-    features.timingScore / 100,
-    features.uncertaintyPenalty / 100,
     features.confidence / 100,
     clamp((features.age - 25) / 10, -1.5, 2),
-    features.contenderProbability,
-    features.rebuildingProbability,
-    (features.profitScore ?? 50) / 100,
-    (features.resaleScore ?? 50) / 100,
-    (features.decayRisk ?? 50) / 100,
     clamp(((features.horizonYears ?? 2) - 1) / 3, 0, 1),
     input.kind === 'pick' ? 1 : 0,
     input.position === 'QB' ? 1 : 0,
@@ -264,7 +242,7 @@ function predictArtifact(artifact: EdgeShadowArtifact, values: number[]): number
 }
 
 function fitRidge(examples: EdgeTrainingExample[]): EdgeShadowArtifact {
-  const matrix = examples.map((example) => valuesFor({ features: example.features, kind: example.kind, position: example.position }))
+  const matrix = examples.map((example) => valuesFor({ currentValue: example.currentValue, features: example.features, kind: example.kind, position: example.position }))
   const targets = examples.map((example) => example.actualReturn)
   const featureMeans = FEATURE_NAMES.map((_, index) => mean(matrix.map((row) => row[index])))
   const featureScales = FEATURE_NAMES.map((_, index) => Math.max(0.05, standardDeviation(matrix.map((row) => row[index]))))
@@ -320,7 +298,7 @@ export function trainShadowModel(examples: EdgeTrainingExample[], now = new Date
   if (trainingRows >= 20 && validationRows >= 10) {
     artifact = fitRidge(train)
     const actual = validation.map((row) => row.actualReturn)
-    const model = validation.map((row) => predictArtifact(artifact!, valuesFor({ features: row.features, kind: row.kind, position: row.position })))
+    const model = validation.map((row) => predictArtifact(artifact!, valuesFor({ currentValue: row.currentValue, features: row.features, kind: row.kind, position: row.position })))
     const baseline = validation.map((row) => row.ruleReturn)
     const modelMae = mae(actual, model)
     const baselineMae = mae(actual, baseline)
@@ -338,7 +316,7 @@ export function trainShadowModel(examples: EdgeTrainingExample[], now = new Date
     { id: 'validationRows', label: 'Later validation examples', passed: validationRows >= MIN_VALIDATION_ROWS, actual: validationRows, requirement: `>= ${MIN_VALIDATION_ROWS}` },
     { id: 'uniqueAssets', label: 'Unique assets represented', passed: uniqueAssets >= MIN_UNIQUE_ASSETS, actual: uniqueAssets, requirement: `>= ${MIN_UNIQUE_ASSETS}` },
     { id: 'dateSpan', label: 'Market regimes observed', passed: dateSpanDays >= MIN_SPAN_DAYS, actual: dateSpanDays, requirement: `>= ${MIN_SPAN_DAYS} days` },
-    { id: 'maeLift', label: 'Held-out MAE lift', passed: (metrics.maeImprovement ?? Number.NEGATIVE_INFINITY) >= MIN_MAE_LIFT, actual: metrics.maeImprovement ?? 0, requirement: `>= ${Math.round(MIN_MAE_LIFT * 100)}% versus rule projection` },
+    { id: 'maeLift', label: 'Held-out MAE lift', passed: (metrics.maeImprovement ?? Number.NEGATIVE_INFINITY) >= MIN_MAE_LIFT, actual: metrics.maeImprovement ?? 0, requirement: `>= ${Math.round(MIN_MAE_LIFT * 100)}% versus no-change baseline` },
     {
       id: 'rankGuardrail',
       label: 'Held-out ranking guardrail',
@@ -347,7 +325,7 @@ export function trainShadowModel(examples: EdgeTrainingExample[], now = new Date
       actual: metrics.rankCorrelation !== null && metrics.baselineRankCorrelation !== null
         ? metrics.rankCorrelation - metrics.baselineRankCorrelation
         : 0,
-      requirement: `>= ${MIN_RANK_DELTA.toFixed(2)} versus rule projection`,
+      requirement: `>= ${MIN_RANK_DELTA.toFixed(2)} versus no-change baseline`,
     },
   ]
   const passed = gates.every((gate) => gate.passed)

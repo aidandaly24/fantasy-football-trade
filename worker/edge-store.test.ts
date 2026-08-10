@@ -25,6 +25,15 @@ describe('private edge research storage', () => {
     expect(() => normalizeOfferInput({ ...input, status: 'won' })).toThrow('Invalid offer status')
   })
 
+  it('accepts legacy flip snapshots so old clients do not fail the entire write', () => {
+    const snapshot = normalizeOpportunityInput({
+      assetId: 'legacy', assetName: 'Legacy target', ownerRosterId: 2,
+      currentValue: 400, projection30: 400, projection90: 400, projection180: 400,
+      edgeScore: 0, lineupDelta: 0, confidence: 0, categories: ['flip'], catalyst: 'Legacy row',
+    })
+    expect(snapshot.categories).toEqual(['flip'])
+  })
+
   it('rejects client payloads outside the score and value bounds', () => {
     expect(() => normalizeOpportunityInput({
       assetId: 'x', assetName: 'X', ownerRosterId: 2, currentValue: 2,

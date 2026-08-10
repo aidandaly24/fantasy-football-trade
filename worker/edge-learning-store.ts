@@ -138,9 +138,9 @@ function normalizeTapeAsset(input: unknown): MarketTapeAssetInput {
       age: featureNumber(features, 'age', 0, 60),
       contenderProbability: featureNumber(features, 'contenderProbability', 0, 1),
       rebuildingProbability: featureNumber(features, 'rebuildingProbability', 0, 1),
-      profitScore: optionalFeatureNumber(features, 'profitScore', 0, 100, 50),
-      resaleScore: optionalFeatureNumber(features, 'resaleScore', 0, 100, 50),
-      decayRisk: optionalFeatureNumber(features, 'decayRisk', 0, 100, 50),
+      profitScore: optionalFeatureNumber(features, 'profitScore', 0, 100, 0),
+      resaleScore: optionalFeatureNumber(features, 'resaleScore', 0, 100, 0),
+      decayRisk: optionalFeatureNumber(features, 'decayRisk', 0, 100, 0),
       horizonYears: optionalFeatureNumber(features, 'horizonYears', 1, 4, 2),
     },
     metadata: {
@@ -257,7 +257,7 @@ function snapshotFromRow(row: SnapshotRow): MarketSnapshotRecord {
       ruleGain30: 0, ruleGain90: 0, edgeScore: 0, lineupDelta: 0, catalystScore: 0,
       sellerFit: 0, liquidityScore: 0, timingScore: 0, uncertaintyPenalty: 100,
       confidence: 0, age: 0, contenderProbability: 0.33, rebuildingProbability: 0.33,
-      profitScore: 50, resaleScore: 50, decayRisk: 50, horizonYears: 2,
+      profitScore: 0, resaleScore: 0, decayRisk: 0, horizonYears: 2,
     }),
     metadata: parseJson(row.metadata_json, {}),
   }
