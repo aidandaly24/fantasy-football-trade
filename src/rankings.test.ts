@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildOwnedPicks, evaluateTrade, optimizeLineup, packageValue } from './rankings'
-import type { Asset, PickValue } from './types'
+import { buildOwnedPicks, evaluateTrade, optimizeLineup, packageValue, rosterProfile, scoreTeams } from './rankings'
+import type { Asset, PickValue, Team } from './types'
 
 function asset(id: string, position: Asset['position'], value: number): Asset {
   return {
@@ -13,6 +13,20 @@ function asset(id: string, position: Asset['position'], value: number): Asset {
     confidence: 1,
     age: null,
     rank: null,
+  }
+}
+
+function team(id: number, starters: Asset[], bench: Asset[] = [], picks: Asset[] = []): Team {
+  return {
+    rosterId: id,
+    ownerId: String(id),
+    ownerName: `Owner ${id}`,
+    teamName: `Team ${id}`,
+    avatar: null,
+    players: [...starters, ...bench],
+    picks,
+    optimizedStarters: starters,
+    metrics: { lineupRaw: 0, coreRaw: 0, depthRaw: 0, picksRaw: 0, liquidityRaw: 0, marketRaw: 0, lineup: 0, core: 0, depth: 0, picks: 0, liquidity: 0, market: 0, overall: 0, contender: 0, future: 0 },
   }
 }
 
@@ -72,5 +86,43 @@ describe('trade evaluation', () => {
     const result = evaluateTrade([asset('a', 'QB', 500)], [asset('b', 'RB', 490)])
     expect(result.fair).toBe(true)
     expect(result.verdict).toBe('Dead even')
+  })
+})
+
+describe('league-relative roster scoring', () => {
+  it('penalizes a missing starting slot and rewards usable depth above replacement', () => {
+    const strong = team(1, [asset('s-qb', 'QB', 900), asset('s-rb', 'RB', 800)], [asset('s-depth', 'RB', 650)])
+    const thin = team(2, [asset('t-qb', 'QB', 900)], [asset('t-depth', 'RB', 100)])
+    const middle = team(3, [asset('m-qb', 'QB', 650), asset('m-rb', 'RB', 550)], [asset('m-depth', 'RB', 300)])
+    const scored = scoreTeams([strong, thin, middle])
+
+    expect(scored[0].metrics.lineup).toBeGreaterThan(scored[1].metrics.lineup)
+    expect(scored[0].metrics.depth).toBeGreaterThan(scored[1].metrics.depth)
+  })
+
+  it('rewards total draft capital instead of averaging picks', () => {
+    const first = asset('pick1', 'PICK', 500)
+    first.kind = 'pick'
+    const second = asset('pick2', 'PICK', 350)
+    second.kind = 'pick'
+    const scored = scoreTeams([
+      team(1, [asset('qb1', 'QB', 500)], [], [first, second]),
+      team(2, [asset('qb2', 'QB', 500)], [], [first]),
+    ])
+
+    expect(scored[0].metrics.picks).toBeGreaterThan(scored[1].metrics.picks)
+  })
+
+  it('uses evidence-based profiles rather than generic win-now tags', () => {
+    const scored = scoreTeams([
+      team(1, [asset('a1', 'QB', 900), asset('a2', 'RB', 850)]),
+      team(2, [asset('b1', 'QB', 500), asset('b2', 'RB', 450)]),
+      team(3, [asset('c1', 'QB', 350), asset('c2', 'RB', 300)]),
+      team(4, [asset('d1', 'QB', 200), asset('d2', 'RB', 180)]),
+    ])
+    const profile = rosterProfile(scored[0], scored)
+
+    expect(profile.label).not.toMatch(/win-now|reloading/i)
+    expect(profile.description).toContain('#')
   })
 })

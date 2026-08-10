@@ -1,10 +1,16 @@
 import {
   ArrowLeftRight,
+  ArrowDownRight,
+  ArrowUpRight,
   BarChart3,
   Check,
   ChevronRight,
   CircleGauge,
+  Clock3,
+  ExternalLink,
   Info,
+  LockKeyhole,
+  Radar,
   RefreshCw,
   Search,
   Sparkles,
@@ -12,12 +18,14 @@ import {
   TrendingUp,
   Trophy,
   Users,
+  Zap,
   X,
 } from 'lucide-react'
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchLeagueBundle, fetchMissingPlayers, fetchValues } from './api'
-import { buildTeams, evaluateTrade, leagueFormat } from './rankings'
-import type { Asset, LeagueBundle, RankingMode, Team, ValueBundle } from './types'
+import { fetchIntel, fetchLeagueBundle, fetchMissingPlayers, fetchValues } from './api'
+import { buildIntelSignals, timeAgo } from './intel'
+import { buildTeams, evaluateTrade, leagueFormat, rosterProfile } from './rankings'
+import type { Asset, IntelFeed, IntelSignal, LeagueBundle, RankingMode, Team, ValueBundle } from './types'
 
 const DEFAULT_LEAGUE_ID = '1336087922847289344'
 
@@ -27,20 +35,20 @@ type AppData = {
   teams: Team[]
 }
 
-type View = 'rankings' | 'trade'
+type View = 'rankings' | 'trade' | 'intel'
 
 const modeCopy: Record<RankingMode, { label: string; description: string }> = {
   overall: {
-    label: 'Overall',
-    description: 'Balanced blend of lineup, dynasty core, depth, and draft capital.',
+    label: 'Roster power',
+    description: 'Replacement-adjusted starters plus market depth, age-resilient core value, and actual pick volume.',
   },
   contender: {
-    label: 'Contender',
-    description: 'Weights the best legal starting lineup and playable depth most heavily.',
+    label: 'Lineup',
+    description: 'The best legal starting lineup, penalized for empty slots and backed by usable depth.',
   },
   future: {
-    label: 'Future',
-    description: 'Weights dynasty core value and owned rookie picks most heavily.',
+    label: '2-year base',
+    description: 'Age-resilient player value, tradeable depth, and the full volume of owned rookie picks.',
   },
 }
 
@@ -75,21 +83,6 @@ function scoreLabel(value: number) {
 function formatValue(value: number) {
   const rounded = Math.round(value)
   return new Intl.NumberFormat('en-US').format(Object.is(rounded, -0) ? 0 : rounded)
-}
-
-function getTeamWindow(team: Team, teams: Team[]) {
-  const contenderRank = [...teams]
-    .sort((a, b) => b.metrics.contender - a.metrics.contender)
-    .findIndex((item) => item.rosterId === team.rosterId)
-  const futureRank = [...teams]
-    .sort((a, b) => b.metrics.future - a.metrics.future)
-    .findIndex((item) => item.rosterId === team.rosterId)
-
-  if (contenderRank <= 2 && futureRank <= 5) return ['All-in window', 'The roster can contend without mortgaging its full future.']
-  if (contenderRank <= 3) return ['Win-now', 'Lineup strength is the advantage; protect it in 2-for-1 deals.']
-  if (futureRank <= 3) return ['Ascending', 'Young core and capital point toward the next competitive window.']
-  if (team.metrics.picks >= 75) return ['Reloading', 'Draft capital is the cleanest path back toward the top half.']
-  return ['At a crossroads', 'Look for value-neutral moves that improve the starting lineup.']
 }
 
 function MetricBar({ label, value }: { label: string; value: number }) {
@@ -161,7 +154,7 @@ function RankingBoard({
 }
 
 function TeamScout({ team, teams }: { team: Team; teams: Team[] }) {
-  const [windowLabel, windowCopy] = getTeamWindow(team, teams)
+  const profile = rosterProfile(team, teams)
   const topAssets = [...team.players, ...team.picks].sort((a, b) => b.value - a.value).slice(0, 6)
   const rank = [...teams]
     .sort((a, b) => b.metrics.overall - a.metrics.overall)
@@ -171,7 +164,7 @@ function TeamScout({ team, teams }: { team: Team; teams: Team[] }) {
     <aside className="team-scout panel">
       <div className="scout-hero">
         <div className="scout-topline">
-          <span className="window-pill"><Sparkles size={14} /> {windowLabel}</span>
+          <span className="window-pill"><Sparkles size={14} /> {profile.label}</span>
           <span className="overall-rank">#{rank} overall</span>
         </div>
         <div className="scout-identity">
@@ -181,7 +174,7 @@ function TeamScout({ team, teams }: { team: Team; teams: Team[] }) {
             <p>Managed by {team.ownerName}</p>
           </div>
         </div>
-        <p className="window-copy">{windowCopy}</p>
+        <p className="window-copy">{profile.description}</p>
       </div>
 
       <div className="scout-section metrics-grid">
@@ -189,6 +182,9 @@ function TeamScout({ team, teams }: { team: Team; teams: Team[] }) {
         <MetricBar label="Dynasty core" value={team.metrics.core} />
         <MetricBar label="Bench depth" value={team.metrics.depth} />
         <MetricBar label="Draft capital" value={team.metrics.picks} />
+      </div>
+      <div className="scout-model-note">
+        Scores are league percentiles. Lineup uses positional replacement levels; pick score rewards total capital, not the average pick.
       </div>
 
       <div className="scout-section">
@@ -556,6 +552,166 @@ function TradeView({ teams }: { teams: Team[] }) {
   )
 }
 
+function DirectionMark({ direction }: { direction: IntelSignal['direction'] }) {
+  if (direction === 'up') return <ArrowUpRight size={16} />
+  if (direction === 'down') return <ArrowDownRight size={16} />
+  return <Radar size={16} />
+}
+
+function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBundle }) {
+  const defaultTeam = teams.find((team) => team.ownerName.toLowerCase().includes('aidandaly')) ?? teams[0]
+  const [myRosterId, setMyRosterId] = useState(defaultTeam.rosterId)
+  const [feed, setFeed] = useState<IntelFeed | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'all' | 'mine' | 'free'>('all')
+
+  const loadIntel = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      setFeed(await fetchIntel())
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Intel feed unavailable')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadIntel()
+  }, [])
+
+  const signals = useMemo(
+    () => feed ? buildIntelSignals(feed, valueBundle.players, teams, myRosterId) : [],
+    [feed, myRosterId, teams, valueBundle.players],
+  )
+  const filteredSignals = signals.filter((signal) => {
+    if (filter === 'mine') return signal.isMine
+    if (filter === 'free') return !signal.ownerTeam
+    return true
+  })
+  const myTeam = teams.find((team) => team.rosterId === myRosterId) ?? teams[0]
+  const rosterPulse = signals.filter((signal) => signal.isMine).slice(0, 5)
+  const freshArticles = feed?.articles.filter(
+    (article) => Date.now() - Date.parse(article.publishedAt) <= 24 * 60 * 60 * 1000,
+  ).length ?? 0
+  const healthySources = feed?.sources.filter((source) => source.ok).length ?? 0
+
+  return (
+    <main className="page-shell intel-page">
+      <section className="intel-hero">
+        <div>
+          <span className="eyebrow accent-eyebrow">Private signal desk</span>
+          <h1>Information has a half-life.<br />Move before the market does.</h1>
+          <p>Credible NFL headlines meet live Sleeper add/drop velocity, then map directly onto this league’s rosters.</p>
+        </div>
+        <div className="private-status">
+          <LockKeyhole size={18} />
+          <span><strong>Owner-only</strong><small>This signal desk is not on a public deployment.</small></span>
+        </div>
+      </section>
+
+      <section className="intel-toolbar panel">
+        <label>
+          <small>My team</small>
+          <select value={myRosterId} onChange={(event) => setMyRosterId(Number(event.target.value))}>
+            {teams.map((team) => <option key={team.rosterId} value={team.rosterId}>{team.teamName}</option>)}
+          </select>
+        </label>
+        <div className="intel-tabs" role="group" aria-label="Signal filter">
+          {(['all', 'mine', 'free'] as const).map((item) => (
+            <button key={item} type="button" className={filter === item ? 'active' : ''} onClick={() => setFilter(item)}>
+              {item === 'all' ? 'All targets' : item === 'mine' ? 'My roster' : 'Free agents'}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="intel-refresh" onClick={() => void loadIntel()} disabled={loading}>
+          <RefreshCw size={16} className={loading ? 'spin' : ''} /> Refresh signals
+        </button>
+      </section>
+
+      {error && <div className="intel-error">Signal refresh failed: {error}</div>}
+
+      <section className="intel-stat-strip" aria-label="Intel status">
+        <div><span><Clock3 size={17} /></span><small>Fresh headlines</small><strong>{freshArticles}</strong><em>last 24 hours</em></div>
+        <div><span><Zap size={17} /></span><small>Actionable signals</small><strong>{signals.length}</strong><em>news + market movement</em></div>
+        <div><span><Radar size={17} /></span><small>Sources online</small><strong>{healthySources}/{feed?.sources.length ?? 3}</strong><em>ESPN, CBS, Yahoo</em></div>
+      </section>
+
+      <section className="intel-layout">
+        <div className="intel-opportunities panel">
+          <div className="panel-heading">
+            <div><span className="eyebrow">Opportunity queue</span><h2>Players worth checking now</h2></div>
+            <span className="method-note">Edge score measures urgency, not talent</span>
+          </div>
+          {loading && !feed ? (
+            <div className="intel-loading"><RefreshCw className="spin" size={22} /> Reading the market…</div>
+          ) : filteredSignals.length ? (
+            <div className="signal-list">
+              {filteredSignals.slice(0, 10).map((signal) => (
+                <article className={`signal-card direction-${signal.direction}`} key={signal.player.sleeperId}>
+                  <div className="signal-score"><strong>{signal.edgeScore}</strong><small>edge</small></div>
+                  <div className="signal-main">
+                    <div className="signal-title-row">
+                      <div><AssetBadge position={signal.player.position} /><h3>{signal.player.name}</h3><span>{signal.player.team ?? 'FA'}</span></div>
+                      <span className={`direction-pill ${signal.direction}`}><DirectionMark direction={signal.direction} /> {signal.direction}</span>
+                    </div>
+                    <p>{signal.rationale}</p>
+                    <div className="signal-meta">
+                      <span><b>{signal.add24}</b> adds</span>
+                      <span><b>{signal.drop24}</b> drops</span>
+                      <span><b>{signal.confidence}%</b> confidence</span>
+                      <span>{signal.ownerTeam ? signal.ownerTeam.teamName : 'Free agent'}</span>
+                    </div>
+                    {!!signal.articles.length && (
+                      <div className="signal-headlines">
+                        {signal.articles.slice(0, 2).map((article) => (
+                          <a href={article.url} target="_blank" rel="noreferrer" key={article.id}>
+                            <span>{article.source} · {timeAgo(article.publishedAt)}</span>
+                            {article.title}<ExternalLink size={13} />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="signal-action"><small>Next move</small><strong>{signal.action}</strong></div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="intel-empty"><Radar size={22} /><strong>No matching signal yet.</strong><span>Quiet is useful too—don’t manufacture a move.</span></div>
+          )}
+        </div>
+
+        <aside className="intel-sidebar">
+          <section className="roster-pulse panel">
+            <div className="panel-heading"><div><span className="eyebrow">Roster pulse</span><h2>{myTeam.teamName}</h2></div></div>
+            {rosterPulse.length ? rosterPulse.map((signal) => (
+              <div className="pulse-row" key={signal.player.sleeperId}>
+                <span className={`pulse-mark ${signal.direction}`}><DirectionMark direction={signal.direction} /></span>
+                <span><strong>{signal.player.name}</strong><small>{signal.action}</small></span>
+                <b>{signal.edgeScore}</b>
+              </div>
+            )) : <p className="quiet-copy">No urgent news matched your roster. That’s a green light to stay patient.</p>}
+          </section>
+
+          <section className="intel-method panel">
+            <span className="eyebrow">How to use this</span>
+            <h3>A lead, not a verdict.</h3>
+            <p>Open the linked reporting, verify the context, then check the trade calculator. Headlines and add/drop activity are directional evidence—not guarantees.</p>
+            <div className="source-health">
+              {(feed?.sources ?? []).map((source) => (
+                <span key={source.name}><i className={source.ok ? 'online' : ''} />{source.name}</span>
+              ))}
+            </div>
+          </section>
+        </aside>
+      </section>
+    </main>
+  )
+}
+
 function AppHeader({
   view,
   setView,
@@ -588,6 +744,9 @@ function AppHeader({
           </button>
           <button type="button" className={view === 'trade' ? 'active' : ''} onClick={() => setView('trade')}>
             <ArrowLeftRight size={17} /> Trade lab
+          </button>
+          <button type="button" className={view === 'intel' ? 'active' : ''} onClick={() => setView('intel')}>
+            <Radar size={17} /> Intel
           </button>
         </nav>
         <form className="league-switcher" onSubmit={onSubmit}>
@@ -743,12 +902,14 @@ function App() {
               selectedId={selectedId}
               setSelectedId={setSelectedId}
             />
-          ) : (
+          ) : view === 'trade' ? (
             <TradeView teams={data.teams} />
+          ) : (
+            <IntelView teams={data.teams} valueBundle={data.valueBundle} />
           )}
           <footer>
             <span>RosterLab <b>·</b> League-relative analysis</span>
-            <span>Sleeper rosters + <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a> composite market values</span>
+            <span>Sleeper rosters + <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a> values + linked NFL reporting</span>
           </footer>
         </>
       ) : null}

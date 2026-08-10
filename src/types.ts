@@ -123,10 +123,14 @@ export type TeamMetrics = {
   coreRaw: number
   depthRaw: number
   picksRaw: number
+  liquidityRaw: number
+  marketRaw: number
   lineup: number
   core: number
   depth: number
   picks: number
+  liquidity: number
+  market: number
   overall: number
   contender: number
   future: number
@@ -159,3 +163,47 @@ export type ValueBundle = {
 }
 
 export type RankingMode = 'overall' | 'contender' | 'future'
+
+export type NewsArticle = {
+  id: string
+  title: string
+  url: string
+  source: string
+  publishedAt: string
+  reliability: number
+}
+
+export type TrendItem = {
+  playerId: string
+  count: number
+}
+
+export type IntelFeed = {
+  generatedAt: string
+  articles: NewsArticle[]
+  trends: {
+    adds6: TrendItem[]
+    adds24: TrendItem[]
+    drops6: TrendItem[]
+    drops24: TrendItem[]
+  }
+  sources: Array<{
+    name: string
+    ok: boolean
+  }>
+}
+
+export type IntelSignal = {
+  player: TradyrPlayer
+  articles: NewsArticle[]
+  direction: 'up' | 'down' | 'watch'
+  edgeScore: number
+  confidence: number
+  action: string
+  rationale: string
+  add24: number
+  drop24: number
+  acceleration: number
+  ownerTeam: Team | null
+  isMine: boolean
+}

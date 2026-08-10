@@ -18,10 +18,14 @@ const EMPTY_METRICS: TeamMetrics = {
   coreRaw: 0,
   depthRaw: 0,
   picksRaw: 0,
+  liquidityRaw: 0,
+  marketRaw: 0,
   lineup: 0,
   core: 0,
   depth: 0,
   picks: 0,
+  liquidity: 0,
+  market: 0,
   overall: 0,
   contender: 0,
   future: 0,
@@ -175,46 +179,87 @@ export function optimizeLineup(players: Asset[], rosterPositions: string[]): Ass
   return selected
 }
 
-function weightedAverage(values: number[], weights: number[]): number {
-  if (!values.length) return 0
-  const padded = Array.from({ length: weights.length }, (_, index) => values[index] ?? 0)
-  const weighted = padded.reduce((sum, value, index) => sum + value * weights[index], 0)
-  return weighted / weights.reduce((sum, weight) => sum + weight, 0)
+const PLAYER_WEIGHTS = [1, 0.97, 0.93, 0.89, 0.84, 0.79, 0.74, 0.69, 0.64, 0.59, 0.54, 0.5, 0.46, 0.42, 0.38, 0.34]
+const DEPTH_WEIGHTS = [1, 0.84, 0.7, 0.58, 0.48, 0.4]
+const PICK_WEIGHTS = [1, 0.96, 0.91, 0.86, 0.8, 0.74, 0.68, 0.62, 0.56, 0.5, 0.44, 0.38]
+
+function weightedSum(values: number[], weights: number[]): number {
+  return values.slice(0, weights.length).reduce((sum, value, index) => sum + value * weights[index], 0)
 }
 
-function rawMetrics(team: Team): Pick<TeamMetrics, 'lineupRaw' | 'coreRaw' | 'depthRaw' | 'picksRaw'> {
+function ageResilience(asset: Asset): number {
+  if (!asset.age) return 0.86
+  const age = asset.age
+  if (asset.position === 'QB') return age <= 29 ? 1 : age <= 31 ? 0.96 : age <= 33 ? 0.88 : 0.76
+  if (asset.position === 'RB') return age <= 23 ? 1 : age <= 24 ? 0.94 : age <= 25 ? 0.86 : age <= 26 ? 0.76 : 0.64
+  if (asset.position === 'WR') return age <= 25 ? 1 : age <= 26 ? 0.96 : age <= 27 ? 0.91 : age <= 28 ? 0.84 : 0.73
+  if (asset.position === 'TE') return age <= 26 ? 1 : age <= 27 ? 0.96 : age <= 28 ? 0.91 : age <= 29 ? 0.84 : 0.74
+  return 0.8
+}
+
+function replacementLevels(teams: Team[]): Map<Asset['position'], number> {
+  const levels = new Map<Asset['position'], number>()
+  const positions: Asset['position'][] = ['QB', 'RB', 'WR', 'TE']
+
+  positions.forEach((position) => {
+    const values = teams
+      .flatMap((team) => team.players)
+      .filter((asset) => asset.position === position)
+      .map((asset) => asset.value)
+      .sort((a, b) => b - a)
+    const starterCount = teams.flatMap((team) => team.optimizedStarters).filter((asset) => asset.position === position).length
+    const replacementIndex = Math.min(values.length - 1, Math.max(0, starterCount + Math.floor(teams.length / 2) - 1))
+    levels.set(position, values[replacementIndex] ?? 0)
+  })
+
+  return levels
+}
+
+function rawMetrics(
+  team: Team,
+  replacement: Map<Asset['position'], number>,
+  expectedStarters: number,
+): Pick<TeamMetrics, 'lineupRaw' | 'coreRaw' | 'depthRaw' | 'picksRaw' | 'liquidityRaw' | 'marketRaw'> {
   const starters = team.optimizedStarters
   const starterIds = new Set(starters.map((asset) => asset.id))
   const skillPlayers = team.players
     .filter((asset) => SKILL_POSITIONS.has(asset.position))
     .sort((a, b) => b.value - a.value)
   const bench = skillPlayers.filter((asset) => !starterIds.has(asset.id))
+  const starterSurplus = starters.map((asset) => {
+    const baseline = replacement.get(asset.position) ?? 0
+    return Math.max(0, asset.value - baseline * 0.45)
+  })
+  const depthSurplus = bench
+    .map((asset) => Math.max(0, asset.value - (replacement.get(asset.position) ?? 0)))
+    .sort((a, b) => b - a)
+  const marketPlayers = skillPlayers.map((asset) => asset.value)
+  const liquidAssets = [...skillPlayers, ...team.picks]
+    .map((asset) => asset.value)
+    .sort((a, b) => b - a)
 
   return {
-    lineupRaw: weightedAverage(
-      starters.map((asset) => asset.value),
-      Array(Math.max(1, starters.length)).fill(1),
-    ),
-    coreRaw: weightedAverage(
+    lineupRaw: starterSurplus.reduce((sum, value) => sum + value, 0) / Math.max(1, expectedStarters),
+    coreRaw: weightedSum(
       skillPlayers.map((asset) => asset.value),
-      [1.2, 1.12, 1.04, 0.96, 0.88, 0.8, 0.72, 0.64],
-    ),
-    depthRaw: weightedAverage(
-      bench.map((asset) => asset.value),
-      [1, 0.88, 0.76, 0.66, 0.56, 0.48],
-    ),
-    picksRaw: weightedAverage(
-      team.picks.map((asset) => asset.value),
-      [1, 0.95, 0.9, 0.82, 0.74, 0.66, 0.58, 0.5, 0.42],
-    ),
+      PLAYER_WEIGHTS.slice(0, 10),
+    ) * 0.25 + weightedSum(
+      skillPlayers.map((asset) => asset.value * ageResilience(asset)),
+      PLAYER_WEIGHTS.slice(0, 10),
+    ) * 0.75,
+    depthRaw: weightedSum(depthSurplus, DEPTH_WEIGHTS),
+    picksRaw: weightedSum(team.picks.map((asset) => asset.value), PICK_WEIGHTS),
+    liquidityRaw: weightedSum(liquidAssets.slice(3), PLAYER_WEIGHTS.slice(0, 10)),
+    marketRaw: weightedSum(marketPlayers, PLAYER_WEIGHTS) + weightedSum(team.picks.map((asset) => asset.value), PICK_WEIGHTS) * 0.72,
   }
 }
 
-function normalized(values: number[], value: number): number {
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  if (max === min) return 75
-  return 35 + ((value - min) / (max - min)) * 65
+function leaguePercentile(values: number[], value: number): number {
+  if (values.length <= 1) return 50
+  const below = values.filter((item) => item < value).length
+  const tied = values.filter((item) => item === value).length
+  const percentile = (below + Math.max(0, tied - 1) / 2) / (values.length - 1)
+  return 15 + percentile * 80
 }
 
 function roundScore(value: number): number {
@@ -222,30 +267,72 @@ function roundScore(value: number): number {
 }
 
 export function scoreTeams(teams: Team[]): Team[] {
-  const raw = teams.map(rawMetrics)
-  const fields = ['lineupRaw', 'coreRaw', 'depthRaw', 'picksRaw'] as const
+  const replacement = replacementLevels(teams)
+  const expectedStarters = Math.max(1, ...teams.map((team) => team.optimizedStarters.length))
+  const raw = teams.map((team) => rawMetrics(team, replacement, expectedStarters))
+  const fields = ['lineupRaw', 'coreRaw', 'depthRaw', 'picksRaw', 'liquidityRaw', 'marketRaw'] as const
   const ranges = Object.fromEntries(
     fields.map((field) => [field, raw.map((metrics) => metrics[field])]),
   ) as Record<(typeof fields)[number], number[]>
 
   return teams.map((team, index) => {
     const current = raw[index]
-    const lineup = normalized(ranges.lineupRaw, current.lineupRaw)
-    const core = normalized(ranges.coreRaw, current.coreRaw)
-    const depth = normalized(ranges.depthRaw, current.depthRaw)
-    const picks = normalized(ranges.picksRaw, current.picksRaw)
+    const lineup = leaguePercentile(ranges.lineupRaw, current.lineupRaw)
+    const core = leaguePercentile(ranges.coreRaw, current.coreRaw)
+    const depth = leaguePercentile(ranges.depthRaw, current.depthRaw)
+    const picks = leaguePercentile(ranges.picksRaw, current.picksRaw)
+    const liquidity = leaguePercentile(ranges.liquidityRaw, current.liquidityRaw)
+    const market = leaguePercentile(ranges.marketRaw, current.marketRaw)
     const metrics: TeamMetrics = {
       ...current,
       lineup: roundScore(lineup),
       core: roundScore(core),
       depth: roundScore(depth),
       picks: roundScore(picks),
-      overall: roundScore(lineup * 0.45 + core * 0.25 + depth * 0.15 + picks * 0.15),
-      contender: roundScore(lineup * 0.72 + depth * 0.18 + core * 0.1),
-      future: roundScore(core * 0.58 + picks * 0.42),
+      liquidity: roundScore(liquidity),
+      market: roundScore(market),
+      overall: roundScore(lineup * 0.43 + market * 0.25 + depth * 0.12 + core * 0.12 + picks * 0.08),
+      contender: roundScore(lineup * 0.8 + depth * 0.15 + liquidity * 0.05),
+      future: roundScore(core * 0.45 + picks * 0.35 + liquidity * 0.2),
     }
     return { ...team, metrics }
   })
+}
+
+export function rosterProfile(team: Team, teams: Team[]): { label: string; description: string } {
+  const rank = (field: keyof Pick<TeamMetrics, 'overall' | 'lineup' | 'depth' | 'future' | 'picks'>) =>
+    [...teams].sort((a, b) => b.metrics[field] - a.metrics[field]).findIndex((item) => item.rosterId === team.rosterId) + 1
+  const overall = rank('overall')
+  const lineup = rank('lineup')
+  const depth = rank('depth')
+  const future = rank('future')
+  const picks = rank('picks')
+
+  if (lineup <= 3 && future <= 4) {
+    return { label: 'Two-window strength', description: `The lineup ranks #${lineup} and the two-year asset base ranks #${future}.` }
+  }
+  if (lineup <= 4 && depth >= Math.max(8, teams.length - 3)) {
+    return { label: 'High ceiling, low cover', description: `The lineup ranks #${lineup}, but replacement-adjusted depth falls to #${depth}.` }
+  }
+  if (lineup <= 4 && picks >= Math.max(8, teams.length - 3)) {
+    return { label: 'Starter-heavy build', description: `The lineup ranks #${lineup}; draft capital ranks #${picks}, limiting optionality.` }
+  }
+  if (picks <= 3 && lineup >= Math.ceil(teams.length / 2)) {
+    return { label: 'Capital-first build', description: `Draft capital ranks #${picks}, while the current lineup sits #${lineup}.` }
+  }
+  if (future <= 3 && lineup >= Math.ceil(teams.length / 2)) {
+    return { label: 'Young value, thinner lineup', description: `The two-year asset base ranks #${future}; the current lineup ranks #${lineup}.` }
+  }
+  if (depth <= 3 && lineup >= Math.ceil(teams.length / 2)) {
+    return { label: 'Deep, star-light', description: `Depth ranks #${depth}, but the best legal lineup ranks #${lineup}.` }
+  }
+  if (overall <= 4) {
+    return { label: 'Upper-tier balance', description: `The roster is #${overall} overall without a single category doing all the work.` }
+  }
+  if (overall >= Math.max(8, teams.length - 3) && picks >= Math.max(8, teams.length - 3)) {
+    return { label: 'Low-leverage roster', description: `Overall strength ranks #${overall} and draft capital ranks #${picks}; create flexibility first.` }
+  }
+  return { label: 'Middle-tier leverage', description: `Overall strength ranks #${overall}; lineup #${lineup} and draft capital #${picks} show the clearest trade-offs.` }
 }
 
 export function buildTeams(

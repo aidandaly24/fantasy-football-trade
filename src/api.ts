@@ -1,5 +1,6 @@
 import type {
   ApiMeta,
+  IntelFeed,
   League,
   LeagueBundle,
   LeagueUser,
@@ -92,6 +93,10 @@ export async function fetchMissingPlayers(ids: string[]): Promise<Map<string, Sl
   }
 
   return playerMap
+}
+
+export async function fetchIntel(): Promise<IntelFeed> {
+  return fetchJson<IntelFeed>('/api/intel')
 }
 
 export function sleeperAvatar(avatar: string | null | undefined): string | null {
