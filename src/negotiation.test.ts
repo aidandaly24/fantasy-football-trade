@@ -43,7 +43,9 @@ describe('negotiation profiles', () => {
     )
 
     const alpha = profiles.find((profile) => profile.rosterId === 1)
+    const beta = profiles.find((profile) => profile.rosterId === 2)
     expect(alpha?.archetype).toBe('Pick collector')
+    expect(beta?.archetype).toBe('Player buyer')
     expect(alpha?.confidence).toBe('medium')
     expect(alpha?.receivedPicks).toBe(8)
   })

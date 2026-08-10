@@ -49,11 +49,12 @@ function archetypeFor(
   averageAssetsSent: number,
   receivedPlayers: number,
   receivedPicks: number,
+  pickCollectorThreshold = 0.4,
 ): ManagerProfile['archetype'] {
   if (!tradeCount) return 'Unproven market'
-  if (pickShare >= 0.4 && receivedPicks >= 2) return 'Pick collector'
   if (averageAssetsSent - averageAssetsReceived >= 0.35) return 'Consolidator'
   if (averageAssetsReceived - averageAssetsSent >= 0.35) return 'Depth builder'
+  if (pickShare >= pickCollectorThreshold && receivedPicks >= 2) return 'Pick collector'
   if (receivedPlayers >= Math.max(3, receivedPicks * 3)) return 'Player buyer'
   return 'Flexible trader'
 }
@@ -107,7 +108,7 @@ export function buildManagerProfiles(
     (transaction) => transaction.type === 'trade' && transaction.status === 'complete',
   )
 
-  return teams.map((team) => {
+  const profiles = teams.map((team) => {
     const managerTrades = trades.filter((trade) => trade.roster_ids.includes(team.rosterId))
     let receivedPlayers = 0
     let receivedPicks = 0
@@ -190,5 +191,25 @@ export function buildManagerProfiles(
         ? 'Low confidence: fewer than eight completed trades. Treat this as a conversation hypothesis, not a prediction.'
         : 'Based on repeated completed trades across linked Sleeper league seasons; current-value deltas include hindsight.',
     }
+  })
+  const activePickShares = profiles
+    .filter((profile) => profile.tradeCount > 0)
+    .map((profile) => profile.pickShare)
+    .sort((a, b) => a - b)
+  const upperQuartile = activePickShares.length
+    ? activePickShares[Math.floor((activePickShares.length - 1) * 0.75)]
+    : 1
+  const pickCollectorThreshold = Math.max(0.5, upperQuartile)
+  return profiles.map((profile) => {
+    const archetype = archetypeFor(
+      profile.tradeCount,
+      profile.pickShare,
+      profile.averageAssetsReceived,
+      profile.averageAssetsSent,
+      profile.receivedPlayers,
+      profile.receivedPicks,
+      pickCollectorThreshold,
+    )
+    return { ...profile, archetype, ...negotiationPlan(archetype) }
   })
 }
