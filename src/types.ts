@@ -71,6 +71,11 @@ export type SleeperTransaction = {
   adds: Record<string, number> | null
   drops: Record<string, number> | null
   draft_picks: SleeperTransactionPick[]
+  creator?: string | null
+  leg?: number
+  metadata?: Record<string, unknown> | null
+  settings?: Record<string, unknown> | null
+  waiver_budget?: Array<Record<string, unknown>> | null
   season?: string
   leagueId?: string
   transactionWeek?: number
@@ -424,4 +429,104 @@ export type IntelSignal = {
   acceleration: number
   ownerTeam: Team | null
   isMine: boolean
+}
+
+export type JournalIdentity = {
+  leagueId: string
+  rosterId: number
+  ownerUserId: string | null
+  teamName: string
+}
+
+export type JournalTrade = {
+  leagueId: string
+  transactionId: string
+  season: string
+  week: number
+  createdAtMs: number
+  raw: SleeperTransaction
+  ingestedAt: string
+}
+
+export type TradeSnapshotAsset = {
+  key: string
+  name: string
+  kind: 'player' | 'pick'
+  value: number | null
+  fromRosterId: number | null
+  toRosterId: number | null
+}
+
+export type TradeSnapshot = {
+  leagueId: string
+  transactionId: string
+  kind: 'ingestion' | 'backfill-current' | '30d' | '90d' | '180d' | string
+  capturedAt: string
+  retrospective: boolean
+  values: {
+    assets: TradeSnapshotAsset[]
+    parties: Array<{ rosterId: number; received: number; sent: number; net: number }>
+    unresolved: string[]
+  }
+}
+
+export type TradeOutcome = {
+  leagueId: string
+  transactionId: string
+  checkpointDays: 30 | 90 | 180 | number
+  dueAt: string
+  evaluatedAt: string | null
+  status: 'pending' | 'due' | 'complete' | 'insufficient_data' | string
+  grade: string | null
+  result: Record<string, unknown>
+}
+
+export type JournalSync = {
+  startedAt: string
+  finishedAt: string | null
+  status: 'complete' | 'partial' | 'failed' | 'running' | string
+  seasonsFound: number
+  targetsAttempted: number
+  targetsSucceeded: number
+  tradeCount: number
+  newTradeCount: number
+  errors: Array<{ leagueId?: string; type?: string; key?: string; error?: string }>
+}
+
+export type JournalBundle = {
+  trades: JournalTrade[]
+  identities: JournalIdentity[]
+  snapshots: TradeSnapshot[]
+  outcomes: TradeOutcome[]
+  sync: JournalSync | null
+  collectionComplete?: boolean
+  newTradeCount?: number
+}
+
+export type PrivateAlert = {
+  eventKey: string
+  playerId: string
+  createdAt: string
+  seenAt: string | null
+  readAt: string | null
+  title: string
+  eventType: import('./intel-events').IntelEventType
+  direction: import('./intel-events').EventDirection
+  impactWeight: number
+  publishedAt: string
+  expiresAt: string
+  sources: Array<{ name: string; url: string }>
+  corroborationCount: number
+}
+
+export type AlertInbox = {
+  alerts: PrivateAlert[]
+  unreadCount: number
+  status: {
+    due: boolean
+    stale: boolean
+    lastSuccessAt: string | null
+    nextEligibleAt: string | null
+    errorMessage: string | null
+  }
 }

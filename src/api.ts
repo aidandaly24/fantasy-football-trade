@@ -1,7 +1,9 @@
 import type {
   ApiMeta,
   EventModelHealthBundle,
+  AlertInbox,
   IntelFeed,
+  JournalBundle,
   League,
   LeagueBundle,
   LeaguePreferences,
@@ -190,6 +192,32 @@ export async function fetchSleeperPlayers(ids: string[]): Promise<Map<string, Sl
 
 export async function fetchIntel(): Promise<IntelFeed> {
   return fetchJson<IntelFeed>('/api/intel')
+}
+
+export async function fetchJournal(leagueId: string): Promise<JournalBundle> {
+  return fetchJson<JournalBundle>(`/api/journal?leagueId=${encodeURIComponent(leagueId)}`)
+}
+
+export async function syncJournal(leagueId: string): Promise<JournalBundle> {
+  return fetchJson<JournalBundle>(`/api/journal?leagueId=${encodeURIComponent(leagueId)}`, { method: 'POST' })
+}
+
+export async function fetchAlerts(leagueId: string, sync = true): Promise<AlertInbox> {
+  const params = new URLSearchParams({ leagueId })
+  if (sync) params.set('sync', '1')
+  return fetchJson<AlertInbox>(`/api/alerts?${params}`)
+}
+
+export async function updateAlertReadState(
+  leagueId: string,
+  eventKeys: string[],
+  read = true,
+): Promise<AlertInbox> {
+  return fetchJson<AlertInbox>(`/api/alerts?leagueId=${encodeURIComponent(leagueId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ eventKeys, read }),
+  })
 }
 
 export function sleeperAvatar(avatar: string | null | undefined): string | null {

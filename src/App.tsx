@@ -4,6 +4,8 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
+  BellRing,
+  BookOpen,
   Bookmark,
   Check,
   ChevronRight,
@@ -25,12 +27,14 @@ import {
   X,
 } from 'lucide-react'
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchEventModelHealth, fetchIntel, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchSleeperPlayers, fetchTransactionHistory, fetchUserState, fetchValues, saveLeaguePreferences } from './api'
+import { fetchAlerts, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchSleeperPlayers, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal, updateAlertReadState } from './api'
 import { buildIntelSignals, timeAgo } from './intel'
+import { journalTransactionsForCurrentManagers, tradePartyNames } from './journal'
 import { buildManagerProfiles } from './negotiation'
 import type { ManagerProfile } from './negotiation'
 import { assetRoleLabel, buildTeams, evaluateTrade, leagueFormat, rosterProfile } from './rankings'
-import type { Asset, EventModelHealthBundle, IntelFeed, IntelSignal, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, Team, UserIdentity, UserState, ValueBundle } from './types'
+import { buildTradePlan } from './strategy'
+import type { Asset, AlertInbox, EventModelHealthBundle, IntelFeed, IntelSignal, JournalBundle, JournalTrade, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, Team, UserIdentity, UserState, ValueBundle } from './types'
 
 const DEFAULT_LEAGUE_ID = '1336087922847289344'
 
@@ -41,11 +45,12 @@ type AppData = {
   modelHealth: ModelHealthBundle | null
   eventModelHealth: EventModelHealthBundle | null
   managerProfiles: ManagerProfile[]
+  journal: JournalBundle
   preferences: LeaguePreferences
   user: UserIdentity | null
 }
 
-type View = 'rankings' | 'trade' | 'intel' | 'strategy' | 'model'
+type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'model'
 
 const modeCopy: Record<RankingMode, { label: string; description: string }> = {
   overall: {
@@ -612,6 +617,92 @@ function TradeView({ teams, rosterPositions }: { teams: Team[]; rosterPositions:
   )
 }
 
+function TradeJournalView({
+  journal,
+  syncing,
+  onSync,
+}: {
+  journal: JournalBundle
+  syncing: boolean
+  onSync: () => void
+}) {
+  const seasons = [...new Set(journal.trades.map((trade) => trade.season))]
+  const [season, setSeason] = useState('all')
+  const visibleTrades = journal.trades.filter((trade) => season === 'all' || trade.season === season)
+  const completedOutcomes = journal.outcomes.filter((outcome) => outcome.status === 'complete').length
+  const pendingOutcomes = journal.outcomes.filter((outcome) => outcome.status === 'pending' || outcome.status === 'due').length
+  const coverage = journal.sync?.targetsAttempted
+    ? journal.sync.targetsSucceeded / journal.sync.targetsAttempted
+    : 0
+
+  const tradeCard = (trade: JournalTrade) => {
+    const names = tradePartyNames(trade, journal.identities)
+    const snapshots = journal.snapshots.filter((item) => item.leagueId === trade.leagueId && item.transactionId === trade.transactionId)
+    const baseline = snapshots.find((item) => item.kind === 'ingestion')
+      ?? snapshots.find((item) => item.kind === 'backfill-current')
+      ?? snapshots[0]
+    const outcomes = journal.outcomes
+      .filter((item) => item.leagueId === trade.leagueId && item.transactionId === trade.transactionId)
+      .sort((a, b) => a.checkpointDays - b.checkpointDays)
+    const partyIds = [...new Set(trade.raw.roster_ids)].sort((a, b) => a - b)
+    return (
+      <article className="journal-card panel" key={`${trade.leagueId}:${trade.transactionId}`}>
+        <div className="journal-card-head">
+          <div><span className="eyebrow">{trade.season} · week {trade.week}</span><h2>{partyIds.map((id) => names.get(id)).join(' ↔ ')}</h2></div>
+          <time>{new Date(trade.createdAtMs).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time>
+        </div>
+        <div className="journal-parties">
+          {partyIds.map((rosterId) => {
+            const received = baseline?.values.assets.filter((asset) => asset.toRosterId === rosterId) ?? []
+            const partyValue = baseline?.values.parties.find((party) => party.rosterId === rosterId)
+            return (
+              <section key={rosterId}>
+                <span className="journal-team">{names.get(rosterId)}</span>
+                <div className="journal-assets">
+                  {received.length ? received.map((asset) => (
+                    <span key={asset.key}><AssetBadge position={asset.kind === 'pick' ? 'PICK' : 'NA'} /><b>{asset.name}</b><em>{asset.value == null ? 'unpriced' : formatValue(asset.value)}</em></span>
+                  )) : <span><b>Assets unavailable</b><em>source record retained</em></span>}
+                </div>
+                {partyValue && <strong className={partyValue.net >= 0 ? 'positive' : 'negative'}>{partyValue.net >= 0 ? '+' : ''}{formatValue(partyValue.net)} market net</strong>}
+              </section>
+            )
+          })}
+        </div>
+        <div className="journal-foot">
+          <span className={baseline?.retrospective ? 'retro-pill' : 'captured-pill'}>
+            {baseline?.retrospective ? 'Backfilled with current values' : baseline ? 'Captured near ingestion' : 'Value snapshot unavailable'}
+          </span>
+          <div className="outcome-chips">
+            {outcomes.map((outcome) => <span key={outcome.checkpointDays} className={`outcome-${outcome.status}`}><b>{outcome.checkpointDays}d</b> {outcome.status === 'complete' ? outcome.grade : outcome.status.replace('_', ' ')}</span>)}
+          </div>
+        </div>
+      </article>
+    )
+  }
+
+  return (
+    <main className="page-shell journal-page">
+      <section className="journal-hero">
+        <div><span className="eyebrow accent-eyebrow">Automated trade journal · V3.3</span><h1>Every completed deal.<br />No selective memory.</h1><p>Sleeper facts, season-correct manager identity, immutable value snapshots, and automatic 30/90/180-day checkpoints.</p></div>
+        <button type="button" className="journal-sync" onClick={onSync} disabled={syncing}><RefreshCw size={17} className={syncing ? 'spin' : ''} /> {syncing ? 'Syncing every season…' : 'Sync journal'}</button>
+      </section>
+      <section className="journal-stats">
+        <article className="panel"><small>Completed trades</small><strong>{journal.trades.length}</strong><span>{journal.sync?.seasonsFound ?? seasons.length} linked seasons</span></article>
+        <article className="panel"><small>API coverage</small><strong>{Math.round(coverage * 100)}%</strong><span>{journal.sync?.status ?? 'not synced'} · {journal.sync?.errors.length ?? 0} failed targets</span></article>
+        <article className="panel"><small>Outcome checks</small><strong>{completedOutcomes}</strong><span>{pendingOutcomes} scheduled</span></article>
+        <article className="panel"><small>Last completed</small><strong>{journal.sync?.finishedAt ? timeAgo(journal.sync.finishedAt) : 'Never'}</strong><span>automatic refresh on league load</span></article>
+      </section>
+      {journal.sync?.status === 'partial' && <div className="journal-warning"><AlertTriangle size={17} /> Some Sleeper requests failed. The journal preserved prior data and exposes the incomplete coverage instead of treating it as zero trades.</div>}
+      <section className="journal-toolbar panel">
+        <label><small>Season</small><select value={season} onChange={(event) => setSeason(event.target.value)}><option value="all">All linked seasons</option>{seasons.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        <span>{visibleTrades.length} ledger entries · newest first</span>
+      </section>
+      <section className="journal-list">{visibleTrades.length ? visibleTrades.map(tradeCard) : <div className="panel journal-empty"><BookOpen size={22} /><strong>No completed trades stored yet.</strong><span>Run the journal sync to build the API ledger.</span></div>}</section>
+      <div className="model-caveat panel"><Info size={17} /><span>Old trades are labeled retrospective because Sleeper does not provide historic calculator values. Only snapshots captured after RosterLab started tracking a deal can support honest 30/90/180-day outcome grading.</span></div>
+    </main>
+  )
+}
+
 function DirectionMark({ direction }: { direction: IntelSignal['direction'] }) {
   if (direction === 'up') return <ArrowUpRight size={16} />
   if (direction === 'down') return <ArrowDownRight size={16} />
@@ -637,6 +728,8 @@ function IntelView({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'mine' | 'free' | 'watch'>('all')
+  const [inbox, setInbox] = useState<AlertInbox | null>(null)
+  const [inboxError, setInboxError] = useState<string | null>(null)
 
   useEffect(() => {
     if (preferences.myRosterId && teams.some((team) => team.rosterId === preferences.myRosterId)) {
@@ -659,6 +752,21 @@ function IntelView({
   useEffect(() => {
     void loadIntel()
   }, [])
+
+  const loadInbox = async (sync = true) => {
+    try {
+      setInbox(await fetchAlerts(preferences.leagueId, sync))
+      setInboxError(null)
+    } catch (loadError) {
+      setInboxError(loadError instanceof Error ? loadError.message : 'Alert inbox unavailable')
+    }
+  }
+
+  useEffect(() => {
+    void loadInbox(true)
+    const interval = window.setInterval(() => void loadInbox(true), 5 * 60 * 1000)
+    return () => window.clearInterval(interval)
+  }, [preferences.leagueId, preferences.watchlist.join('|')])
 
   const signals = useMemo(
     () => feed ? buildIntelSignals(feed, valueBundle.players, teams, myRosterId) : [],
@@ -786,6 +894,26 @@ function IntelView({
         </div>
 
         <aside className="intel-sidebar">
+          <section className="alert-inbox panel">
+            <div className="panel-heading"><div><span className="eyebrow">Private alert inbox</span><h2>{inbox?.unreadCount ?? 0} unread</h2></div><BellRing size={18} /></div>
+            <p className="quiet-copy">Watched-player headlines persist here per user and league. Refreshes every five minutes while this page is open.</p>
+            {inboxError && <p className="alert-error">{inboxError}</p>}
+            {inbox?.alerts.length ? inbox.alerts.slice(0, 6).map((alert) => {
+              const player = valueBundle.players.find((item) => String(item.sleeperId) === alert.playerId)
+              const source = alert.sources[0]
+              return (
+                <article className={`alert-row ${alert.readAt ? '' : 'unread'}`} key={alert.eventKey}>
+                  <span className={`pulse-mark ${alert.direction}`}><DirectionMark direction={alert.direction} /></span>
+                  <div><strong>{player?.name ?? 'Watched player'}</strong><p>{alert.title}</p><small>{alert.eventType} · {timeAgo(alert.publishedAt)}{alert.corroborationCount > 1 ? ` · ${alert.corroborationCount} sources` : ''}</small></div>
+                  <div className="alert-actions">
+                    {source?.url && <a href={source.url} target="_blank" rel="noreferrer" aria-label="Open report"><ExternalLink size={14} /></a>}
+                    <button type="button" onClick={() => void updateAlertReadState(preferences.leagueId, [alert.eventKey], !alert.readAt).then(setInbox)}>{alert.readAt ? 'Unread' : 'Read'}</button>
+                  </div>
+                </article>
+              )
+            }) : <div className="intel-empty"><BellRing size={20} /><strong>No watchlist alerts yet.</strong><span>Add a player to the watchlist; only confidently matched headlines create alerts.</span></div>}
+            <div className={`alert-health ${inbox?.status.stale ? 'stale' : ''}`}><i />{inbox?.status.lastSuccessAt ? `Checked ${timeAgo(inbox.status.lastSuccessAt)}` : 'Not checked yet'}{inbox?.status.errorMessage ? ` · ${inbox.status.errorMessage}` : ''}</div>
+          </section>
           <section className="roster-pulse panel">
             <div className="panel-heading"><div><span className="eyebrow">Roster pulse</span><h2>{myTeam.teamName}</h2></div></div>
             {rosterPulse.length ? rosterPulse.map((signal) => (
@@ -837,17 +965,21 @@ function IntelView({
 function StrategyView({
   teams,
   profiles,
+  myRosterId,
+  rosterPositions,
   preferredRosterId,
   onUpdatePreferences,
 }: {
   teams: Team[]
   profiles: ManagerProfile[]
+  myRosterId: number
+  rosterPositions: string[]
   preferredRosterId?: number
   onUpdatePreferences: (patch: Partial<LeaguePreferences>) => void
 }) {
   const ordered = useMemo(
-    () => [...profiles].sort((a, b) => b.tradeCount - a.tradeCount || a.teamName.localeCompare(b.teamName)),
-    [profiles],
+    () => [...profiles].filter((item) => item.rosterId !== myRosterId).sort((a, b) => b.tradeCount - a.tradeCount || a.teamName.localeCompare(b.teamName)),
+    [profiles, myRosterId],
   )
   const [selectedRosterId, setSelectedRosterId] = useState(preferredRosterId ?? ordered[0]?.rosterId ?? teams[0]?.rosterId ?? 1)
   useEffect(() => {
@@ -855,8 +987,21 @@ function StrategyView({
       setSelectedRosterId(preferredRosterId)
     }
   }, [preferredRosterId, profiles])
-  const profile = profiles.find((item) => item.rosterId === selectedRosterId) ?? ordered[0]
+  const profile = ordered.find((item) => item.rosterId === selectedRosterId) ?? ordered[0]
   const team = teams.find((item) => item.rosterId === profile?.rosterId) ?? teams[0]
+  const plan = useMemo(() => profile ? buildTradePlan(teams, {
+    myRosterId,
+    counterpartRosterId: profile.rosterId,
+    rosterPositions,
+    manager: {
+      pickAffinity: profile.pickShare,
+      playerAffinity: 1 - profile.pickShare,
+      consolidationIndex: Math.max(0, Math.min(1, 0.5 + (profile.averageAssetsSent - profile.averageAssetsReceived) / 3)),
+      depthIndex: Math.max(0, Math.min(1, 0.5 + (profile.averageAssetsReceived - profile.averageAssetsSent) / 3)),
+      positionAffinity: Object.fromEntries(profile.favoritePositions.map((position) => [position, 0.8])),
+      sampleWeight: Math.min(1, profile.tradeCount / 12),
+    },
+  }) : null, [profile, myRosterId, rosterPositions, teams])
 
   if (!profile || !team) return null
 
@@ -909,6 +1054,34 @@ function StrategyView({
           <div className="model-caveat"><Info size={17} /><span>{profile.evidenceNote}</span></div>
         </div>
       </section>
+      {plan && (
+        <section className="target-workbench">
+          <div className="panel-heading"><div><span className="eyebrow">V4 target finder</span><h2>Best fits on {team.teamName}</h2></div><span className="method-note">Need + timeline + lineup + availability</span></div>
+          <div className="target-grid">
+            {plan.targets.slice(0, 3).map((target, index) => (
+              <article className={`target-card panel ${index === 0 ? 'primary' : ''}`} key={target.asset.id}>
+                <span className="target-rank">#{index + 1}</span><AssetBadge position={target.asset.position} />
+                <h3>{target.asset.name}</h3><strong>{target.score}<small>/100 fit</small></strong>
+                <div>{target.reasons.map((reason) => <span key={reason.label}>{reason.label} {reason.score}</span>)}</div>
+                <p>{formatValue(target.asset.value)} market · {target.uncertaintyPenalty}% uncertainty</p>
+              </article>
+            ))}
+          </div>
+          <div className="package-board panel">
+            <div className="panel-heading"><div><span className="eyebrow">V4.1 negotiation builder</span><h2>Staged packages</h2></div><span className="method-note">Walk-away is a ceiling, not a recommendation</span></div>
+            {plan.packages.length ? plan.packages.map((tradePackage) => (
+              <article className={`package-row stage-${tradePackage.stage}`} key={`${tradePackage.stage}-${tradePackage.send.map((asset) => asset.id).join('-')}`}>
+                <span className="stage-label">{tradePackage.stage}</span>
+                <div><small>You send</small><strong>{tradePackage.send.map((asset) => asset.name).join(' + ')}</strong></div>
+                <ArrowLeftRight size={17} />
+                <div><small>You receive</small><strong>{tradePackage.receive.map((asset) => asset.name).join(' + ')}</strong></div>
+                <div className="package-scores"><span>Fit <b>{tradePackage.myScore}</b></span><span>Acceptance <b>{tradePackage.acceptanceScore}</b></span><span>Lineup <b>{tradePackage.lineupDeltaMe >= 0 ? '+' : ''}{tradePackage.lineupDeltaMe.toFixed(1)}</b></span></div>
+              </article>
+            )) : <div className="intel-empty"><Target size={22} /><strong>No safe package cleared the limits.</strong><span>That is a useful answer—do not force a bad trade.</span></div>}
+            <div className="model-caveat"><Info size={17} /><span>{plan.evidenceNote}</span></div>
+          </div>
+        </section>
+      )}
     </main>
   )
 }
@@ -1073,6 +1246,9 @@ function AppHeader({
           <button type="button" className={view === 'trade' ? 'active' : ''} onClick={() => setView('trade')}>
             <ArrowLeftRight size={17} /> Trade lab
           </button>
+          <button type="button" className={view === 'journal' ? 'active' : ''} onClick={() => setView('journal')}>
+            <BookOpen size={17} /> Journal
+          </button>
           <button type="button" className={view === 'intel' ? 'active' : ''} onClick={() => setView('intel')}>
             <Radar size={17} /> Intel
           </button>
@@ -1161,6 +1337,7 @@ function App() {
   const [selectedId, setSelectedId] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [journalSyncing, setJournalSyncing] = useState(false)
   const [userState, setUserState] = useState<UserState | null>(null)
   const initialLoad = useRef(false)
 
@@ -1177,7 +1354,7 @@ function App() {
     try {
       const leagueBundle = await fetchLeagueBundle(cleanId)
       const format = leagueFormat(leagueBundle)
-      const [valueBundle, projectionBundle, modelHealth, eventModelHealth, transactions] = await Promise.all([
+      const [valueBundle, projectionBundle, modelHealth, eventModelHealth, storedJournal] = await Promise.all([
         fetchValues({
           ...format,
           numTeams: leagueBundle.league.total_rosters,
@@ -1185,8 +1362,14 @@ function App() {
         fetchProjections(),
         fetchModelHealth(),
         fetchEventModelHealth(),
-        fetchTransactionHistory(leagueBundle.league),
+        fetchJournal(cleanId).catch(() => null),
       ])
+      const journalFresh = storedJournal?.sync?.finishedAt
+        && storedJournal.sync.status === 'complete'
+        && Date.now() - Date.parse(storedJournal.sync.finishedAt) < 15 * 60 * 1000
+      const journal = journalFresh
+        ? storedJournal
+        : await syncJournal(cleanId).catch(() => storedJournal ?? { trades: [], identities: [], snapshots: [], outcomes: [], sync: null })
       const rosterIds = new Set(leagueBundle.rosters.flatMap((roster) => roster.players ?? []))
       const sleeperPlayers = await fetchSleeperPlayers([...rosterIds])
       const playerProjections = new Map(
@@ -1202,6 +1385,7 @@ function App() {
         ]),
       )
       const teams = buildTeams(leagueBundle, valueBundle, sleeperPlayers, playerProjections)
+      const transactions = journalTransactionsForCurrentManagers(journal, leagueBundle.league.league_id)
       const managerProfiles = buildManagerProfiles(transactions, teams, valueBundle.players, valueBundle.picks)
       const existingPreference = stateOverride?.preferences.find((item) => item.leagueId === cleanId)
       const basePreference: LeaguePreferences = {
@@ -1224,7 +1408,7 @@ function App() {
         }
         setUserState(nextState)
       }
-      setData({ leagueBundle, valueBundle, teams, modelHealth, eventModelHealth, managerProfiles, preferences, user })
+      setData({ leagueBundle, valueBundle, teams, modelHealth, eventModelHealth, managerProfiles, journal, preferences, user })
       setMode(preferences.settings.rankingMode ?? 'overall')
       setLeagueId(cleanId)
       setInputId(cleanId)
@@ -1275,6 +1459,21 @@ function App() {
     void loadLeague(inputId)
   }
 
+  const refreshJournal = async () => {
+    if (!data || journalSyncing) return
+    setJournalSyncing(true)
+    try {
+      const journal = await syncJournal(data.leagueBundle.league.league_id)
+      const transactions = journalTransactionsForCurrentManagers(journal, data.leagueBundle.league.league_id)
+      const managerProfiles = buildManagerProfiles(transactions, data.teams, data.valueBundle.players, data.valueBundle.picks)
+      setData((current) => current ? { ...current, journal, managerProfiles } : current)
+    } catch (syncError) {
+      setError(syncError instanceof Error ? syncError.message : 'Journal sync failed')
+    } finally {
+      setJournalSyncing(false)
+    }
+  }
+
   return (
     <div className="app">
       <AppHeader
@@ -1309,10 +1508,12 @@ function App() {
             />
           ) : view === 'trade' ? (
             <TradeView teams={data.teams} rosterPositions={data.leagueBundle.league.roster_positions} />
+          ) : view === 'journal' ? (
+            <TradeJournalView journal={data.journal} syncing={journalSyncing} onSync={() => void refreshJournal()} />
           ) : view === 'intel' ? (
             <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
           ) : view === 'strategy' ? (
-            <StrategyView key={`strategy-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} preferredRosterId={data.preferences.settings.strategyRosterId} onUpdatePreferences={updatePreferences} />
+            <StrategyView key={`strategy-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} preferredRosterId={data.preferences.settings.strategyRosterId} onUpdatePreferences={updatePreferences} />
           ) : (
             <ModelView health={data.modelHealth} />
           )}
