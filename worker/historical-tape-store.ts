@@ -84,7 +84,7 @@ export async function queueHistoricalTapeAudit(
   db: D1Database,
   userId: string,
   leagueId: string,
-  request: MarketTapeRequest,
+  request: Pick<MarketTapeRequest, 'format'>,
   now = new Date(),
 ): Promise<void> {
   await ensureHistoricalTapeSchema(db)
@@ -245,6 +245,19 @@ WHERE user_id=? AND league_id=? AND provider=?`).bind(
 
 export async function refreshHistoricalTapeAudits(db: D1Database, now = new Date()): Promise<void> {
   await ensureHistoricalTapeSchema(db)
+  const unqueued = await db.prepare(`SELECT m.user_id, m.league_id, m.num_qbs, m.tep, m.num_teams
+FROM market_tape_configs m
+LEFT JOIN historical_tape_configs h
+  ON h.user_id=m.user_id AND h.league_id=m.league_id AND h.provider=?
+WHERE h.user_id IS NULL
+ORDER BY m.seeded_at ASC LIMIT 1`).bind(PROVIDER).first<{
+    user_id: string; league_id: string; num_qbs: 1 | 2; tep: number; num_teams: number
+  }>()
+  if (unqueued) {
+    await queueHistoricalTapeAudit(db, unqueued.user_id, unqueued.league_id, {
+      format: { numQbs: unqueued.num_qbs, tep: Boolean(unqueued.tep), numTeams: unqueued.num_teams },
+    }, now)
+  }
   const config = await db.prepare(`SELECT user_id, league_id, status, num_qbs, tep, num_teams,
 queued_at, updated_at, completed_at, report_json FROM historical_tape_configs
 WHERE status IN ('queued', 'running') ORDER BY updated_at ASC LIMIT 1`).first<ConfigRow>()
