@@ -36,7 +36,8 @@ import { journalTransactionsForCurrentManagers, tradePartyNames } from './journa
 import { buildManagerProfiles } from './negotiation'
 import type { ManagerProfile } from './negotiation'
 import { assetRoleLabel, buildTeams, evaluateTrade, leagueFormat, rosterProfile } from './rankings'
-import { resolveTeamStrategy } from './strategy'
+import { findComparablePackages, resolveTeamStrategy } from './strategy'
+import type { ComparablePackage } from './strategy'
 import type { ResearchGate, ResearchPipelineBundle } from './research'
 import type { Asset, AlertInbox, EdgeStateBundle, EventModelHealthBundle, IntelFeed, IntelSignal, JournalBundle, JournalTrade, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, Team, TradeOfferRecord, TradeOfferStatus, UserIdentity, UserState, ValueBundle } from './types'
 
@@ -79,6 +80,14 @@ type AppData = {
 }
 
 type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'model'
+
+type TradeDraft = {
+  nonce: number
+  teamAId: number
+  teamBId: number
+  selectedA: string[]
+  selectedB: string[]
+}
 
 const modeCopy: Record<RankingMode, { label: string; description: string }> = {
   overall: {
@@ -570,11 +579,11 @@ function RosterImpact({
   )
 }
 
-function TradeView({ teams, rosterPositions }: { teams: Team[]; rosterPositions: string[] }) {
-  const [teamAId, setTeamAId] = useState(teams[0].rosterId)
-  const [teamBId, setTeamBId] = useState(teams[1]?.rosterId ?? teams[0].rosterId)
-  const [selectedA, setSelectedA] = useState<string[]>([])
-  const [selectedB, setSelectedB] = useState<string[]>([])
+function TradeView({ teams, rosterPositions, initialDraft }: { teams: Team[]; rosterPositions: string[]; initialDraft?: TradeDraft | null }) {
+  const [teamAId, setTeamAId] = useState(initialDraft?.teamAId ?? teams[0].rosterId)
+  const [teamBId, setTeamBId] = useState(initialDraft?.teamBId ?? teams[1]?.rosterId ?? teams[0].rosterId)
+  const [selectedA, setSelectedA] = useState<string[]>(initialDraft?.selectedA ?? [])
+  const [selectedB, setSelectedB] = useState<string[]>(initialDraft?.selectedB ?? [])
   const [searchA, setSearchA] = useState('')
   const [searchB, setSearchB] = useState('')
   const teamA = teams.find((team) => team.rosterId === teamAId) ?? teams[0]
@@ -981,6 +990,7 @@ function EdgeView({
   preferences,
   marketFormat,
   onUpdatePreferences,
+  onOpenTrade,
 }: {
   teams: Team[]
   profiles: ManagerProfile[]
@@ -992,6 +1002,7 @@ function EdgeView({
   preferences: LeaguePreferences
   marketFormat: { numQbs: 1 | 2; tep: boolean; numTeams: number }
   onUpdatePreferences: (patch: Partial<LeaguePreferences>) => void
+  onOpenTrade: (draft: Omit<TradeDraft, 'nonce'>) => void
 }) {
   const [feed, setFeed] = useState<IntelFeed | null>(null)
   const [intelLoaded, setIntelLoaded] = useState(false)
@@ -1036,6 +1047,16 @@ function EdgeView({
   const selectedValue = selected?.asset.kind === 'player'
     ? valueBundle.players.find((player) => player.sleeperId === selected.asset.id)
     : null
+  const comparablePackages = useMemo(
+    () => selected ? findComparablePackages(teams, {
+      myRosterId,
+      counterpartRosterId: selected.owner.rosterId,
+      rosterPositions,
+      targetAssetId: selected.asset.id,
+      teamStrategy: preferences.settings.teamStrategy,
+    }) : [],
+    [teams, myRosterId, rosterPositions, selected, preferences.settings.teamStrategy],
+  )
 
   useEffect(() => {
     if (selected && selected.key !== selectedKey && !opportunities.some((opportunity) => opportunity.key === selectedKey)) {
@@ -1073,6 +1094,30 @@ function EdgeView({
       .catch((error) => setEdgeError(error instanceof Error ? error.message : 'Offer status could not be saved'))
   }
 
+  const logComparablePackage = (candidate: ComparablePackage) => {
+    if (!selected) return
+    const now = new Date().toISOString()
+    const targetId = selected.asset.id.replace(/[^\w-]/g, '').slice(0, 20) || 'asset'
+    const offer: TradeOfferRecord = {
+      offerId: `draft-${Date.now().toString(36)}-${selected.owner.rosterId}-${targetId}`,
+      counterpartRosterId: selected.owner.rosterId,
+      targetAssetId: selected.asset.id,
+      targetAssetName: selected.asset.name,
+      stage: 'target',
+      status: 'draft',
+      sentAssets: candidate.send.map((asset) => ({ id: asset.id, name: asset.name, value: Math.round(asset.value) })),
+      receiveAssets: candidate.receive.map((asset) => ({ id: asset.id, name: asset.name, value: Math.round(asset.value) })),
+      marketDelta: Math.round(candidate.marketNetToMe),
+      lineupDelta: Number((candidate.lineupDeltaMe ?? 0).toFixed(2)),
+      thesis: `Current-market comparison only: send ${formatValue(candidate.sendValue)} and receive ${formatValue(candidate.receiveValue)}. Declared ${teamStrategy.mode} window: ${teamStrategy.horizonYears} years. No acceptance or resale prediction.`,
+      createdAt: now,
+      updatedAt: now,
+    }
+    void saveTradeOffer(preferences.leagueId, offer)
+      .then(setEdgeState)
+      .catch((error) => setEdgeError(error instanceof Error ? error.message : 'Draft could not be saved'))
+  }
+
   const completedTradeChecks = journal.outcomes.filter((outcome) => outcome.status === 'complete').length
   const activeOffers = edgeState.offers.filter((offer) => !['rejected', 'withdrawn', 'accepted'].includes(offer.status)).length
   const shadowGatesPassed = edgeState.shadowModel.gates.filter((gate) => gate.passed).length
@@ -1097,9 +1142,9 @@ function EdgeView({
     <main className="page-shell edge-page">
       <section className="edge-hero">
         <div>
-          <span className="eyebrow accent-eyebrow">Private evidence desk</span>
-          <h1>See what we know.<br />Mark what we don’t.</h1>
-          <p>Your declared window is {teamStrategy.horizonYears} years and your objective is {teamStrategy.mode}. That context is shown, but it does not create a price forecast, profit score, or trade recommendation.</p>
+          <span className="eyebrow accent-eyebrow">Private trade discovery</span>
+          <h1>Find targets.<br />Compare real packages.</h1>
+          <p>Your declared window is {teamStrategy.horizonYears} years and your objective is {teamStrategy.mode}. Select any league asset to compare concrete packages using current prices and covered production—without inventing a profit or acceptance score.</p>
         </div>
         <div className="private-status"><LockKeyhole size={18} /><span><strong>Private research book</strong><small>Signals, overrides, offers, and outcomes are isolated to your account and league.</small></span></div>
       </section>
@@ -1237,8 +1282,38 @@ function EdgeView({
       </section>
 
       {selected && <section className="package-board panel edge-packages">
-        <div className="panel-heading"><div><span className="eyebrow">Execution guardrail</span><h2>Automated offers are off</h2></div><span className="method-note">No fake acceptance or ceiling</span></div>
-        <div className="intel-empty"><Target size={22} /><strong>Use Trade Lab for a factual side-by-side.</strong><span>RosterLab will generate packages only after historical price returns and real accepted, rejected, and countered offer labels pass their promotion gates.</span></div>
+        <div className="panel-heading"><div><span className="eyebrow">Possible trade visualizer</span><h2>Closest current-value packages for {selected.asset.name}</h2></div><span className="method-note">Comparisons, not recommendations</span></div>
+        <div className="package-evidence-banner"><Info size={16} /><span>Ordered only by the absolute gap in today’s composite values. Age, news, manager history, and the shadow return model do not secretly move these packages.</span></div>
+        {comparablePackages.length ? comparablePackages.map((candidate, index) => {
+          const target = candidate.receive[0]
+          const horizonAge = target.kind === 'player' && target.age !== null && target.age !== undefined
+            ? target.age + teamStrategy.horizonYears
+            : null
+          return (
+            <article className="package-row factual-package" key={candidate.key}>
+              <span className="stage-label">Closest #{index + 1}</span>
+              <div><small>You send · {formatValue(candidate.sendValue)}</small><strong>{candidate.send.map((asset) => asset.name).join(' + ')}</strong></div>
+              <ArrowLeftRight size={18} />
+              <div><small>You receive · {formatValue(candidate.receiveValue)}</small><strong>{candidate.receive.map((asset) => asset.name).join(' + ')}</strong></div>
+              <div className="package-scores">
+                <span>Market net to you<b className={candidate.marketNetToMe >= 0 ? 'positive' : 'negative'}>{candidate.marketNetToMe >= 0 ? '+' : ''}{formatValue(candidate.marketNetToMe)}</b></span>
+                <span>Your lineup<b>{candidate.lineupDeltaMe === null ? 'Not covered' : `${candidate.lineupDeltaMe >= 0 ? '+' : ''}${candidate.lineupDeltaMe.toFixed(1)} PPG`}</b></span>
+                <span>Their lineup<b>{candidate.lineupDeltaThem === null ? 'Not covered' : `${candidate.lineupDeltaThem >= 0 ? '+' : ''}${candidate.lineupDeltaThem.toFixed(1)} PPG`}</b></span>
+                <span>Window fact<b>{target.kind === 'pick' ? 'Draft capital' : horizonAge === null ? 'Age unavailable' : `Age ${horizonAge.toFixed(1)}`}</b></span>
+              </div>
+              <div className="package-actions">
+                <button type="button" className="compare-package" onClick={() => onOpenTrade({
+                  teamAId: myRosterId,
+                  teamBId: selected.owner.rosterId,
+                  selectedA: candidate.send.map((asset) => asset.id),
+                  selectedB: candidate.receive.map((asset) => asset.id),
+                })}>Compare in Trade Lab</button>
+                <button type="button" className="log-offer" onClick={() => logComparablePackage(candidate)}>Log private draft</button>
+              </div>
+            </article>
+          )
+        }) : <div className="intel-empty"><Target size={22} /><strong>No priced package is available.</strong><span>This target or your outgoing assets are missing current market values.</span></div>}
+        <div className="model-caveat"><Info size={17} /><span>These packages answer “what is close in today’s market?” They do not answer “will the manager accept?” or “will this asset appreciate?” Those remain shadow-model questions until their time-split gates pass.</span></div>
       </section>}
 
       <section className="edge-review-grid">
@@ -1510,6 +1585,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [journalSyncing, setJournalSyncing] = useState(false)
   const [userState, setUserState] = useState<UserState | null>(null)
+  const [tradeDraft, setTradeDraft] = useState<TradeDraft | null>(null)
   const initialLoad = useRef(false)
 
   useEffect(() => {
@@ -1624,6 +1700,7 @@ function App() {
       setLeagueId(cleanId)
       setInputId(cleanId)
       setSelectedId(teams[0]?.rosterId ?? 1)
+      setTradeDraft(null)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unknown data error')
     } finally {
@@ -1693,6 +1770,11 @@ function App() {
     void loadLeague(inputId)
   }
 
+  const openTradeDraft = (draft: Omit<TradeDraft, 'nonce'>) => {
+    setTradeDraft({ ...draft, nonce: Date.now() })
+    setView('trade')
+  }
+
   const refreshJournal = async () => {
     if (!data || journalSyncing) return
     setJournalSyncing(true)
@@ -1746,13 +1828,13 @@ function App() {
               setSelectedId={setSelectedId}
             />
           ) : view === 'trade' ? (
-            <TradeView teams={data.teams} rosterPositions={data.leagueBundle.league.roster_positions} />
+            <TradeView key={`trade-${data.leagueBundle.league.league_id}-${tradeDraft?.nonce ?? 'manual'}`} teams={data.teams} rosterPositions={data.leagueBundle.league.roster_positions} initialDraft={tradeDraft} />
           ) : view === 'journal' ? (
             <TradeJournalView journal={data.journal} syncing={journalSyncing} onSync={() => void refreshJournal()} />
           ) : view === 'intel' ? (
             <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
           ) : view === 'strategy' ? (
-            <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} marketFormat={{ ...leagueFormat(data.leagueBundle), numTeams: data.leagueBundle.league.total_rosters }} onUpdatePreferences={updatePreferences} />
+            <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} marketFormat={{ ...leagueFormat(data.leagueBundle), numTeams: data.leagueBundle.league.total_rosters }} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} />
           ) : (
             <ModelView health={data.modelHealth} />
           )}

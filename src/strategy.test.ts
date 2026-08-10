@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTradePlan, findTargets } from './strategy'
+import { buildTradePlan, findComparablePackages, findTargets } from './strategy'
 import type { Asset, Team } from './types'
 
 function asset(id: string, position: Asset['position'], value: number, overrides: Partial<Asset> = {}): Asset {
@@ -79,5 +79,39 @@ describe('evidence-only strategy inventory', () => {
     expect(plan.targets).toHaveLength(1)
     expect(plan.targets[0].asset.id).toBe('cornerstone')
     expect(plan.packages).toEqual([])
+  })
+
+  it('builds deterministic current-value comparisons without an acceptance score', () => {
+    const mine = team(1, [
+      asset('starter', 'QB', 700, { isStarter: true }),
+      asset('bench', 'WR', 310, { depthChartOrder: 3 }),
+    ], [asset('second', 'PICK', 190)])
+    const theirs = team(2, [asset('target', 'RB', 500), asset('other', 'WR', 450)])
+    const options = { myRosterId: 1, counterpartRosterId: 2, rosterPositions, targetAssetId: 'target' }
+
+    const first = findComparablePackages([mine, theirs], options)
+    const second = findComparablePackages([mine, theirs], options)
+
+    expect(first).toEqual(second)
+    expect(first[0].send.map((item) => item.id)).toEqual(['bench', 'second'])
+    expect(first[0].sendValue).toBe(500)
+    expect(first[0].receiveValue).toBe(500)
+    expect(first[0].marketNetToMe).toBe(0)
+    expect(first[0]).not.toHaveProperty('acceptanceScore')
+    expect(first[0]).not.toHaveProperty('profitScore')
+  })
+
+  it('locks comparisons to the selected target and at most three outgoing assets', () => {
+    const mine = team(1, [asset('a', 'WR', 100), asset('b', 'WR', 100), asset('c', 'WR', 100), asset('d', 'WR', 100)])
+    const theirs = team(2, [asset('target', 'RB', 300), asset('other', 'RB', 300)])
+    const packages = findComparablePackages([mine, theirs], {
+      myRosterId: 1,
+      counterpartRosterId: 2,
+      rosterPositions,
+      targetAssetId: 'target',
+    })
+
+    expect(packages[0].receive.map((item) => item.id)).toEqual(['target'])
+    expect(packages.every((item) => item.send.length <= 3)).toBe(true)
   })
 })

@@ -3421,7 +3421,15 @@ footer a {
 .edge-price-ladder b { font-family: 'DM Mono', monospace; font-size: 9px; }
 .edge-detail .model-caveat { margin: 0; border-width: 1px 0 0; border-radius: 0; }
 
-.edge-packages .package-row { grid-template-columns: 76px minmax(0, 1fr) 20px minmax(0, 1fr) 200px auto; }
+.package-evidence-banner { padding: 10px 17px; display: flex; align-items: center; gap: 8px; color: #5e665a; background: #eff1e8; border-top: 1px solid var(--line); font-size: 8px; line-height: 1.45; }
+.package-evidence-banner svg { flex: 0 0 auto; color: #6c7937; }
+.edge-packages .package-row { grid-template-columns: 76px minmax(150px, 1fr) 20px minmax(150px, 1fr) minmax(260px, 1.2fr) 128px; }
+.edge-packages .package-scores { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+.edge-packages .package-scores b { white-space: nowrap; }
+.package-actions { display: grid; gap: 6px !important; }
+.package-actions button { min-height: 34px; padding: 0 9px; border-radius: 8px; font-size: 7px; font-weight: 900; white-space: nowrap; }
+.compare-package { color: #eef0ea; background: var(--dark); border: 1px solid var(--dark); }
+.compare-package:hover { color: var(--acid); }
 .log-offer { min-height: 34px; padding: 0 10px; color: var(--ink); background: var(--acid); border: 0; border-radius: 8px; font-size: 7px; font-weight: 900; white-space: nowrap; }
 
 .edge-review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -3446,7 +3454,7 @@ footer a {
   .edge-detail { position: static; }
   .edge-packages .package-row { grid-template-columns: 70px minmax(0, 1fr) 20px minmax(0, 1fr); }
   .edge-packages .package-scores { grid-column: 2 / 5; }
-  .edge-packages .log-offer { grid-column: 4; }
+  .edge-packages .package-actions { grid-column: 2 / 5; display: flex; justify-content: flex-end; }
 }
 
 @media (max-width: 860px) {
@@ -3487,6 +3495,8 @@ footer a {
   .edge-price-grid > div:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
   .edge-packages .package-row { grid-template-columns: 1fr; }
   .edge-packages .package-scores,
-  .edge-packages .log-offer { grid-column: auto; }
+  .edge-packages .package-actions { grid-column: auto; }
+  .edge-packages .package-scores { grid-template-columns: 1fr 1fr !important; }
+  .edge-packages .package-actions { display: grid; }
   .edge-packages .package-row > svg { transform: rotate(90deg); }
 }

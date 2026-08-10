@@ -9,7 +9,8 @@
     "ml:collect": ".venv/bin/python ml/pipeline.py collect",
     "ml:train": ".venv/bin/python ml/pipeline.py train",
     "ml:refresh": ".venv/bin/python ml/pipeline.py refresh",
-    "ml:test": ".venv/bin/python -m unittest ml/test_pipeline.py",
+    "ml:audit-sources": ".venv/bin/python ml/source_audit.py",
+    "ml:test": ".venv/bin/python -m unittest ml/test_pipeline.py ml/test_source_audit.py",
     "test": "vitest run --config vitest.config.ts",
     "preview": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vite preview"
   },
