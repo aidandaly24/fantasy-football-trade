@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vite",
     "build": "tsc -b && WRANGLER_LOG_PATH=.wrangler/wrangler.log vite build",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.config.ts",
     "preview": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vite preview"
   },
   "dependencies": {
