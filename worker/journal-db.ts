@@ -9,7 +9,7 @@ import type { D1Database, D1PreparedStatement } from './user-store'
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
-const CHECKPOINTS = [30, 90, 180] as const
+const CHECKPOINTS = [7, 30, 90, 180] as const
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS league_roots (root_league_id TEXT PRIMARY KEY, name TEXT NOT NULL, sync_status TEXT NOT NULL DEFAULT 'pending', last_sync_at TEXT, created_at TEXT NOT NULL)`,
@@ -218,7 +218,7 @@ VALUES (?, ?, ?, ?, 'Tradyr composite', ?, ?, ?) ON CONFLICT(league_id, transact
       const dueAt = new Date(trade.createdAtMs + days * 86_400_000)
       const status = initialKind === 'backfill-current' ? 'insufficient_data' : dueAt <= now ? 'due' : 'pending'
       initialStatements.push(db.prepare(`INSERT INTO trade_outcomes (league_id, transaction_id, checkpoint_days, due_at, status, method_version, result_json)
-VALUES (?, ?, ?, ?, ?, 'market-net-v1', '{}') ON CONFLICT(league_id, transaction_id, checkpoint_days) DO NOTHING`).bind(
+VALUES (?, ?, ?, ?, ?, 'market-net-change-v2', '{}') ON CONFLICT(league_id, transaction_id, checkpoint_days) DO NOTHING`).bind(
         trade.leagueId, trade.transactionId, days, dueAt.toISOString(), status,
       ))
       if (status === 'due') due.push({ trade, days, dueAt, values })
@@ -228,7 +228,12 @@ VALUES (?, ?, ?, ?, ?, 'market-net-v1', '{}') ON CONFLICT(league_id, transaction
   for (const checkpoint of due) {
       const { trade, days, dueAt, values } = checkpoint
       const initial = await db.prepare(`SELECT values_json FROM trade_snapshots WHERE league_id=? AND transaction_id=? AND snapshot_kind='ingestion'`).bind(trade.leagueId, trade.transactionId).first<{ values_json: string }>()
-      if (!initial || values.unresolved.length) continue
+      if (!initial || values.unresolved.length) {
+        await db.prepare(`UPDATE trade_outcomes SET evaluated_at=?, status='insufficient_data', result_json=? WHERE league_id=? AND transaction_id=? AND checkpoint_days=? AND status!='complete'`).bind(
+          now.toISOString(), JSON.stringify({ unresolved: values.unresolved, missingBaseline: !initial }), trade.leagueId, trade.transactionId, days,
+        ).run()
+        continue
+      }
       const baseline = JSON.parse(initial.values_json) as TradeValueSnapshot
       const changes = values.parties.map((party) => ({
         rosterId: party.rosterId,
@@ -236,8 +241,8 @@ VALUES (?, ?, ?, ?, ?, 'market-net-v1', '{}') ON CONFLICT(league_id, transaction
         currentNet: party.net,
         change: party.net - (baseline.parties.find((item) => item.rosterId === party.rosterId)?.net ?? 0),
       }))
-      const winner = [...changes].sort((a, b) => b.currentNet - a.currentNet || a.rosterId - b.rosterId)[0]
-      const grade = winner ? `Roster ${winner.rosterId} ${winner.currentNet >= 0 ? '+' : ''}${winner.currentNet}` : null
+      const winner = [...changes].sort((a, b) => b.change - a.change || b.currentNet - a.currentNet || a.rosterId - b.rosterId)[0]
+      const grade = winner ? `Roster ${winner.rosterId} ${winner.change >= 0 ? '+' : ''}${winner.change} since trade` : null
       await db.prepare(`INSERT INTO trade_snapshots (league_id, transaction_id, snapshot_kind, captured_at, source, source_version, values_json, is_retrospective)
 VALUES (?, ?, ?, ?, 'Tradyr composite', ?, ?, 0) ON CONFLICT(league_id, transaction_id, snapshot_kind) DO NOTHING`).bind(
         trade.leagueId, trade.transactionId, `${days}d`, now.toISOString(), catalog.sourceVersion, JSON.stringify(values),

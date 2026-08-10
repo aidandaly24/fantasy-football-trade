@@ -24,6 +24,8 @@ export type StoredLeaguePreference = {
   settings: {
     rankingMode?: 'overall' | 'contender' | 'future'
     strategyRosterId?: number
+    edgeFilter?: 'all' | 'value' | 'points' | 'intel'
+    teamDirectionOverrides?: Record<string, 'contender' | 'retooling' | 'rebuilding'>
   }
   updatedAt: string
 }
@@ -132,6 +134,16 @@ export function normalizePreferenceInput(input: unknown): Omit<StoredLeaguePrefe
   const strategyRosterId = Number(rawSettings.strategyRosterId)
   if (Number.isInteger(strategyRosterId) && strategyRosterId >= 1 && strategyRosterId <= 100) {
     settings.strategyRosterId = strategyRosterId
+  }
+  if (['all', 'value', 'points', 'intel'].includes(String(rawSettings.edgeFilter))) {
+    settings.edgeFilter = rawSettings.edgeFilter as StoredLeaguePreference['settings']['edgeFilter']
+  }
+  if (rawSettings.teamDirectionOverrides && typeof rawSettings.teamDirectionOverrides === 'object' && !Array.isArray(rawSettings.teamDirectionOverrides)) {
+    settings.teamDirectionOverrides = Object.fromEntries(
+      Object.entries(rawSettings.teamDirectionOverrides as Record<string, unknown>)
+        .filter(([rosterId, direction]) => /^\d{1,3}$/.test(rosterId) && ['contender', 'retooling', 'rebuilding'].includes(String(direction)))
+        .slice(0, 100),
+    ) as Record<string, 'contender' | 'retooling' | 'rebuilding'>
   }
   return { leagueId, leagueName, myRosterId, watchlist, settings }
 }

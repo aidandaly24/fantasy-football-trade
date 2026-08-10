@@ -1,4 +1,4 @@
-import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { index, integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const userLeaguePreferences = sqliteTable(
   'user_league_preferences',
@@ -190,3 +190,55 @@ export const intelRefreshRuns = sqliteTable('intel_refresh_runs', {
   eventCount: integer('event_count').notNull().default(0),
   errorMessage: text('error_message'),
 })
+
+export const edgeOpportunitySnapshots = sqliteTable(
+  'edge_opportunity_snapshots',
+  {
+    userId: text('user_id').notNull(),
+    leagueId: text('league_id').notNull(),
+    snapshotKey: text('snapshot_key').notNull(),
+    assetId: text('asset_id').notNull(),
+    assetName: text('asset_name').notNull(),
+    ownerRosterId: integer('owner_roster_id').notNull(),
+    capturedAt: text('captured_at').notNull(),
+    currentValue: integer('current_value').notNull(),
+    projection30: integer('projection_30').notNull(),
+    projection90: integer('projection_90').notNull(),
+    projection180: integer('projection_180').notNull(),
+    edgeScore: integer('edge_score').notNull(),
+    lineupDelta: real('lineup_delta').notNull(),
+    confidence: integer('confidence').notNull(),
+    categoriesJson: text('categories_json').notNull(),
+    catalyst: text('catalyst').notNull(),
+    status: text('status').notNull().default('tracking'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.leagueId, table.snapshotKey] }),
+    index('idx_edge_opportunities_user_league').on(table.userId, table.leagueId, table.capturedAt),
+  ],
+)
+
+export const userTradeOffers = sqliteTable(
+  'user_trade_offers',
+  {
+    userId: text('user_id').notNull(),
+    leagueId: text('league_id').notNull(),
+    offerId: text('offer_id').notNull(),
+    counterpartRosterId: integer('counterpart_roster_id').notNull(),
+    targetAssetId: text('target_asset_id').notNull(),
+    targetAssetName: text('target_asset_name').notNull(),
+    stage: text('stage').notNull(),
+    status: text('status').notNull(),
+    sentAssetsJson: text('sent_assets_json').notNull(),
+    receiveAssetsJson: text('receive_assets_json').notNull(),
+    marketDelta: integer('market_delta').notNull(),
+    lineupDelta: real('lineup_delta').notNull(),
+    thesis: text('thesis').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.leagueId, table.offerId] }),
+    index('idx_trade_offers_user_league').on(table.userId, table.leagueId, table.updatedAt),
+  ],
+)

@@ -27,14 +27,16 @@ import {
   X,
 } from 'lucide-react'
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchAlerts, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchSleeperPlayers, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal, updateAlertReadState } from './api'
+import { fetchAlerts, fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchSleeperPlayers, fetchUserState, fetchValues, saveEdgeSnapshots, saveLeaguePreferences, saveTradeOffer, syncJournal, updateAlertReadState } from './api'
+import { applyDirectionPickProjections, attributeOpportunity, buildEdgeBoard, buildTeamDirections, opportunitySnapshot } from './edge'
+import type { EdgeCategory, TeamDirection } from './edge'
 import { buildIntelSignals, timeAgo } from './intel'
 import { journalTransactionsForCurrentManagers, tradePartyNames } from './journal'
 import { buildManagerProfiles } from './negotiation'
 import type { ManagerProfile } from './negotiation'
 import { assetRoleLabel, buildTeams, evaluateTrade, leagueFormat, rosterProfile } from './rankings'
 import { buildTradePlan } from './strategy'
-import type { Asset, AlertInbox, EventModelHealthBundle, IntelFeed, IntelSignal, JournalBundle, JournalTrade, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, Team, UserIdentity, UserState, ValueBundle } from './types'
+import type { Asset, AlertInbox, EdgeStateBundle, EventModelHealthBundle, IntelFeed, IntelSignal, JournalBundle, JournalTrade, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, Team, TradeOfferRecord, TradeOfferStatus, UserIdentity, UserState, ValueBundle } from './types'
 
 const DEFAULT_LEAGUE_ID = '1336087922847289344'
 
@@ -45,6 +47,7 @@ type AppData = {
   modelHealth: ModelHealthBundle | null
   eventModelHealth: EventModelHealthBundle | null
   managerProfiles: ManagerProfile[]
+  directions: TeamDirection[]
   journal: JournalBundle
   preferences: LeaguePreferences
   user: UserIdentity | null
@@ -683,7 +686,7 @@ function TradeJournalView({
   return (
     <main className="page-shell journal-page">
       <section className="journal-hero">
-        <div><span className="eyebrow accent-eyebrow">Automated trade journal · V3.3</span><h1>Every completed deal.<br />No selective memory.</h1><p>Sleeper facts, season-correct manager identity, immutable value snapshots, and automatic 30/90/180-day checkpoints.</p></div>
+        <div><span className="eyebrow accent-eyebrow">Automated trade journal · V4.6</span><h1>Every completed deal.<br />No selective memory.</h1><p>Sleeper facts, season-correct manager identity, immutable value snapshots, and automatic 7/30/90/180-day checkpoints.</p></div>
         <button type="button" className="journal-sync" onClick={onSync} disabled={syncing}><RefreshCw size={17} className={syncing ? 'spin' : ''} /> {syncing ? 'Syncing every season…' : 'Sync journal'}</button>
       </section>
       <section className="journal-stats">
@@ -698,7 +701,7 @@ function TradeJournalView({
         <span>{visibleTrades.length} ledger entries · newest first</span>
       </section>
       <section className="journal-list">{visibleTrades.length ? visibleTrades.map(tradeCard) : <div className="panel journal-empty"><BookOpen size={22} /><strong>No completed trades stored yet.</strong><span>Run the journal sync to build the API ledger.</span></div>}</section>
-      <div className="model-caveat panel"><Info size={17} /><span>Old trades are labeled retrospective because Sleeper does not provide historic calculator values. Only snapshots captured after RosterLab started tracking a deal can support honest 30/90/180-day outcome grading.</span></div>
+      <div className="model-caveat panel"><Info size={17} /><span>Old trades are labeled retrospective because Sleeper does not provide historic calculator values. Only snapshots captured after RosterLab started tracking a deal can support honest 7/30/90/180-day outcome grading.</span></div>
     </main>
   )
 }
@@ -962,126 +965,245 @@ function IntelView({
   )
 }
 
-function StrategyView({
+function EdgeView({
   teams,
   profiles,
+  directions,
   myRosterId,
   rosterPositions,
-  preferredRosterId,
+  valueBundle,
+  journal,
+  preferences,
   onUpdatePreferences,
 }: {
   teams: Team[]
   profiles: ManagerProfile[]
+  directions: TeamDirection[]
   myRosterId: number
   rosterPositions: string[]
-  preferredRosterId?: number
+  valueBundle: ValueBundle
+  journal: JournalBundle
+  preferences: LeaguePreferences
   onUpdatePreferences: (patch: Partial<LeaguePreferences>) => void
 }) {
-  const ordered = useMemo(
-    () => [...profiles].filter((item) => item.rosterId !== myRosterId).sort((a, b) => b.tradeCount - a.tradeCount || a.teamName.localeCompare(b.teamName)),
-    [profiles, myRosterId],
-  )
-  const [selectedRosterId, setSelectedRosterId] = useState(preferredRosterId ?? ordered[0]?.rosterId ?? teams[0]?.rosterId ?? 1)
-  useEffect(() => {
-    if (preferredRosterId && profiles.some((item) => item.rosterId === preferredRosterId)) {
-      setSelectedRosterId(preferredRosterId)
-    }
-  }, [preferredRosterId, profiles])
-  const profile = ordered.find((item) => item.rosterId === selectedRosterId) ?? ordered[0]
-  const team = teams.find((item) => item.rosterId === profile?.rosterId) ?? teams[0]
-  const plan = useMemo(() => profile ? buildTradePlan(teams, {
-    myRosterId,
-    counterpartRosterId: profile.rosterId,
-    rosterPositions,
-    manager: {
-      pickAffinity: profile.pickShare,
-      playerAffinity: 1 - profile.pickShare,
-      consolidationIndex: Math.max(0, Math.min(1, 0.5 + (profile.averageAssetsSent - profile.averageAssetsReceived) / 3)),
-      depthIndex: Math.max(0, Math.min(1, 0.5 + (profile.averageAssetsReceived - profile.averageAssetsSent) / 3)),
-      positionAffinity: Object.fromEntries(profile.favoritePositions.map((position) => [position, 0.8])),
-      sampleWeight: Math.min(1, profile.tradeCount / 12),
-    },
-  }) : null, [profile, myRosterId, rosterPositions, teams])
+  const [feed, setFeed] = useState<IntelFeed | null>(null)
+  const [intelLoaded, setIntelLoaded] = useState(false)
+  const [edgeState, setEdgeState] = useState<EdgeStateBundle>({ opportunities: [], offers: [] })
+  const [edgeError, setEdgeError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'all' | EdgeCategory>(preferences.settings.edgeFilter ?? 'all')
+  const [selectedKey, setSelectedKey] = useState('')
+  const snapshotDigest = useRef('')
 
-  if (!profile || !team) return null
+  useEffect(() => {
+    let active = true
+    void fetchIntel().then((result) => { if (active) setFeed(result) }).catch((error) => {
+      if (active) setEdgeError(error instanceof Error ? error.message : 'Intel unavailable')
+    }).finally(() => { if (active) setIntelLoaded(true) })
+    void fetchEdgeState(preferences.leagueId).then((result) => { if (active) setEdgeState(result) }).catch((error) => {
+      if (active) setEdgeError(error instanceof Error ? error.message : 'Private edge history unavailable')
+    })
+    return () => { active = false }
+  }, [preferences.leagueId])
+
+  const signals = useMemo(
+    () => feed ? buildIntelSignals(feed, valueBundle.players, teams, myRosterId) : [],
+    [feed, myRosterId, teams, valueBundle.players],
+  )
+  const opportunities = useMemo(
+    () => buildEdgeBoard(teams, { myRosterId, rosterPositions, directions, profiles, intelSignals: signals }),
+    [teams, myRosterId, rosterPositions, directions, profiles, signals],
+  )
+  const filtered = opportunities.filter((opportunity) => filter === 'all' || opportunity.categories.includes(filter))
+  const selected = opportunities.find((opportunity) => opportunity.key === selectedKey) ?? filtered[0] ?? opportunities[0]
+  const selectedProfile = profiles.find((profile) => profile.rosterId === selected?.owner.rosterId)
+
+  useEffect(() => {
+    if (selected && selected.key !== selectedKey && !opportunities.some((opportunity) => opportunity.key === selectedKey)) {
+      setSelectedKey(selected.key)
+    }
+  }, [selected, selectedKey, opportunities])
+
+  const plan = useMemo(() => selected ? buildTradePlan(teams, {
+    myRosterId,
+    counterpartRosterId: selected.owner.rosterId,
+    rosterPositions,
+    targetAssetId: selected.asset.id,
+    maxTargets: 20,
+    manager: selectedProfile ? {
+      pickAffinity: selectedProfile.pickShare,
+      playerAffinity: 1 - selectedProfile.pickShare,
+      consolidationIndex: Math.max(0, Math.min(1, 0.5 + (selectedProfile.averageAssetsSent - selectedProfile.averageAssetsReceived) / 3)),
+      depthIndex: Math.max(0, Math.min(1, 0.5 + (selectedProfile.averageAssetsReceived - selectedProfile.averageAssetsSent) / 3)),
+      positionAffinity: Object.fromEntries(selectedProfile.favoritePositions.map((position) => [position, 0.8])),
+      sampleWeight: Math.min(1, selectedProfile.tradeCount / 12),
+    } : undefined,
+  }) : null, [selected, selectedProfile, teams, myRosterId, rosterPositions])
+
+  const dailyDigest = opportunities.slice(0, 15).map((opportunity) => `${opportunity.key}:${opportunity.asset.value}:${opportunity.score}`).join('|')
+  useEffect(() => {
+    if (!intelLoaded || !dailyDigest || snapshotDigest.current === dailyDigest) return
+    snapshotDigest.current = dailyDigest
+    const capturedAt = new Date().toISOString()
+    void saveEdgeSnapshots(preferences.leagueId, opportunities.slice(0, 15).map((opportunity) => opportunitySnapshot(opportunity, capturedAt)))
+      .then(setEdgeState)
+      .catch((error) => setEdgeError(error instanceof Error ? error.message : 'Could not save the research snapshot'))
+  }, [dailyDigest, intelLoaded, opportunities, preferences.leagueId])
+
+  const setDirectionOverride = (rosterId: number, value: 'auto' | TeamDirection['label']) => {
+    const overrides = { ...(preferences.settings.teamDirectionOverrides ?? {}) }
+    if (value === 'auto') delete overrides[String(rosterId)]
+    else overrides[String(rosterId)] = value
+    onUpdatePreferences({ settings: { teamDirectionOverrides: overrides } })
+  }
+
+  const logPackage = (tradePackage: NonNullable<typeof plan>['packages'][number]) => {
+    if (!selected) return
+    const now = new Date().toISOString()
+    const offer: TradeOfferRecord = {
+      offerId: globalThis.crypto?.randomUUID?.() ?? `offer-${Date.now()}`,
+      counterpartRosterId: selected.owner.rosterId,
+      targetAssetId: selected.asset.id,
+      targetAssetName: selected.asset.name,
+      stage: tradePackage.stage,
+      status: 'draft',
+      sentAssets: tradePackage.send.map((asset) => ({ id: asset.id, name: asset.name, value: Math.round(asset.value) })),
+      receiveAssets: tradePackage.receive.map((asset) => ({ id: asset.id, name: asset.name, value: Math.round(asset.value) })),
+      marketDelta: Math.round(tradePackage.marketDelta),
+      lineupDelta: Number(tradePackage.lineupDeltaMe.toFixed(2)),
+      thesis: selected.thesis,
+      createdAt: now,
+      updatedAt: now,
+    }
+    void saveTradeOffer(preferences.leagueId, offer).then(setEdgeState).catch((error) => {
+      setEdgeError(error instanceof Error ? error.message : 'Offer could not be saved')
+    })
+  }
+
+  const updateOffer = (offer: TradeOfferRecord, status: TradeOfferStatus) => {
+    void saveTradeOffer(preferences.leagueId, { ...offer, status, updatedAt: new Date().toISOString() })
+      .then(setEdgeState)
+      .catch((error) => setEdgeError(error instanceof Error ? error.message : 'Offer status could not be saved'))
+  }
+
+  const currentAssets = new Map(teams.flatMap((team) => [...team.players, ...team.picks]).map((asset) => [asset.id, asset]))
+  const attributed = edgeState.opportunities.flatMap((snapshot) => {
+    const current = currentAssets.get(snapshot.assetId)
+    return current ? [{ snapshot, result: attributeOpportunity(snapshot, current.value) }] : []
+  })
+  const mature = attributed.filter((item) => item.result.status !== 'too-early')
+  const positive = mature.filter((item) => item.result.status === 'ahead' || item.result.status === 'on-track')
+  const completedTradeChecks = journal.outcomes.filter((outcome) => outcome.status === 'complete').length
+  const activeOffers = edgeState.offers.filter((offer) => !['rejected', 'withdrawn', 'accepted'].includes(offer.status)).length
 
   return (
-    <main className="page-shell strategy-page">
-      <section className="strategy-hero">
+    <main className="page-shell edge-page">
+      <section className="edge-hero">
         <div>
-          <span className="eyebrow accent-eyebrow">Negotiation room</span>
-          <h1>Trade the manager.<br />Not just the calculator.</h1>
-          <p>Completed Sleeper trades across linked league seasons reveal preferences. Small samples are labeled instead of oversold.</p>
+          <span className="eyebrow accent-eyebrow">V4.3–V4.6 · private trade hunter</span>
+          <h1>Find the misprice.<br />Trade before it closes.</h1>
+          <p>Every roster, manager tendency, catalyst, projected lineup gain, and future pick path is scanned together. Recommendations are timestamped so the model has to prove its edge.</p>
         </div>
-        <div className="private-status"><LockKeyhole size={18} /><span><strong>Private league evidence</strong><small>No profile is published outside this site.</small></span></div>
+        <div className="private-status"><LockKeyhole size={18} /><span><strong>Private research book</strong><small>Signals, overrides, offers, and outcomes are isolated to your account and league.</small></span></div>
       </section>
 
-      <section className="strategy-layout">
-        <aside className="manager-list panel">
-          <div className="panel-heading"><div><span className="eyebrow">League market</span><h2>Managers</h2></div></div>
-          {ordered.map((item) => {
-            const managerTeam = teams.find((candidate) => candidate.rosterId === item.rosterId) ?? team
-            return (
-              <button type="button" key={item.rosterId} className={item.rosterId === profile.rosterId ? 'active' : ''} onClick={() => {
-                setSelectedRosterId(item.rosterId)
-                onUpdatePreferences({ settings: { strategyRosterId: item.rosterId } })
-              }}>
-                <Avatar team={managerTeam} size="sm" />
-                <span><strong>{item.teamName}</strong><small>{item.archetype} · {item.tradeCount} trades</small></span>
+      <section className="edge-stats" aria-label="Edge desk status">
+        <article className="panel"><small>Live candidates</small><strong>{opportunities.length}</strong><span>{signals.filter((signal) => signal.edgeScore >= 35).length} catalyst-linked</span></article>
+        <article className="panel"><small>Research samples</small><strong>{edgeState.opportunities.length}</strong><span>daily, immutable entry values</span></article>
+        <article className="panel"><small>On track</small><strong>{mature.length ? `${Math.round(positive.length / mature.length * 100)}%` : 'Too early'}</strong><span>{mature.length} matured samples</span></article>
+        <article className="panel"><small>Execution book</small><strong>{activeOffers}</strong><span>{completedTradeChecks} completed checkpoints</span></article>
+      </section>
+
+      <section className="direction-tape panel">
+        <div><span className="eyebrow">Team direction</span><strong>Recent trades now move pick paths.</strong></div>
+        <div className="direction-tape-list">
+          {directions.filter((direction) => direction.rosterId !== myRosterId).map((direction) => {
+            const team = teams.find((item) => item.rosterId === direction.rosterId)
+            return <button type="button" key={direction.rosterId} onClick={() => {
+              const first = opportunities.find((opportunity) => opportunity.owner.rosterId === direction.rosterId)
+              if (first) setSelectedKey(first.key)
+            }}><span className={`direction-dot direction-${direction.label}`} /><strong>{team?.teamName}</strong><small>{direction.label} · {direction.confidence}%{direction.manual ? ' · manual' : ''}</small></button>
+          })}
+        </div>
+      </section>
+
+      <section className="edge-toolbar panel">
+        <label><small>My team</small><select value={myRosterId} onChange={(event) => onUpdatePreferences({ myRosterId: Number(event.target.value) })}>{teams.map((team) => <option value={team.rosterId} key={team.rosterId}>{team.teamName}</option>)}</select></label>
+        <div className="intel-tabs" role="group" aria-label="Opportunity filter">
+          {(['all', 'value', 'points', 'intel'] as const).map((item) => <button type="button" key={item} className={filter === item ? 'active' : ''} onClick={() => {
+            setFilter(item)
+            onUpdatePreferences({ settings: { edgeFilter: item } })
+          }}>{item === 'all' ? 'All edge' : item === 'value' ? 'Value gain' : item === 'points' ? 'Points now' : 'Intel edge'}</button>)}
+        </div>
+        <span>{filtered.length} ranked opportunities</span>
+      </section>
+      {edgeError && <div className="intel-error">Private research warning: {edgeError}</div>}
+
+      <section className="edge-layout">
+        <div className="edge-board panel">
+          <div className="panel-heading"><div><span className="eyebrow">League-wide opportunity board</span><h2>Mispricing candidates</h2></div><span className="method-note">Future value + points + catalyst + seller fit</span></div>
+          <div className="edge-list">
+            {filtered.length ? filtered.slice(0, 15).map((opportunity, index) => (
+              <button type="button" className={`edge-row ${selected?.key === opportunity.key ? 'active' : ''}`} key={opportunity.key} onClick={() => setSelectedKey(opportunity.key)}>
+                <span className="edge-rank">{String(index + 1).padStart(2, '0')}</span>
+                <span className="edge-player"><AssetBadge position={opportunity.asset.position} /><span><strong>{opportunity.asset.name}</strong><small>{opportunity.owner.teamName} · {opportunity.direction.label}</small></span></span>
+                <span className="edge-categories">{opportunity.categories.map((category) => <i key={category}>{category}</i>)}</span>
+                <span><small>Projected value</small><strong className={opportunity.projectedGainPercent >= 0 ? 'positive' : 'negative'}>{signedPercent(opportunity.projectedGainPercent)}</strong></span>
+                <span><small>Lineup</small><strong>{opportunity.lineupDelta >= 0 ? '+' : ''}{opportunity.lineupDelta.toFixed(1)}</strong></span>
+                <span className="edge-score"><strong>{opportunity.score}</strong><small>edge</small></span>
                 <ChevronRight size={16} />
               </button>
-            )
-          })}
-        </aside>
+            )) : <div className="intel-empty"><Radar size={22} /><strong>No opportunity clears this filter.</strong><span>Do not manufacture an edge when the evidence is quiet.</span></div>}
+          </div>
+        </div>
 
-        <div className="manager-profile panel">
-          <div className="manager-profile-hero">
-            <Avatar team={team} size="lg" />
-            <div><span className={`confidence-pill confidence-${profile.confidence}`}>{profile.confidence} confidence</span><h2>{profile.teamName}</h2><p>{profile.ownerName} · {profile.archetype}</p></div>
+        {selected && <aside className="edge-detail panel">
+          <div className="edge-detail-head"><span><AssetBadge position={selected.asset.position} /><small>#{selected.score} edge · {selected.confidence}% confidence</small></span><h2>{selected.asset.name}</h2><p>{selected.owner.teamName} · {formatValue(selected.asset.value)} current market</p></div>
+          <div className="edge-price-grid">
+            <div><small>30 days</small><strong>{formatValue(selected.projectedValues.day30)}</strong></div>
+            <div><small>90 days</small><strong>{formatValue(selected.projectedValues.day90)}</strong></div>
+            <div><small>180 days</small><strong>{formatValue(selected.projectedValues.day180)}</strong></div>
           </div>
-          <p className="manager-summary">{profile.summary}</p>
-          <div className="manager-evidence-grid">
-            <div><small>Assets acquired</small><strong>{profile.receivedPlayers + profile.receivedPicks}</strong><span>{profile.receivedPlayers} players · {profile.receivedPicks} picks</span></div>
-            <div><small>Assets sent</small><strong>{profile.sentPlayers + profile.sentPicks}</strong><span>{profile.sentPlayers} players · {profile.sentPicks} picks</span></div>
-            <div><small>Pick appetite</small><strong>{Math.round(profile.pickShare * 100)}%</strong><span>share of acquired assets</span></div>
-            <div><small>Current-value history</small><strong className={profile.currentValueDelta >= 0 ? 'positive' : 'negative'}>{profile.currentValueDelta >= 0 ? '+' : ''}{formatValue(profile.currentValueDelta)}</strong><span>hindsight, not causal skill</span></div>
+          <div className="edge-thesis"><small>Thesis</small><p>{selected.thesis}</p><small>Catalyst</small><p>{selected.catalyst}</p><small>Invalidation</small><p>{selected.invalidation}</p></div>
+          <div className="edge-owner-control">
+            <div><small>Owner direction</small><strong>{selected.direction.label} · {selected.direction.confidence}%</strong></div>
+            <select aria-label={`Direction override for ${selected.owner.teamName}`} value={preferences.settings.teamDirectionOverrides?.[String(selected.owner.rosterId)] ?? 'auto'} onChange={(event) => setDirectionOverride(selected.owner.rosterId, event.target.value as 'auto' | TeamDirection['label'])}>
+              <option value="auto">Automatic</option><option value="contender">Contender</option><option value="retooling">Retooling</option><option value="rebuilding">Rebuilding</option>
+            </select>
           </div>
-          <div className="negotiation-steps">
-            <article><span>01</span><div><small>Opening offer</small><strong>{profile.opening}</strong></div></article>
-            <article><span>02</span><div><small>Target structure</small><strong>{profile.target}</strong></div></article>
-            <article><span>03</span><div><small>Walk-away line</small><strong>{profile.walkAway}</strong></div></article>
-          </div>
-          <div className="model-caveat"><Info size={17} /><span>{profile.evidenceNote}</span></div>
+          <div className="edge-price-ladder"><span><small>Open near</small><b>{formatValue(selected.openingPrice)}</b></span><span><small>Target</small><b>{formatValue(selected.targetPrice)}</b></span><span><small>Walk away</small><b>{formatValue(selected.walkAwayPrice)}</b></span></div>
+          <div className="model-caveat"><Info size={17} /><span>Projected values are transparent scenarios, not guaranteed market prices. The saved outcome book measures whether they hold up.</span></div>
+        </aside>}
+      </section>
+
+      {selected && plan && <section className="package-board panel edge-packages">
+        <div className="panel-heading"><div><span className="eyebrow">V4.5 execution desk</span><h2>Offer ladder for {selected.asset.name}</h2></div><span className="method-note">Opening → target → counter → ceiling</span></div>
+        {plan.packages.length ? plan.packages.map((tradePackage) => (
+          <article className={`package-row stage-${tradePackage.stage}`} key={`${tradePackage.stage}-${tradePackage.send.map((asset) => asset.id).join('-')}`}>
+            <span className="stage-label">{tradePackage.stage}</span>
+            <div><small>You send</small><strong>{tradePackage.send.map((asset) => asset.name).join(' + ')}</strong></div>
+            <ArrowLeftRight size={17} />
+            <div><small>You receive</small><strong>{tradePackage.receive.map((asset) => asset.name).join(' + ')}</strong></div>
+            <div className="package-scores"><span>Market <b>{tradePackage.marketDelta >= 0 ? '+' : ''}{formatValue(tradePackage.marketDelta)}</b></span><span>Partner fit <b>{tradePackage.acceptanceScore}</b></span><span>Lineup <b>{tradePackage.lineupDeltaMe >= 0 ? '+' : ''}{tradePackage.lineupDeltaMe.toFixed(1)}</b></span></div>
+            {tradePackage.stage !== 'walk-away' && <button type="button" className="log-offer" onClick={() => logPackage(tradePackage)}>Log draft</button>}
+          </article>
+        )) : <div className="intel-empty"><Target size={22} /><strong>No safe package cleared the limits.</strong><span>Keep the target on the board; do not force the price.</span></div>}
+        <div className="model-caveat"><Info size={17} /><span>{plan.evidenceNote}</span></div>
+      </section>}
+
+      <section className="edge-review-grid">
+        <div className="panel offer-book">
+          <div className="panel-heading"><div><span className="eyebrow">Negotiation log</span><h2>Offers and responses</h2></div><span className="method-note">Manual because Sleeper hides private proposals</span></div>
+          {edgeState.offers.length ? edgeState.offers.slice(0, 8).map((offer) => (
+            <article key={offer.offerId}><span><strong>{offer.targetAssetName}</strong><small>{offer.sentAssets.map((asset) => asset.name).join(' + ')} → {offer.receiveAssets.map((asset) => asset.name).join(' + ')}</small></span><select value={offer.status} onChange={(event) => updateOffer(offer, event.target.value as TradeOfferStatus)}><option value="draft">Draft</option><option value="sent">Sent</option><option value="countered">Countered</option><option value="rejected">Rejected</option><option value="accepted">Accepted</option><option value="withdrawn">Withdrawn</option></select></article>
+          )) : <div className="intel-empty"><Handshake size={20} /><strong>No offers logged yet.</strong><span>Log a generated package before sending it so rejections and counters become evidence.</span></div>}
+        </div>
+        <div className="panel attribution-book">
+          <div className="panel-heading"><div><span className="eyebrow">V4.6 attribution</span><h2>Did the edge materialize?</h2></div><span className="method-note">Entry snapshot vs current market</span></div>
+          {attributed.length ? attributed.slice(0, 8).map(({ snapshot, result }) => (
+            <article key={snapshot.snapshotKey}><span><strong>{snapshot.assetName}</strong><small>{result.daysTracked}d tracked · expected {formatValue(result.expectedValue)}</small></span><b className={result.valueChange >= 0 ? 'positive' : 'negative'}>{result.valueChange >= 0 ? '+' : ''}{formatValue(result.valueChange)}</b><i className={`attribution-${result.status}`}>{result.status.replace('-', ' ')}</i></article>
+          )) : <div className="intel-empty"><Clock3 size={20} /><strong>Outcome clock just started.</strong><span>Today’s immutable snapshots become honest 7/30/90/180-day evidence over time.</span></div>}
         </div>
       </section>
-      {plan && (
-        <section className="target-workbench">
-          <div className="panel-heading"><div><span className="eyebrow">V4 target finder</span><h2>Best fits on {team.teamName}</h2></div><span className="method-note">Need + timeline + lineup + availability</span></div>
-          <div className="target-grid">
-            {plan.targets.slice(0, 3).map((target, index) => (
-              <article className={`target-card panel ${index === 0 ? 'primary' : ''}`} key={target.asset.id}>
-                <span className="target-rank">#{index + 1}</span><AssetBadge position={target.asset.position} />
-                <h3>{target.asset.name}</h3><strong>{target.score}<small>/100 fit</small></strong>
-                <div>{target.reasons.map((reason) => <span key={reason.label}>{reason.label} {reason.score}</span>)}</div>
-                <p>{formatValue(target.asset.value)} market · {target.uncertaintyPenalty}% uncertainty</p>
-              </article>
-            ))}
-          </div>
-          <div className="package-board panel">
-            <div className="panel-heading"><div><span className="eyebrow">V4.1 negotiation builder</span><h2>Staged packages</h2></div><span className="method-note">Walk-away is a ceiling, not a recommendation</span></div>
-            {plan.packages.length ? plan.packages.map((tradePackage) => (
-              <article className={`package-row stage-${tradePackage.stage}`} key={`${tradePackage.stage}-${tradePackage.send.map((asset) => asset.id).join('-')}`}>
-                <span className="stage-label">{tradePackage.stage}</span>
-                <div><small>You send</small><strong>{tradePackage.send.map((asset) => asset.name).join(' + ')}</strong></div>
-                <ArrowLeftRight size={17} />
-                <div><small>You receive</small><strong>{tradePackage.receive.map((asset) => asset.name).join(' + ')}</strong></div>
-                <div className="package-scores"><span>Your fit <b>{tradePackage.myScore}</b></span><span>Partner fit <b>{tradePackage.acceptanceScore}</b></span><span>Lineup <b>{tradePackage.lineupDeltaMe >= 0 ? '+' : ''}{tradePackage.lineupDeltaMe.toFixed(1)}</b></span></div>
-              </article>
-            )) : <div className="intel-empty"><Target size={22} /><strong>No safe package cleared the limits.</strong><span>That is a useful answer—do not force a bad trade.</span></div>}
-            <div className="model-caveat"><Info size={17} /><span>{plan.evidenceNote}</span></div>
-          </div>
-        </section>
-      )}
     </main>
   )
 }
@@ -1253,7 +1375,7 @@ function AppHeader({
             <Radar size={17} /> Intel
           </button>
           <button type="button" className={view === 'strategy' ? 'active' : ''} onClick={() => setView('strategy')}>
-            <Handshake size={17} /> Strategy
+            <Target size={17} /> Trade hunter
           </button>
           <button type="button" className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}>
             <CircleGauge size={17} /> Model
@@ -1341,6 +1463,10 @@ function App() {
   const [userState, setUserState] = useState<UserState | null>(null)
   const initialLoad = useRef(false)
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }, [view, leagueId])
+
   const loadLeague = async (id: string, stateOverride: UserState | null = userState) => {
     const cleanId = id.trim()
     if (!/^\d+$/.test(cleanId)) {
@@ -1384,14 +1510,31 @@ function App() {
             : projection,
         ]),
       )
-      const teams = buildTeams(leagueBundle, valueBundle, sleeperPlayers, playerProjections)
+      const initialTeams = buildTeams(leagueBundle, valueBundle, sleeperPlayers, playerProjections)
       const transactions = journalTransactionsForCurrentManagers(journal, leagueBundle.league.league_id)
-      const managerProfiles = buildManagerProfiles(transactions, teams, valueBundle.players, valueBundle.picks)
       const existingPreference = stateOverride?.preferences.find((item) => item.leagueId === cleanId)
+      const initialDirections = buildTeamDirections({
+        teams: initialTeams,
+        transactions,
+        picks: valueBundle.picks,
+        overrides: existingPreference?.settings.teamDirectionOverrides,
+      })
+      const teams = applyDirectionPickProjections(initialTeams, initialDirections, valueBundle.picks)
+      const directions = buildTeamDirections({
+        teams,
+        transactions,
+        picks: valueBundle.picks,
+        overrides: existingPreference?.settings.teamDirectionOverrides,
+      })
+      const managerProfiles = buildManagerProfiles(transactions, teams, valueBundle.players, valueBundle.picks)
+      const authenticatedHandle = stateOverride?.user.email.split('@')[0]?.toLowerCase()
+      const inferredRosterId = authenticatedHandle
+        ? teams.find((team) => team.ownerName.toLowerCase() === authenticatedHandle || team.ownerName.toLowerCase().startsWith(authenticatedHandle))?.rosterId ?? null
+        : null
       const basePreference: LeaguePreferences = {
         leagueId: cleanId,
         leagueName: leagueBundle.league.name,
-        myRosterId: existingPreference?.myRosterId ?? null,
+        myRosterId: existingPreference?.myRosterId ?? inferredRosterId,
         watchlist: existingPreference?.watchlist ?? [],
         settings: existingPreference?.settings ?? {},
       }
@@ -1408,7 +1551,7 @@ function App() {
         }
         setUserState(nextState)
       }
-      setData({ leagueBundle, valueBundle, teams, modelHealth, eventModelHealth, managerProfiles, journal, preferences, user })
+      setData({ leagueBundle, valueBundle, teams, modelHealth, eventModelHealth, managerProfiles, directions, journal, preferences, user })
       setMode(preferences.settings.rankingMode ?? 'overall')
       setLeagueId(cleanId)
       setInputId(cleanId)
@@ -1442,7 +1585,30 @@ function App() {
         ...(patch.settings ?? {}),
       },
     }
-    setData({ ...data, preferences: next })
+    let nextData: AppData = { ...data, preferences: next }
+    if (patch.settings && Object.prototype.hasOwnProperty.call(patch.settings, 'teamDirectionOverrides')) {
+      const transactions = journalTransactionsForCurrentManagers(data.journal, data.leagueBundle.league.league_id)
+      const preliminary = buildTeamDirections({
+        teams: data.teams,
+        transactions,
+        picks: data.valueBundle.picks,
+        overrides: next.settings.teamDirectionOverrides,
+      })
+      const teams = applyDirectionPickProjections(data.teams, preliminary, data.valueBundle.picks)
+      const directions = buildTeamDirections({
+        teams,
+        transactions,
+        picks: data.valueBundle.picks,
+        overrides: next.settings.teamDirectionOverrides,
+      })
+      nextData = {
+        ...nextData,
+        teams,
+        directions,
+        managerProfiles: buildManagerProfiles(transactions, teams, data.valueBundle.players, data.valueBundle.picks),
+      }
+    }
+    setData(nextData)
     void saveLeaguePreferences(next).then((saved) => {
       setData((current) => current && current.leagueBundle.league.league_id === next.leagueId
         ? { ...current, preferences: saved.preferences, user: saved.user }
@@ -1464,9 +1630,14 @@ function App() {
     setJournalSyncing(true)
     try {
       const journal = await syncJournal(data.leagueBundle.league.league_id)
-      const transactions = journalTransactionsForCurrentManagers(journal, data.leagueBundle.league.league_id)
-      const managerProfiles = buildManagerProfiles(transactions, data.teams, data.valueBundle.players, data.valueBundle.picks)
-      setData((current) => current ? { ...current, journal, managerProfiles } : current)
+      setData((current) => {
+        if (!current) return current
+        const transactions = journalTransactionsForCurrentManagers(journal, current.leagueBundle.league.league_id)
+        const preliminary = buildTeamDirections({ teams: current.teams, transactions, picks: current.valueBundle.picks, overrides: current.preferences.settings.teamDirectionOverrides })
+        const teams = applyDirectionPickProjections(current.teams, preliminary, current.valueBundle.picks)
+        const directions = buildTeamDirections({ teams, transactions, picks: current.valueBundle.picks, overrides: current.preferences.settings.teamDirectionOverrides })
+        return { ...current, journal, teams, directions, managerProfiles: buildManagerProfiles(transactions, teams, current.valueBundle.players, current.valueBundle.picks) }
+      })
     } catch (syncError) {
       setError(syncError instanceof Error ? syncError.message : 'Journal sync failed')
     } finally {
@@ -1513,7 +1684,7 @@ function App() {
           ) : view === 'intel' ? (
             <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
           ) : view === 'strategy' ? (
-            <StrategyView key={`strategy-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} preferredRosterId={data.preferences.settings.strategyRosterId} onUpdatePreferences={updatePreferences} />
+            <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
           ) : (
             <ModelView health={data.modelHealth} />
           )}

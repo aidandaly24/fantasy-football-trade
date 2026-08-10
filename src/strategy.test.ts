@@ -51,4 +51,13 @@ describe('deterministic strategy engine', () => {
     const plan = buildTradePlan([mine, theirs], { myRosterId: 1, counterpartRosterId: 2, rosterPositions })
     expect(plan.packages).toEqual([])
   })
+
+  it('never substitutes a different player when a selected target has no safe package', () => {
+    const mine = team(1, [asset('small-pick', 'PICK', 100), asset('bench', 'WR', 90, { depthChartOrder: 4 })])
+    const theirs = team(2, [asset('cornerstone', 'QB', 1000), asset('attainable', 'RB', 100)])
+    const plan = buildTradePlan([mine, theirs], { myRosterId: 1, counterpartRosterId: 2, rosterPositions, targetAssetId: 'cornerstone', maxTargets: 20 })
+    expect(plan.targets).toHaveLength(1)
+    expect(plan.targets[0].asset.id).toBe('cornerstone')
+    expect(plan.packages).toEqual([])
+  })
 })

@@ -1,6 +1,8 @@
 import type {
   ApiMeta,
   EventModelHealthBundle,
+  EdgeOpportunitySnapshot,
+  EdgeStateBundle,
   AlertInbox,
   IntelFeed,
   JournalBundle,
@@ -17,6 +19,7 @@ import type {
   SleeperTransaction,
   TradyrPlayer,
   TradedPick,
+  TradeOfferRecord,
   UserState,
   ValueBundle,
 } from './types'
@@ -217,6 +220,32 @@ export async function updateAlertReadState(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ eventKeys, read }),
+  })
+}
+
+export async function fetchEdgeState(leagueId: string): Promise<EdgeStateBundle> {
+  return fetchJson<EdgeStateBundle>(`/api/edge?leagueId=${encodeURIComponent(leagueId)}`)
+}
+
+export async function saveEdgeSnapshots(
+  leagueId: string,
+  opportunities: EdgeOpportunitySnapshot[],
+): Promise<EdgeStateBundle> {
+  return fetchJson<EdgeStateBundle>(`/api/edge?leagueId=${encodeURIComponent(leagueId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'snapshot', opportunities }),
+  })
+}
+
+export async function saveTradeOffer(
+  leagueId: string,
+  offer: TradeOfferRecord,
+): Promise<EdgeStateBundle> {
+  return fetchJson<EdgeStateBundle>(`/api/edge?leagueId=${encodeURIComponent(leagueId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'offer', offer }),
   })
 }
 

@@ -60,6 +60,7 @@ export type StrategyOptions = {
   direction?: StrategyDirection
   manager?: ManagerPreferences
   maxTargets?: number
+  targetAssetId?: string
 }
 
 const SKILL = new Set<Asset['position']>(['QB', 'RB', 'WR', 'TE'])
@@ -187,7 +188,10 @@ export function buildTradePlan(teams: Team[], options: StrategyOptions): TradePl
   const mine = teams.find((team) => team.rosterId === options.myRosterId)
   const theirs = teams.find((team) => team.rosterId === options.counterpartRosterId)
   const direction = options.direction ?? 'buy'
-  const targets = findTargets(teams, options)
+  const rankedTargets = findTargets(teams, options)
+  const targets = options.targetAssetId
+    ? rankedTargets.filter((target) => target.asset.id === options.targetAssetId)
+    : rankedTargets
   if (!mine || !theirs || direction !== 'buy') return { myRosterId: options.myRosterId, counterpartRosterId: options.counterpartRosterId, direction, targets, packages: [], evidenceNote: 'Select two different current rosters. Sell-side automation is intentionally deferred.' }
   const outgoing = [...mine.players, ...mine.picks]
     .filter((asset) => asset.value > 0)

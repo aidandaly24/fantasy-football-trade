@@ -28,6 +28,14 @@ import {
   type CanonicalIntelEvent,
   type PlayerCandidate,
 } from './alerts-store'
+import {
+  ensureEdgeSchema,
+  normalizeOfferInput,
+  normalizeOpportunityInput,
+  readEdgeState,
+  saveOpportunitySnapshots,
+  saveTradeOffer,
+} from './edge-store'
 
 interface AssetsBinding {
   fetch(request: Request): Promise<Response>
@@ -497,6 +505,36 @@ ORDER BY a.created_at DESC LIMIT 100`).bind(user.id, leagueId).all<AlertRow>()
   }
 }
 
+async function edgeResponse(request: Request, env: Env): Promise<Response> {
+  const user = authenticatedUser(request)
+  if (!user) return privateJson({ message: 'Authenticated site access required' }, 401)
+  if (!env.DB) return privateJson({ message: 'Private storage is not configured' }, 503)
+  const url = new URL(request.url)
+  const leagueId = url.searchParams.get('leagueId')
+  if (!validLeagueId(leagueId)) return privateJson({ message: 'Invalid league ID' }, 400)
+  try {
+    await ensureEdgeSchema(env.DB)
+    if (request.method === 'GET') return privateJson(await readEdgeState(env.DB, user.id, leagueId))
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, POST' } })
+    }
+    if (!sameOriginWrite(request)) return privateJson({ message: 'Cross-origin writes are not allowed' }, 403)
+    const input = await request.json().catch(() => null) as { action?: unknown; opportunities?: unknown; offer?: unknown } | null
+    if (input?.action === 'snapshot') {
+      if (!Array.isArray(input.opportunities)) return privateJson({ message: 'Invalid opportunity snapshot' }, 400)
+      const snapshots = input.opportunities.slice(0, 30).map((item) => normalizeOpportunityInput(item))
+      await saveOpportunitySnapshots(env.DB, user.id, leagueId, snapshots)
+    } else if (input?.action === 'offer') {
+      await saveTradeOffer(env.DB, user.id, leagueId, normalizeOfferInput(input.offer))
+    } else {
+      return privateJson({ message: 'Invalid edge action' }, 400)
+    }
+    return privateJson(await readEdgeState(env.DB, user.id, leagueId))
+  } catch (error) {
+    return privateJson({ message: error instanceof Error ? error.message : 'Edge research unavailable' }, 500)
+  }
+}
+
 const worker = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
@@ -513,6 +551,9 @@ const worker = {
     if (url.pathname === '/api/alerts') {
       return alertsResponse(request, env)
     }
+    if (url.pathname === '/api/edge') {
+      return edgeResponse(request, env)
+    }
 
     const response = await env.ASSETS.fetch(request)
     const contentType = response.headers.get('content-type') ?? ''
@@ -525,6 +566,14 @@ const worker = {
       statusText: response.statusText,
       headers: response.headers,
     })
+  },
+  async scheduled(_controller: unknown, env: Env, context: { waitUntil(promise: Promise<unknown>): void }): Promise<void> {
+    if (!env.DB) return
+    context.waitUntil((async () => {
+      await ensureAlertSchema(env.DB!)
+      await env.DB!.prepare(CREATE_REFRESH_RUNS).run()
+      await refreshAlertEvents(env.DB!)
+    })())
   },
 }
 

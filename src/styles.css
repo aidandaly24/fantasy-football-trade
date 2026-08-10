@@ -3216,3 +3216,217 @@ footer a {
   .package-row > svg { transform: rotate(90deg); }
   .package-scores { grid-column: auto; }
 }
+
+/* V4.3–V4.6: league-wide edge discovery, execution, and attribution. */
+.edge-page {
+  display: grid;
+  gap: 16px;
+}
+
+.edge-hero {
+  min-height: 270px;
+  padding: 42px 46px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 30px;
+  color: #f6f4ec;
+  background:
+    radial-gradient(circle at 78% 18%, rgba(216, 255, 104, 0.2), transparent 23rem),
+    radial-gradient(circle at 22% 110%, rgba(80, 129, 255, 0.2), transparent 24rem),
+    var(--dark);
+  border-radius: 25px 8px 25px 8px;
+}
+
+.edge-hero h1 {
+  margin: 9px 0 12px;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: clamp(44px, 5vw, 70px);
+  font-weight: 500;
+  line-height: 0.91;
+  letter-spacing: -0.055em;
+}
+
+.edge-hero p {
+  max-width: 760px;
+  margin: 0;
+  color: #b6bbb0;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.edge-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.edge-stats article {
+  min-height: 116px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.edge-stats small,
+.edge-stats span { color: var(--ink-soft); font-size: 8px; }
+.edge-stats strong { margin: 5px 0 3px; font-family: 'Newsreader', Georgia, serif; font-size: 30px; line-height: 1; }
+
+.direction-tape {
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.direction-tape > div:first-child { display: grid; gap: 4px; }
+.direction-tape > div:first-child strong { font-size: 9px; }
+.direction-tape-list { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: thin; }
+.direction-tape-list button { min-width: 150px; padding: 10px; display: grid; grid-template-columns: 9px minmax(0, 1fr); gap: 3px 7px; text-align: left; background: #efede6; border: 1px solid transparent; border-radius: 9px; }
+.direction-tape-list button:hover { border-color: #c7c9be; }
+.direction-tape-list strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; }
+.direction-tape-list small { grid-column: 2; color: var(--ink-soft); font-size: 7px; text-transform: capitalize; }
+.direction-dot { width: 7px; height: 7px; margin-top: 2px; border-radius: 50%; background: #959b91; }
+.direction-dot.direction-contender { background: var(--green); }
+.direction-dot.direction-rebuilding { background: var(--orange); }
+.direction-dot.direction-retooling { background: #7487d7; }
+
+.edge-toolbar {
+  padding: 11px 15px;
+  display: flex;
+  align-items: center;
+  gap: 17px;
+}
+
+.edge-toolbar label { display: grid; gap: 3px; }
+.edge-toolbar label small { color: var(--ink-soft); font-size: 7px; font-weight: 800; }
+.edge-toolbar select,
+.edge-owner-control select,
+.offer-book select { padding: 8px 10px; color: var(--ink); background: #efede6; border: 1px solid var(--line); border-radius: 8px; font-size: 8px; }
+.edge-toolbar > span { margin-left: auto; color: var(--ink-soft); font-size: 8px; }
+
+.edge-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.62fr) minmax(320px, 0.78fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.edge-board,
+.edge-detail,
+.offer-book,
+.attribution-book { overflow: hidden; }
+.edge-list { display: grid; }
+.edge-row {
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 13px;
+  display: grid;
+  grid-template-columns: 30px minmax(180px, 1.45fr) minmax(90px, 0.8fr) 88px 60px 54px 16px;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--line);
+  transition: background 140ms ease, box-shadow 140ms ease;
+}
+
+.edge-row:hover,
+.edge-row.active { background: rgba(216, 255, 104, 0.13); }
+.edge-row.active { box-shadow: inset 3px 0 var(--acid-deep); }
+.edge-rank { color: #8c9188; font-family: 'DM Mono', monospace; font-size: 8px; }
+.edge-player { min-width: 0; display: flex; align-items: center; gap: 9px; }
+.edge-player > span { min-width: 0; display: grid; gap: 3px; }
+.edge-player strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
+.edge-player small,
+.edge-row > span > small { color: var(--ink-soft); font-size: 7px; }
+.edge-row > span > strong { display: block; margin-top: 3px; font-family: 'DM Mono', monospace; font-size: 9px; }
+.edge-categories { display: flex; flex-wrap: wrap; gap: 3px; }
+.edge-categories i { padding: 4px 5px; color: #59602d; background: #e7efc9; border-radius: 5px; font-size: 6px; font-style: normal; font-weight: 800; text-transform: uppercase; }
+.edge-score { width: 48px; height: 48px; display: grid !important; place-content: center; text-align: center; background: var(--dark); border-radius: 50%; }
+.edge-score strong { margin: 0 !important; color: var(--acid); font-family: 'Newsreader', Georgia, serif !important; font-size: 18px !important; line-height: 1; }
+.edge-score small { color: #aeb3a9 !important; font-size: 6px !important; }
+
+.edge-detail { position: sticky; top: 84px; }
+.edge-detail-head { padding: 22px 22px 16px; background: linear-gradient(145deg, rgba(216, 255, 104, 0.2), transparent 65%); }
+.edge-detail-head > span { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.edge-detail-head > span small { color: var(--ink-soft); font-size: 7px; }
+.edge-detail-head h2 { margin: 14px 0 3px; font-family: 'Newsreader', Georgia, serif; font-size: 32px; }
+.edge-detail-head p { margin: 0; color: var(--ink-soft); font-size: 8px; }
+.edge-price-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.edge-price-grid > div { padding: 13px 12px; display: grid; gap: 5px; border-right: 1px solid var(--line); }
+.edge-price-grid > div:last-child { border-right: 0; }
+.edge-price-grid small,
+.edge-thesis small,
+.edge-owner-control small,
+.edge-price-ladder small { color: var(--ink-soft); font-size: 7px; font-weight: 800; text-transform: uppercase; }
+.edge-price-grid strong { font-family: 'DM Mono', monospace; font-size: 10px; }
+.edge-thesis { padding: 16px 20px 7px; }
+.edge-thesis p { margin: 5px 0 13px; color: #50564e; font-size: 8px; line-height: 1.55; }
+.edge-owner-control { margin: 0 18px 14px; padding: 11px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #efede6; border-radius: 9px; }
+.edge-owner-control > div { display: grid; gap: 3px; }
+.edge-owner-control strong { font-size: 8px; text-transform: capitalize; }
+.edge-price-ladder { margin: 0 18px 18px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.edge-price-ladder span { padding: 10px; display: grid; gap: 4px; background: #f2f0e9; border: 1px solid var(--line); border-radius: 8px; }
+.edge-price-ladder b { font-family: 'DM Mono', monospace; font-size: 9px; }
+.edge-detail .model-caveat { margin: 0; border-width: 1px 0 0; border-radius: 0; }
+
+.edge-packages .package-row { grid-template-columns: 76px minmax(0, 1fr) 20px minmax(0, 1fr) 200px auto; }
+.log-offer { min-height: 34px; padding: 0 10px; color: var(--ink); background: var(--acid); border: 0; border-radius: 8px; font-size: 7px; font-weight: 900; white-space: nowrap; }
+
+.edge-review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.offer-book article,
+.attribution-book article { min-height: 68px; padding: 11px 14px; display: grid; align-items: center; gap: 10px; border-top: 1px solid var(--line); }
+.offer-book article { grid-template-columns: minmax(0, 1fr) auto; }
+.attribution-book article { grid-template-columns: minmax(0, 1fr) auto 74px; }
+.offer-book article > span,
+.attribution-book article > span { min-width: 0; display: grid; gap: 4px; }
+.offer-book strong,
+.attribution-book strong { font-size: 9px; }
+.offer-book small,
+.attribution-book small { overflow: hidden; color: var(--ink-soft); font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.attribution-book article > b { font-family: 'DM Mono', monospace; font-size: 9px; }
+.attribution-book article > i { padding: 5px 6px; color: #667066; background: #e8e9e3; border-radius: 6px; font-size: 6px; font-style: normal; font-weight: 900; text-align: center; text-transform: uppercase; }
+.attribution-book article > i.attribution-ahead,
+.attribution-book article > i.attribution-on-track { color: #28614c; background: #dceee6; }
+.attribution-book article > i.attribution-behind { color: #8c392f; background: #f3d4ce; }
+
+@media (max-width: 1120px) {
+  .edge-layout { grid-template-columns: 1fr; }
+  .edge-detail { position: static; }
+  .edge-packages .package-row { grid-template-columns: 70px minmax(0, 1fr) 20px minmax(0, 1fr); }
+  .edge-packages .package-scores { grid-column: 2 / 5; }
+  .edge-packages .log-offer { grid-column: 4; }
+}
+
+@media (max-width: 860px) {
+  .edge-hero { min-height: 0; padding: 32px; align-items: flex-start; flex-direction: column; }
+  .edge-stats { grid-template-columns: 1fr 1fr; }
+  .direction-tape { grid-template-columns: 1fr; }
+  .edge-toolbar { align-items: flex-start; flex-direction: column; }
+  .edge-toolbar > span { margin-left: 0; }
+  .edge-row { grid-template-columns: 26px minmax(0, 1fr) 70px 52px 16px; }
+  .edge-row .edge-categories,
+  .edge-row > span:nth-of-type(4) { display: none; }
+  .edge-review-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .edge-page { padding-top: 25px; }
+  .edge-hero { padding: 25px 21px; }
+  .edge-hero h1 { font-size: 39px; }
+  .edge-stats article { min-height: 102px; }
+  .edge-row { min-height: 68px; padding: 9px 10px; grid-template-columns: 22px minmax(0, 1fr) 48px 14px; }
+  .edge-row > span:nth-of-type(5) { display: none; }
+  .edge-player .position-badge { display: none; }
+  .edge-score { width: 42px; height: 42px; }
+  .edge-price-ladder { grid-template-columns: 1fr; }
+  .edge-packages .package-row { grid-template-columns: 1fr; }
+  .edge-packages .package-scores,
+  .edge-packages .log-offer { grid-column: auto; }
+  .edge-packages .package-row > svg { transform: rotate(90deg); }
+}

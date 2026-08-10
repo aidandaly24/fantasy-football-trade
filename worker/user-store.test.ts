@@ -106,9 +106,9 @@ describe('private user state', () => {
       leagueId: '1336087922847289344',
       leagueName: 'BC League',
       watchlist: ['11625', '11625', '<script>'],
-      settings: { rankingMode: 'overall', unknown: true },
+      settings: { rankingMode: 'overall', edgeFilter: 'intel', teamDirectionOverrides: { '3': 'rebuilding', nope: 'contender', '4': 'invalid' }, unknown: true },
     })
     expect(input.watchlist).toEqual(['11625'])
-    expect(input.settings).toEqual({ rankingMode: 'overall' })
+    expect(input.settings).toEqual({ rankingMode: 'overall', edgeFilter: 'intel', teamDirectionOverrides: { '3': 'rebuilding' } })
   })
 })

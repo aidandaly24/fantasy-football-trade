@@ -353,6 +353,8 @@ export type LeaguePreferences = {
   settings: {
     rankingMode?: RankingMode
     strategyRosterId?: number
+    edgeFilter?: 'all' | 'value' | 'points' | 'intel'
+    teamDirectionOverrides?: Record<string, 'contender' | 'retooling' | 'rebuilding'>
   }
   updatedAt?: string
 }
@@ -529,4 +531,45 @@ export type AlertInbox = {
     nextEligibleAt: string | null
     errorMessage: string | null
   }
+}
+
+export type EdgeOpportunitySnapshot = {
+  snapshotKey: string
+  assetId: string
+  assetName: string
+  ownerRosterId: number
+  capturedAt: string
+  currentValue: number
+  projection30: number
+  projection90: number
+  projection180: number
+  edgeScore: number
+  lineupDelta: number
+  confidence: number
+  categories: Array<'value' | 'points' | 'intel'>
+  catalyst: string
+  status: 'tracking' | 'acted' | 'expired' | string
+}
+
+export type TradeOfferStatus = 'draft' | 'sent' | 'countered' | 'rejected' | 'accepted' | 'withdrawn'
+
+export type TradeOfferRecord = {
+  offerId: string
+  counterpartRosterId: number
+  targetAssetId: string
+  targetAssetName: string
+  stage: 'opening' | 'target' | 'counter' | 'walk-away'
+  status: TradeOfferStatus
+  sentAssets: Array<{ id: string; name: string; value: number }>
+  receiveAssets: Array<{ id: string; name: string; value: number }>
+  marketDelta: number
+  lineupDelta: number
+  thesis: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type EdgeStateBundle = {
+  opportunities: EdgeOpportunitySnapshot[]
+  offers: TradeOfferRecord[]
 }
