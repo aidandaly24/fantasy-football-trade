@@ -569,7 +569,115 @@ export type TradeOfferRecord = {
   updatedAt: string
 }
 
+export type EdgeFeatureVector = {
+  ruleGain30: number
+  ruleGain90: number
+  edgeScore: number
+  lineupDelta: number
+  catalystScore: number
+  sellerFit: number
+  liquidityScore: number
+  timingScore: number
+  uncertaintyPenalty: number
+  confidence: number
+  age: number
+  contenderProbability: number
+  rebuildingProbability: number
+}
+
+export type MarketTapeAssetInput = {
+  assetId: string
+  assetName: string
+  kind: 'player' | 'pick'
+  position: Asset['position']
+  ownerRosterId: number
+  currentValue: number
+  projection30: number
+  confidence: number
+  eventType: string
+  newsDirection: 'up' | 'down' | 'watch' | 'none'
+  features: EdgeFeatureVector
+  metadata: {
+    year?: string
+    round?: number
+    slot?: number
+    projectedTier?: PickTier | 'known'
+  }
+}
+
+export type MarketTapeRequest = {
+  assets: MarketTapeAssetInput[]
+  format: {
+    numQbs: 1 | 2
+    tep: boolean
+    numTeams: number
+  }
+  sourceVersion: string
+}
+
+export type MarketTapeSummary = {
+  snapshotCount: number
+  assetsTracked: number
+  firstSnapshotAt: string | null
+  lastSnapshotAt: string | null
+  spanDays: number
+  labeledExamples: number
+  labeledOffers: number
+  lastAutomaticRefreshAt: string | null
+  automaticRefreshError: string | null
+}
+
+export type EdgeCalibrationGroup = {
+  key: string
+  label: string
+  sampleSize: number
+  actualReturn: number
+  ruleReturn: number
+  residualReturn: number
+  shrunkenReturn: number
+  confidence: number
+}
+
+export type EdgeShadowGate = {
+  id: string
+  label: string
+  passed: boolean
+  actual: number
+  requirement: string
+}
+
+export type EdgeShadowModelHealth = {
+  version: string
+  status: 'collecting' | 'shadow' | 'passed-shadow'
+  productionEnabled: false
+  trainedAt: string | null
+  trainingRows: number
+  validationRows: number
+  uniqueAssets: number
+  dateSpanDays: number
+  metrics: {
+    modelMae: number | null
+    baselineMae: number | null
+    maeImprovement: number | null
+    rankCorrelation: number | null
+    baselineRankCorrelation: number | null
+  }
+  gates: EdgeShadowGate[]
+}
+
+export type EdgeShadowPrediction = {
+  assetId: string
+  expectedReturn30: number
+  expectedValue30: number
+  confidence: number
+  mode: 'shadow'
+}
+
 export type EdgeStateBundle = {
   opportunities: EdgeOpportunitySnapshot[]
   offers: TradeOfferRecord[]
+  marketTape: MarketTapeSummary
+  calibration: EdgeCalibrationGroup[]
+  shadowModel: EdgeShadowModelHealth
+  shadowPredictions: EdgeShadowPrediction[]
 }

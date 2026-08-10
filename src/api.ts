@@ -11,6 +11,7 @@ import type {
   LeaguePreferences,
   LeagueUser,
   ModelHealthBundle,
+  MarketTapeRequest,
   PickValue,
   ProjectionBundle,
   SleeperDraft,
@@ -246,6 +247,17 @@ export async function saveTradeOffer(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'offer', offer }),
+  })
+}
+
+export async function saveMarketTape(
+  leagueId: string,
+  marketTape: MarketTapeRequest,
+): Promise<EdgeStateBundle> {
+  return fetchJson<EdgeStateBundle>(`/api/edge?leagueId=${encodeURIComponent(leagueId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'market', marketTape }),
   })
 }
 

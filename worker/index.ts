@@ -36,6 +36,14 @@ import {
   saveOpportunitySnapshots,
   saveTradeOffer,
 } from './edge-store'
+import {
+  ensureEdgeLearningSchema,
+  normalizeMarketTapeInput,
+  readEdgeLearningState,
+  rebuildEdgeLearningState,
+  refreshTrackedMarketTapes,
+  saveMarketTape,
+} from './edge-learning-store'
 
 interface AssetsBinding {
   fetch(request: Request): Promise<Response>
@@ -513,23 +521,36 @@ async function edgeResponse(request: Request, env: Env): Promise<Response> {
   const leagueId = url.searchParams.get('leagueId')
   if (!validLeagueId(leagueId)) return privateJson({ message: 'Invalid league ID' }, 400)
   try {
-    await ensureEdgeSchema(env.DB)
-    if (request.method === 'GET') return privateJson(await readEdgeState(env.DB, user.id, leagueId))
+    await Promise.all([ensureEdgeSchema(env.DB), ensureEdgeLearningSchema(env.DB)])
+    const readState = async () => {
+      const [edge, learning] = await Promise.all([
+        readEdgeState(env.DB!, user.id, leagueId),
+        readEdgeLearningState(env.DB!, user.id, leagueId),
+      ])
+      return { ...edge, ...learning }
+    }
+    if (request.method === 'GET') return privateJson(await readState())
     if (request.method !== 'POST') {
       return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, POST' } })
     }
     if (!sameOriginWrite(request)) return privateJson({ message: 'Cross-origin writes are not allowed' }, 403)
-    const input = await request.json().catch(() => null) as { action?: unknown; opportunities?: unknown; offer?: unknown } | null
+    const input = await request.json().catch(() => null) as {
+      action?: unknown; opportunities?: unknown; offer?: unknown; marketTape?: unknown
+    } | null
     if (input?.action === 'snapshot') {
       if (!Array.isArray(input.opportunities)) return privateJson({ message: 'Invalid opportunity snapshot' }, 400)
       const snapshots = input.opportunities.slice(0, 30).map((item) => normalizeOpportunityInput(item))
       await saveOpportunitySnapshots(env.DB, user.id, leagueId, snapshots)
     } else if (input?.action === 'offer') {
       await saveTradeOffer(env.DB, user.id, leagueId, normalizeOfferInput(input.offer))
+    } else if (input?.action === 'market') {
+      const tape = normalizeMarketTapeInput(input.marketTape)
+      await saveMarketTape(env.DB, user.id, leagueId, tape)
+      await rebuildEdgeLearningState(env.DB, user.id, leagueId)
     } else {
       return privateJson({ message: 'Invalid edge action' }, 400)
     }
-    return privateJson(await readEdgeState(env.DB, user.id, leagueId))
+    return privateJson(await readState())
   } catch (error) {
     return privateJson({ message: error instanceof Error ? error.message : 'Edge research unavailable' }, 500)
   }
@@ -570,9 +591,14 @@ const worker = {
   async scheduled(_controller: unknown, env: Env, context: { waitUntil(promise: Promise<unknown>): void }): Promise<void> {
     if (!env.DB) return
     context.waitUntil((async () => {
-      await ensureAlertSchema(env.DB!)
-      await env.DB!.prepare(CREATE_REFRESH_RUNS).run()
-      await refreshAlertEvents(env.DB!)
+      await Promise.all([
+        (async () => {
+          await ensureAlertSchema(env.DB!)
+          await env.DB!.prepare(CREATE_REFRESH_RUNS).run()
+          await refreshAlertEvents(env.DB!)
+        })(),
+        refreshTrackedMarketTapes(env.DB!),
+      ])
     })())
   },
 }

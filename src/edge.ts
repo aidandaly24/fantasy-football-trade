@@ -5,6 +5,7 @@ import type {
   Asset,
   EdgeOpportunitySnapshot,
   IntelSignal,
+  MarketTapeAssetInput,
   PickTier,
   PickValue,
   SleeperTransaction,
@@ -385,6 +386,59 @@ export function buildEdgeBoard(teams: Team[], options: EdgeBoardOptions): EdgeOp
   return opportunities
     .sort((a, b) => b.score - a.score || b.projectedGainPercent - a.projectedGainPercent || b.lineupDelta - a.lineupDelta || a.key.localeCompare(b.key))
     .slice(0, options.maxResults ?? 24)
+}
+
+/** Captures every rostered asset, including controls that were not recommended. */
+export function marketTapeAssets(
+  teams: Team[],
+  directions: TeamDirection[],
+  opportunities: EdgeOpportunity[],
+): MarketTapeAssetInput[] {
+  const directionByRoster = new Map(directions.map((direction) => [direction.rosterId, direction]))
+  const opportunityByAsset = new Map(opportunities.map((opportunity) => [`${opportunity.owner.rosterId}:${opportunity.asset.id}`, opportunity]))
+  const seen = new Set<string>()
+  return teams.flatMap((team) => [...team.players, ...team.picks].flatMap((asset) => {
+    const identity = `${team.rosterId}:${asset.id}`
+    if (seen.has(identity)) return []
+    seen.add(identity)
+    const opportunity = opportunityByAsset.get(identity)
+    const direction = directionByRoster.get(team.rosterId)
+    const currentValue = Math.max(0, Math.round(asset.value))
+    const projection30 = opportunity?.projectedValues.day30 ?? currentValue
+    return [{
+      assetId: asset.id,
+      assetName: asset.name,
+      kind: asset.kind,
+      position: asset.position,
+      ownerRosterId: team.rosterId,
+      currentValue,
+      projection30,
+      confidence: Math.round(normalizedConfidence(asset.confidence)),
+      eventType: opportunity?.intel?.articles[0]?.eventType ?? 'none',
+      newsDirection: opportunity?.intel?.direction ?? 'none',
+      features: {
+        ruleGain30: currentValue ? (projection30 - currentValue) / currentValue : 0,
+        ruleGain90: currentValue && opportunity ? (opportunity.projectedValues.day90 - currentValue) / currentValue : 0,
+        edgeScore: opportunity?.score ?? 0,
+        lineupDelta: opportunity?.lineupDelta ?? 0,
+        catalystScore: opportunity?.catalystScore ?? 0,
+        sellerFit: opportunity?.sellerFit ?? 0,
+        liquidityScore: opportunity?.liquidityScore ?? Math.round(assetStability(asset) * 100),
+        timingScore: opportunity?.timingScore ?? 0,
+        uncertaintyPenalty: opportunity?.uncertaintyPenalty ?? Math.round((1 - normalizedConfidence(asset.confidence) / 100) * 100),
+        confidence: opportunity?.confidence ?? Math.round(normalizedConfidence(asset.confidence)),
+        age: asset.age ?? (asset.kind === 'pick' ? 0 : 27),
+        contenderProbability: direction?.contenderProbability ?? 0.33,
+        rebuildingProbability: direction?.rebuildingProbability ?? 0.33,
+      },
+      metadata: {
+        year: asset.year,
+        round: asset.round,
+        slot: asset.slot,
+        projectedTier: asset.projectedTier,
+      },
+    }]
+  }))
 }
 
 export function opportunitySnapshot(

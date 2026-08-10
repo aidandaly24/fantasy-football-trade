@@ -193,7 +193,11 @@ function parseJson<T>(value: string, fallback: T): T {
   try { return JSON.parse(value) as T } catch { return fallback }
 }
 
-export async function readEdgeState(db: D1Database, userId: string, leagueId: string): Promise<EdgeStateBundle> {
+export async function readEdgeState(
+  db: D1Database,
+  userId: string,
+  leagueId: string,
+): Promise<Pick<EdgeStateBundle, 'opportunities' | 'offers'>> {
   const [opportunities, offers] = await Promise.all([
     db.prepare(`SELECT snapshot_key, asset_id, asset_name, owner_roster_id, captured_at, current_value,
 projection_30, projection_90, projection_180, edge_score, lineup_delta, confidence,

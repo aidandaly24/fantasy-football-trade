@@ -27,9 +27,10 @@ import {
   X,
 } from 'lucide-react'
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchAlerts, fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchSleeperPlayers, fetchUserState, fetchValues, saveEdgeSnapshots, saveLeaguePreferences, saveTradeOffer, syncJournal, updateAlertReadState } from './api'
-import { applyDirectionPickProjections, attributeOpportunity, buildEdgeBoard, buildTeamDirections, opportunitySnapshot } from './edge'
+import { fetchAlerts, fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchSleeperPlayers, fetchUserState, fetchValues, saveEdgeSnapshots, saveLeaguePreferences, saveMarketTape, saveTradeOffer, syncJournal, updateAlertReadState } from './api'
+import { applyDirectionPickProjections, attributeOpportunity, buildEdgeBoard, buildTeamDirections, marketTapeAssets, opportunitySnapshot } from './edge'
 import type { EdgeCategory, TeamDirection } from './edge'
+import { emptyShadowHealth } from './edge-learning'
 import { buildIntelSignals, timeAgo } from './intel'
 import { journalTransactionsForCurrentManagers, tradePartyNames } from './journal'
 import { buildManagerProfiles } from './negotiation'
@@ -39,6 +40,21 @@ import { buildTradePlan } from './strategy'
 import type { Asset, AlertInbox, EdgeStateBundle, EventModelHealthBundle, IntelFeed, IntelSignal, JournalBundle, JournalTrade, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, Team, TradeOfferRecord, TradeOfferStatus, UserIdentity, UserState, ValueBundle } from './types'
 
 const DEFAULT_LEAGUE_ID = '1336087922847289344'
+
+function emptyEdgeState(): EdgeStateBundle {
+  return {
+    opportunities: [],
+    offers: [],
+    marketTape: {
+      snapshotCount: 0, assetsTracked: 0, firstSnapshotAt: null, lastSnapshotAt: null,
+      spanDays: 0, labeledExamples: 0, labeledOffers: 0, lastAutomaticRefreshAt: null,
+      automaticRefreshError: null,
+    },
+    calibration: [],
+    shadowModel: emptyShadowHealth(),
+    shadowPredictions: [],
+  }
+}
 
 type AppData = {
   leagueBundle: LeagueBundle
@@ -974,6 +990,7 @@ function EdgeView({
   valueBundle,
   journal,
   preferences,
+  marketFormat,
   onUpdatePreferences,
 }: {
   teams: Team[]
@@ -984,15 +1001,17 @@ function EdgeView({
   valueBundle: ValueBundle
   journal: JournalBundle
   preferences: LeaguePreferences
+  marketFormat: { numQbs: 1 | 2; tep: boolean; numTeams: number }
   onUpdatePreferences: (patch: Partial<LeaguePreferences>) => void
 }) {
   const [feed, setFeed] = useState<IntelFeed | null>(null)
   const [intelLoaded, setIntelLoaded] = useState(false)
-  const [edgeState, setEdgeState] = useState<EdgeStateBundle>({ opportunities: [], offers: [] })
+  const [edgeState, setEdgeState] = useState<EdgeStateBundle>(emptyEdgeState)
   const [edgeError, setEdgeError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | EdgeCategory>(preferences.settings.edgeFilter ?? 'all')
   const [selectedKey, setSelectedKey] = useState('')
   const snapshotDigest = useRef('')
+  const tapeDigest = useRef('')
 
   useEffect(() => {
     let active = true
@@ -1009,10 +1028,11 @@ function EdgeView({
     () => feed ? buildIntelSignals(feed, valueBundle.players, teams, myRosterId) : [],
     [feed, myRosterId, teams, valueBundle.players],
   )
-  const opportunities = useMemo(
-    () => buildEdgeBoard(teams, { myRosterId, rosterPositions, directions, profiles, intelSignals: signals }),
+  const allOpportunities = useMemo(
+    () => buildEdgeBoard(teams, { myRosterId, rosterPositions, directions, profiles, intelSignals: signals, maxResults: 500 }),
     [teams, myRosterId, rosterPositions, directions, profiles, signals],
   )
+  const opportunities = allOpportunities.slice(0, 24)
   const filtered = opportunities.filter((opportunity) => filter === 'all' || opportunity.categories.includes(filter))
   const selected = opportunities.find((opportunity) => opportunity.key === selectedKey) ?? filtered[0] ?? opportunities[0]
   const selectedProfile = profiles.find((profile) => profile.rosterId === selected?.owner.rosterId)
@@ -1048,6 +1068,23 @@ function EdgeView({
       .then(setEdgeState)
       .catch((error) => setEdgeError(error instanceof Error ? error.message : 'Could not save the research snapshot'))
   }, [dailyDigest, intelLoaded, opportunities, preferences.leagueId])
+
+  const tapeAssets = useMemo(
+    () => marketTapeAssets(teams, directions, allOpportunities),
+    [teams, directions, allOpportunities],
+  )
+  const marketDigest = `${new Date().toISOString().slice(0, 10)}:${valueBundle.meta.generatedAt}:${tapeAssets.length}:${tapeAssets.reduce((sum, asset) => sum + asset.currentValue + asset.features.edgeScore, 0)}`
+  useEffect(() => {
+    if (!intelLoaded || !tapeAssets.length || tapeDigest.current === marketDigest) return
+    tapeDigest.current = marketDigest
+    void saveMarketTape(preferences.leagueId, {
+      assets: tapeAssets,
+      format: marketFormat,
+      sourceVersion: valueBundle.meta.generatedAt,
+    }).then(setEdgeState).catch((error) => {
+      setEdgeError(error instanceof Error ? error.message : 'Could not update the private market tape')
+    })
+  }, [intelLoaded, marketDigest, marketFormat, preferences.leagueId, tapeAssets, valueBundle.meta.generatedAt])
 
   const setDirectionOverride = (rosterId: number, value: 'auto' | TeamDirection['label']) => {
     const overrides = { ...(preferences.settings.teamDirectionOverrides ?? {}) }
@@ -1094,12 +1131,21 @@ function EdgeView({
   const positive = mature.filter((item) => item.result.status === 'ahead' || item.result.status === 'on-track')
   const completedTradeChecks = journal.outcomes.filter((outcome) => outcome.status === 'complete').length
   const activeOffers = edgeState.offers.filter((offer) => !['rejected', 'withdrawn', 'accepted'].includes(offer.status)).length
+  const shadowPrediction = selected
+    ? edgeState.shadowPredictions.find((prediction) => prediction.assetId === selected.asset.id)
+    : null
+  const shadowGatesPassed = edgeState.shadowModel.gates.filter((gate) => gate.passed).length
+  const shadowStatus = edgeState.shadowModel.status === 'passed-shadow'
+    ? 'Passed shadow gates'
+    : edgeState.shadowModel.status === 'shadow'
+      ? 'Shadow evaluation'
+      : 'Collecting labels'
 
   return (
     <main className="page-shell edge-page">
       <section className="edge-hero">
         <div>
-          <span className="eyebrow accent-eyebrow">V4.3–V4.6 · private trade hunter</span>
+          <span className="eyebrow accent-eyebrow">V4.7–V4.9 · private evidence engine</span>
           <h1>Find the misprice.<br />Trade before it closes.</h1>
           <p>Every roster, manager tendency, catalyst, projected lineup gain, and future pick path is scanned together. Recommendations are timestamped so the model has to prove its edge.</p>
         </div>
@@ -1108,9 +1154,30 @@ function EdgeView({
 
       <section className="edge-stats" aria-label="Edge desk status">
         <article className="panel"><small>Live candidates</small><strong>{opportunities.length}</strong><span>{signals.filter((signal) => signal.edgeScore >= 35).length} catalyst-linked</span></article>
-        <article className="panel"><small>Research samples</small><strong>{edgeState.opportunities.length}</strong><span>daily, immutable entry values</span></article>
+        <article className="panel"><small>Market tape</small><strong>{edgeState.marketTape.assetsTracked}</strong><span>{edgeState.marketTape.snapshotCount} private observations</span></article>
+        <article className="panel"><small>30-day labels</small><strong>{edgeState.marketTape.labeledExamples}</strong><span>{edgeState.marketTape.spanDays} days observed</span></article>
         <article className="panel"><small>On track</small><strong>{mature.length ? `${Math.round(positive.length / mature.length * 100)}%` : 'Too early'}</strong><span>{mature.length} matured samples</span></article>
         <article className="panel"><small>Execution book</small><strong>{activeOffers}</strong><span>{completedTradeChecks} completed checkpoints</span></article>
+      </section>
+
+      <section className="learning-desk panel">
+        <div className="panel-heading">
+          <div><span className="eyebrow">V4.7 tape · V4.8 calibration · V4.9 shadow ML</span><h2>Evidence before promotion</h2></div>
+          <span className={`learning-status learning-${edgeState.shadowModel.status}`}>{shadowStatus}</span>
+        </div>
+        <div className="learning-grid">
+          <article><small>Daily market tape</small><strong>{edgeState.marketTape.assetsTracked} assets</strong><span>Automatic refresh continues after the league is seeded.</span></article>
+          <article><small>Empirical calibrator</small><strong>{edgeState.calibration.length} cohorts</strong><span>Small samples shrink toward the unadjusted rule.</span></article>
+          <article><small>Shadow value model</small><strong>{shadowGatesPassed}/{edgeState.shadowModel.gates.length} gates</strong><span>It cannot change rankings or prices in V4.9.</span></article>
+          <article><small>Offer response labels</small><strong>{edgeState.marketTape.labeledOffers}</strong><span>Accepted, rejected, and countered offers only.</span></article>
+        </div>
+        <div className="learning-gates">
+          {edgeState.shadowModel.gates.map((gate) => <span className={gate.passed ? 'passed' : ''} key={gate.id}>{gate.passed ? <Check size={14} /> : <Clock3 size={14} />} {gate.label}: {['maeLift', 'rankGuardrail'].includes(gate.id) ? `${(gate.actual * 100).toFixed(1)}%` : gate.actual.toFixed(0)} / {gate.requirement}</span>)}
+        </div>
+        {edgeState.calibration.length > 0 && <div className="calibration-strip">
+          {edgeState.calibration.slice(0, 4).map((group) => <article key={group.key}><small>{group.label}</small><strong>{signedPercent(group.shrunkenReturn)}</strong><span>{group.sampleSize} labels · {group.confidence}% confidence</span></article>)}
+        </div>}
+        <div className="model-caveat"><Info size={17} /><span>The shadow model is deliberately firewalled from live recommendations. It advances only after later, time-split examples beat the current rule projection.</span></div>
       </section>
 
       <section className="direction-tape panel">
@@ -1163,6 +1230,7 @@ function EdgeView({
             <div><small>90 days</small><strong>{formatValue(selected.projectedValues.day90)}</strong></div>
             <div><small>180 days</small><strong>{formatValue(selected.projectedValues.day180)}</strong></div>
           </div>
+          {shadowPrediction && <div className="shadow-read"><span><small>V4.9 shadow · 30 days</small><strong>{formatValue(shadowPrediction.expectedValue30)}</strong></span><span><small>Expected movement</small><strong className={shadowPrediction.expectedReturn30 >= 0 ? 'positive' : 'negative'}>{signedPercent(shadowPrediction.expectedReturn30)}</strong></span><em>{shadowPrediction.confidence}% research confidence · not used in the live score</em></div>}
           <div className="edge-thesis"><small>Thesis</small><p>{selected.thesis}</p><small>Catalyst</small><p>{selected.catalyst}</p><small>Invalidation</small><p>{selected.invalidation}</p></div>
           <div className="edge-owner-control">
             <div><small>Owner direction</small><strong>{selected.direction.label} · {selected.direction.confidence}%</strong></div>
@@ -1552,6 +1620,21 @@ function App() {
         setUserState(nextState)
       }
       setData({ leagueBundle, valueBundle, teams, modelHealth, eventModelHealth, managerProfiles, directions, journal, preferences, user })
+      const seedRosterId = preferences.myRosterId ?? teams[0]?.rosterId
+      if (seedRosterId) {
+        const seedOpportunities = buildEdgeBoard(teams, {
+          myRosterId: seedRosterId,
+          rosterPositions: leagueBundle.league.roster_positions,
+          directions,
+          profiles: managerProfiles,
+          maxResults: 500,
+        })
+        void saveMarketTape(cleanId, {
+          assets: marketTapeAssets(teams, directions, seedOpportunities),
+          format: { ...format, numTeams: leagueBundle.league.total_rosters },
+          sourceVersion: valueBundle.meta.generatedAt,
+        }).catch(() => undefined)
+      }
       setMode(preferences.settings.rankingMode ?? 'overall')
       setLeagueId(cleanId)
       setInputId(cleanId)
@@ -1684,7 +1767,7 @@ function App() {
           ) : view === 'intel' ? (
             <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
           ) : view === 'strategy' ? (
-            <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
+            <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} marketFormat={{ ...leagueFormat(data.leagueBundle), numTeams: data.leagueBundle.league.total_rosters }} onUpdatePreferences={updatePreferences} />
           ) : (
             <ModelView health={data.modelHealth} />
           )}

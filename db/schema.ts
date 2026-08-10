@@ -242,3 +242,66 @@ export const userTradeOffers = sqliteTable(
     index('idx_trade_offers_user_league').on(table.userId, table.leagueId, table.updatedAt),
   ],
 )
+
+export const marketValueSnapshots = sqliteTable(
+  'market_value_snapshots',
+  {
+    userId: text('user_id').notNull(),
+    leagueId: text('league_id').notNull(),
+    snapshotDate: text('snapshot_date').notNull(),
+    assetId: text('asset_id').notNull(),
+    assetName: text('asset_name').notNull(),
+    kind: text('kind').notNull(),
+    position: text('position').notNull(),
+    ownerRosterId: integer('owner_roster_id').notNull(),
+    currentValue: integer('current_value').notNull(),
+    projection30: integer('projection_30').notNull(),
+    confidence: integer('confidence').notNull(),
+    eventType: text('event_type').notNull(),
+    newsDirection: text('news_direction').notNull(),
+    featuresJson: text('features_json').notNull(),
+    metadataJson: text('metadata_json').notNull(),
+    source: text('source').notNull(),
+    sourceVersion: text('source_version').notNull(),
+    capturedAt: text('captured_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.leagueId, table.snapshotDate, table.assetId] }),
+    index('idx_market_snapshots_asset_date').on(table.userId, table.leagueId, table.assetId, table.snapshotDate),
+    index('idx_market_snapshots_league_date').on(table.userId, table.leagueId, table.snapshotDate),
+  ],
+)
+
+export const marketTapeConfigs = sqliteTable(
+  'market_tape_configs',
+  {
+    userId: text('user_id').notNull(),
+    leagueId: text('league_id').notNull(),
+    numQbs: integer('num_qbs').notNull(),
+    tep: integer('tep', { mode: 'boolean' }).notNull(),
+    numTeams: integer('num_teams').notNull(),
+    sourceVersion: text('source_version').notNull(),
+    seededAt: text('seeded_at').notNull(),
+    lastClientRefreshAt: text('last_client_refresh_at').notNull(),
+    lastAutoRefreshAt: text('last_auto_refresh_at'),
+    lastAutoRefreshError: text('last_auto_refresh_error'),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.leagueId] })],
+)
+
+export const edgeModelRuns = sqliteTable(
+  'edge_model_runs',
+  {
+    userId: text('user_id').notNull(),
+    leagueId: text('league_id').notNull(),
+    runDate: text('run_date').notNull(),
+    modelVersion: text('model_version').notNull(),
+    trainedAt: text('trained_at').notNull(),
+    status: text('status').notNull(),
+    reportJson: text('report_json').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.leagueId, table.runDate, table.modelVersion] }),
+    index('idx_edge_model_runs_latest').on(table.userId, table.leagueId, table.trainedAt),
+  ],
+)

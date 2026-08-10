@@ -17,6 +17,9 @@ The default league is `1336087922847289344`, but any public Sleeper NFL league I
 - The Edge Board separates projected market movement, starting-lineup impact, catalyst strength, seller fit, confidence, and acquisition limits instead of compressing everything into one letter grade.
 - Generated packages have opening, target, counter, and walk-away stages. Logged offers and daily recommendation snapshots are isolated by authenticated user and league.
 - Completed trades and saved recommendations are evaluated at 7/30/90/180-day checkpoints so the research process can be measured against its entry assumptions.
+- V4.7 records a private, full-league market tape on load and refreshes seeded leagues automatically from attributed Tradyr data.
+- V4.8 converts non-overlapping 30-day outcomes into empirical position and event cohorts, shrinking small samples toward the original rule instead of overfitting them.
+- V4.9 trains a small time-split ridge model in shadow. It cannot change rankings, prices, or packages; promotion requires enough independent examples, assets, market regimes, held-out MAE lift, and ranking quality.
 
 ## Run locally
 
