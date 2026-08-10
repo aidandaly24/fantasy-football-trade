@@ -1033,7 +1033,7 @@ function ModelView({ health }: { health: ModelHealthBundle | null }) {
         </div>
       </section>
 
-      <section className="model-caveat panel"><Info size={17} /><span><strong>What this does not claim:</strong> production MAE improved, but rank ordering trails the simple baseline by {Math.abs(health.metrics.rankCorrelationDelta).toFixed(3)}. That is inside the guardrail, not proof the model is universally smarter.</span></section>
+      <section className="model-caveat panel"><Info size={17} /><span><strong>What this does not claim:</strong> production MAE improved{health.metrics.rankCorrelationDelta >= 0 ? ` and rank correlation improved by ${health.metrics.rankCorrelationDelta.toFixed(3)}` : ` while rank correlation trails the simple baseline by ${Math.abs(health.metrics.rankCorrelationDelta).toFixed(3)}`}. That is useful held-out evidence, not proof the model is universally smarter.</span></section>
     </main>
   )
 }
