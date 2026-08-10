@@ -175,7 +175,7 @@ function packageFor(target: TargetCandidate, send: Asset[], mine: Team, theirs: 
 
 function chooseStage(candidates: GeneratedPackage[], stage: OfferStage, acceptance: number, mine: number): GeneratedPackage | null {
   const eligible = candidates.filter((item) => item.acceptanceScore >= acceptance && item.myScore >= mine)
-  const sorted = (eligible.length ? eligible : candidates).sort((a, b) =>
+  const sorted = eligible.sort((a, b) =>
     Math.abs(a.acceptanceScore - acceptance) - Math.abs(b.acceptanceScore - acceptance)
     || b.myScore - a.myScore || a.send.length - b.send.length || a.uncertainty - b.uncertainty || stableId(a.send).localeCompare(stableId(b.send)),
   )
@@ -193,16 +193,20 @@ export function buildTradePlan(teams: Team[], options: StrategyOptions): TradePl
     .filter((asset) => asset.value > 0)
     .sort((a, b) => offerability(mine, b, options.rosterPositions) - offerability(mine, a, options.rosterPositions) || a.id.localeCompare(b.id))
     .slice(0, 12)
-  const packages: GeneratedPackage[] = []
-  const target = targets[0]
-  if (target) {
+  let packages: GeneratedPackage[] = []
+  for (const target of targets) {
     const possible = combinations(outgoing).map((send) => packageFor(target, send, mine, theirs, options)).filter((item): item is GeneratedPackage => item !== null)
-    const stages: Array<[OfferStage, number, number]> = [['opening', 50, 55], ['target', 60, 52], ['counter', 68, 48], ['walk-away', 70, 0]]
+    const stages: Array<[OfferStage, number, number]> = [['opening', 42, 50], ['target', 48, 46], ['counter', 54, 42], ['walk-away', 60, 0]]
     const used = new Set<string>()
+    const targetPackages: GeneratedPackage[] = []
     stages.forEach(([stage, acceptance, myScore]) => {
       const pick = chooseStage(possible.filter((item) => !used.has(stableId(item.send))), stage, acceptance, myScore)
-      if (pick) { used.add(stableId(pick.send)); packages.push(pick) }
+      if (pick) { used.add(stableId(pick.send)); targetPackages.push(pick) }
     })
+    if (targetPackages.length) {
+      packages = targetPackages
+      break
+    }
   }
   return { myRosterId: mine.rosterId, counterpartRosterId: theirs.rosterId, direction, targets, packages, evidenceNote: 'Packages use current Sleeper rosters and completed-trade preferences only. Acceptance is a fit score, not a prediction of a manager response.' }
 }

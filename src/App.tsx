@@ -1075,7 +1075,7 @@ function StrategyView({
                 <div><small>You send</small><strong>{tradePackage.send.map((asset) => asset.name).join(' + ')}</strong></div>
                 <ArrowLeftRight size={17} />
                 <div><small>You receive</small><strong>{tradePackage.receive.map((asset) => asset.name).join(' + ')}</strong></div>
-                <div className="package-scores"><span>Fit <b>{tradePackage.myScore}</b></span><span>Acceptance <b>{tradePackage.acceptanceScore}</b></span><span>Lineup <b>{tradePackage.lineupDeltaMe >= 0 ? '+' : ''}{tradePackage.lineupDeltaMe.toFixed(1)}</b></span></div>
+                <div className="package-scores"><span>Your fit <b>{tradePackage.myScore}</b></span><span>Partner fit <b>{tradePackage.acceptanceScore}</b></span><span>Lineup <b>{tradePackage.lineupDeltaMe >= 0 ? '+' : ''}{tradePackage.lineupDeltaMe.toFixed(1)}</b></span></div>
               </article>
             )) : <div className="intel-empty"><Target size={22} /><strong>No safe package cleared the limits.</strong><span>That is a useful answer—do not force a bad trade.</span></div>}
             <div className="model-caveat"><Info size={17} /><span>{plan.evidenceNote}</span></div>

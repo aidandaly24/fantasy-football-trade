@@ -26,8 +26,8 @@ describe('deterministic strategy engine', () => {
   })
 
   it('returns stable, capped packages and honors the walk-away price cap', () => {
-    const mine = team(1, [asset('bench', 'WR', 260, { depthChartOrder: 3 }), asset('pick', 'PICK', 300), asset('starter', 'QB', 700)])
-    const theirs = team(2, [asset('target', 'RB', 500), asset('rb2', 'RB', 450)])
+    const mine = team(1, [asset('bench', 'WR', 300, { depthChartOrder: 3 }), asset('pick', 'PICK', 300), asset('starter', 'QB', 700)])
+    const theirs = team(2, [asset('target', 'RB', 300), asset('rb2', 'RB', 260)])
     const options = { myRosterId: 1, counterpartRosterId: 2, rosterPositions, manager: { pickAffinity: 1, sampleWeight: 1 } }
     const first = buildTradePlan([mine, theirs], options)
     const second = buildTradePlan([mine, theirs], options)
@@ -35,6 +35,7 @@ describe('deterministic strategy engine', () => {
     expect(first.packages.length).toBeGreaterThan(0)
     expect(first.packages.every((item) => item.send.reduce((sum, asset) => sum + asset.value, 0) <= item.receive.reduce((sum, asset) => sum + asset.value, 0) * 1.08)).toBe(true)
     expect(first.packages.every((item) => item.send.length <= 3)).toBe(true)
+    expect(first.packages.every((item) => item.acceptanceScore >= ({ opening: 42, target: 48, counter: 54, 'walk-away': 60 }[item.stage]))).toBe(true)
   })
 
   it('makes pick affinity observable in the opening offer when values are interchangeable', () => {
@@ -42,5 +43,12 @@ describe('deterministic strategy engine', () => {
     const theirs = team(2, [asset('target', 'RB', 300), asset('depth', 'RB', 260)])
     const plan = buildTradePlan([mine, theirs], { myRosterId: 1, counterpartRosterId: 2, rosterPositions, manager: { pickAffinity: 1, playerAffinity: 0, sampleWeight: 1 } })
     expect(plan.packages[0].send[0].id).toBe('pick')
+  })
+
+  it('returns no staged package when every option misses the partner-fit floor', () => {
+    const mine = team(1, [asset('small-pick', 'PICK', 100), asset('bench', 'WR', 90, { depthChartOrder: 4 })])
+    const theirs = team(2, [asset('cornerstone', 'QB', 1000), asset('backup', 'QB', 120)])
+    const plan = buildTradePlan([mine, theirs], { myRosterId: 1, counterpartRosterId: 2, rosterPositions })
+    expect(plan.packages).toEqual([])
   })
 })
