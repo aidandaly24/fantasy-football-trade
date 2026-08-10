@@ -207,7 +207,7 @@ function TeamScout({ team, teams }: { team: Team; teams: Team[] }) {
                     ? [asset.team, asset.age ? `Age ${asset.age.toFixed(1)}` : null].filter(Boolean).join(' · ')
                     : asset.slot
                       ? 'Exact draft slot'
-                      : 'Mid-pick estimate'}
+                      : `Likely ${asset.projectedTier ?? 'mid'} · ${formatValue(asset.valueLow ?? asset.value)}–${formatValue(asset.valueHigh ?? asset.value)}`}
                 </small>
               </span>
               <b className="asset-value">{formatValue(asset.value)}</b>
@@ -312,7 +312,7 @@ function TradeAssetRow({
             ? [asset.team, asset.rank ? `#${asset.rank} overall` : 'Unranked'].filter(Boolean).join(' · ')
             : asset.slot
               ? 'Known slot'
-              : 'Projected mid-round'}
+              : `Auto: likely ${asset.projectedTier ?? 'mid'} · ${formatValue(asset.valueLow ?? asset.value)}–${formatValue(asset.valueHigh ?? asset.value)}`}
         </small>
       </span>
       <b>{formatValue(asset.value)}</b>
@@ -407,37 +407,65 @@ function TradeSide({
   )
 }
 
-function TradeVerdict({ sideA, sideB }: { sideA: Asset[]; sideB: Asset[] }) {
-  const result = evaluateTrade(sideA, sideB)
-  const lead = result.valueA === result.valueB ? 'even' : result.valueA > result.valueB ? 'a' : 'b'
+function TradeVerdict({
+  teamA,
+  teamB,
+  sideA,
+  sideB,
+  rosterPositions,
+}: {
+  teamA: Team
+  teamB: Team
+  sideA: Asset[]
+  sideB: Asset[]
+  rosterPositions: string[]
+}) {
+  const result = evaluateTrade(sideA, sideB, { teamA, teamB, rosterPositions })
+  const lead = result.winner === 'A' ? 'a' : result.winner === 'B' ? 'b' : 'even'
+  const ready = sideA.length > 0 && sideB.length > 0
+  const compactVerdict = result.verdict
+    .replace(teamA.teamName, 'Side A')
+    .replace(teamB.teamName, 'Side B')
   return (
     <section className="trade-verdict panel">
       <div className={`verdict-orb verdict-${lead}`}>
         <CircleGauge size={23} />
-        <span>{result.verdict}</span>
+        <span>{compactVerdict}</span>
+      </div>
+      <div className="trade-rating-pair">
+        <span><small>{teamA.teamName}</small><strong>{ready ? result.gradeA : '—'}</strong><em>{ready ? `${result.ratingA}/100` : 'rating'}</em></span>
+        <b>vs</b>
+        <span><small>{teamB.teamName}</small><strong>{ready ? result.gradeB : '—'}</strong><em>{ready ? `${result.ratingB}/100` : 'rating'}</em></span>
       </div>
       <div className="value-versus">
-        <span><small>Side A</small><strong>{formatValue(result.valueA)}</strong></span>
+        <span><small>Side A sends</small><strong>{formatValue(result.valueA)}</strong></span>
         <b>vs</b>
-        <span><small>Side B</small><strong>{formatValue(result.valueB)}</strong></span>
+        <span><small>Side B sends</small><strong>{formatValue(result.valueB)}</strong></span>
       </div>
       <div className="fairness-scale">
         <span className="scale-labels"><small>A wins</small><small>Fair zone</small><small>B wins</small></span>
         <div className="scale-track">
           <span className="fair-zone" />
-          <i style={{ left: `${Math.max(2, Math.min(98, 100 - result.shareA))}%` }} />
+          <i style={{ left: `${Math.max(2, Math.min(98, 100 - result.ratingA))}%` }} />
         </div>
       </div>
       <p className="verdict-copy">
-        {sideA.length === 0 || sideB.length === 0
+        {!ready
           ? 'Select at least one asset on each side to get a market verdict.'
           : result.fair
-            ? `Only ${result.difference.toFixed(1)}% separates the adjusted packages. This is a credible opening offer.`
-            : `${result.difference.toFixed(1)}% separates the adjusted packages after consolidation value.`}
+            ? `Only ${result.difference.toFixed(1)}% separates the packages. The rating still accounts for each roster's starter impact.`
+            : `${result.difference.toFixed(1)}% separates the packages before the roster-fit adjustment.`}
       </p>
+      {ready && (
+        <div className="trade-lenses">
+          <span><small>A market edge</small><b className={result.marketNetA > 0 ? 'positive' : result.marketNetA < 0 ? 'negative' : ''}>{result.marketNetA > 0 ? '+' : ''}{formatValue(result.marketNetA)}</b></span>
+          <span><small>Model confidence</small><b>{result.confidence}%</b></span>
+          <span><small>A scenario range</small><b>{formatValue(result.rangeA.worst)} to {formatValue(result.rangeA.best)}</b></span>
+        </div>
+      )}
       <div className="model-note">
         <Info size={16} />
-        <span>Extra pieces receive diminishing weight, so one premium asset is not treated like a pile of roster fillers.</span>
+        <span>Market value, legal-lineup impact, and early-to-late pick risk are scored separately before the final rating.</span>
       </div>
     </section>
   )
@@ -448,21 +476,24 @@ function RosterImpact({
   teamB,
   sideA,
   sideB,
+  rosterPositions,
 }: {
   teamA: Team
   teamB: Team
   sideA: Asset[]
   sideB: Asset[]
+  rosterPositions: string[]
 }) {
-  const value = evaluateTrade(sideA, sideB)
-  const netA = value.valueB - value.valueA
-  const netB = -netA
+  const value = evaluateTrade(sideA, sideB, { teamA, teamB, rosterPositions })
+  const netA = value.marketNetA
+  const netB = -value.marketNetA
   const topA = [...sideA].sort((a, b) => b.value - a.value)[0]
   const topB = [...sideB].sort((a, b) => b.value - a.value)[0]
   const spotsA = sideA.length - sideB.length
 
   const rows = [
     { label: 'Adjusted market value', a: netA, b: netB, suffix: '' },
+    { label: 'Starting-lineup value', a: value.lineupImpactA ?? 0, b: value.lineupImpactB ?? 0, suffix: '' },
     { label: 'Roster spots opened', a: spotsA, b: -spotsA, suffix: '' },
   ]
 
@@ -486,6 +517,13 @@ function RosterImpact({
             <b className={row.b > 0 ? 'positive' : row.b < 0 ? 'negative' : ''}>{row.b > 0 ? '+' : ''}{formatValue(row.b)}{row.suffix}</b>
           </div>
         ))}
+        {(value.rangeA.worst !== value.rangeA.best || value.rangeB.worst !== value.rangeB.best) && (
+          <div className="impact-row impact-range-row">
+            <b>{formatValue(value.rangeA.worst)} to {formatValue(value.rangeA.best)}</b>
+            <span>Pick scenario range</span>
+            <b>{formatValue(value.rangeB.worst)} to {formatValue(value.rangeB.best)}</b>
+          </div>
+        )}
         <div className="impact-row">
           <b>{topB?.name ?? '—'}</b>
           <span>Best asset received</span>
@@ -496,7 +534,7 @@ function RosterImpact({
   )
 }
 
-function TradeView({ teams }: { teams: Team[] }) {
+function TradeView({ teams, rosterPositions }: { teams: Team[]; rosterPositions: string[] }) {
   const [teamAId, setTeamAId] = useState(teams[0].rosterId)
   const [teamBId, setTeamBId] = useState(teams[1]?.rosterId ?? teams[0].rosterId)
   const [selectedA, setSelectedA] = useState<string[]>([])
@@ -518,7 +556,7 @@ function TradeView({ teams }: { teams: Team[] }) {
         <div>
           <span className="eyebrow accent-eyebrow">Trade laboratory</span>
           <h1>Price the deal.<br />Then read the room.</h1>
-          <p>Consensus dynasty value with a consolidation adjustment for multi-asset packages.</p>
+          <p>Consensus market value, roster fit, and pick-risk scenarios—rated separately, then combined transparently.</p>
         </div>
         <div className="live-value-chip"><span /> Daily market values</div>
       </section>
@@ -534,7 +572,7 @@ function TradeView({ teams }: { teams: Team[] }) {
           onTeamChange={(id) => { setTeamAId(id); setSelectedA([]) }}
           onToggle={(id) => toggle(selectedA, setSelectedA, id)}
         />
-        <TradeVerdict sideA={assetsA} sideB={assetsB} />
+        <TradeVerdict teamA={teamA} teamB={teamB} sideA={assetsA} sideB={assetsB} rosterPositions={rosterPositions} />
         <TradeSide
           side="B"
           team={teamB}
@@ -547,7 +585,7 @@ function TradeView({ teams }: { teams: Team[] }) {
         />
       </section>
 
-      <RosterImpact teamA={teamA} teamB={teamB} sideA={assetsA} sideB={assetsB} />
+      <RosterImpact teamA={teamA} teamB={teamB} sideA={assetsA} sideB={assetsB} rosterPositions={rosterPositions} />
     </main>
   )
 }
@@ -597,6 +635,7 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
     (article) => Date.now() - Date.parse(article.publishedAt) <= 24 * 60 * 60 * 1000,
   ).length ?? 0
   const healthySources = feed?.sources.filter((source) => source.ok).length ?? 0
+  const actionableSignals = signals.filter((signal) => signal.edgeScore >= 50).length
 
   return (
     <main className="page-shell intel-page">
@@ -635,7 +674,7 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
 
       <section className="intel-stat-strip" aria-label="Intel status">
         <div><span><Clock3 size={17} /></span><small>Fresh headlines</small><strong>{freshArticles}</strong><em>last 24 hours</em></div>
-        <div><span><Zap size={17} /></span><small>Actionable signals</small><strong>{signals.length}</strong><em>news + market movement</em></div>
+        <div><span><Zap size={17} /></span><small>Unabsorbed edges</small><strong>{actionableSignals}</strong><em>edge score 50+</em></div>
         <div><span><Radar size={17} /></span><small>Sources online</small><strong>{healthySources}/{feed?.sources.length ?? 3}</strong><em>ESPN, CBS, Yahoo</em></div>
       </section>
 
@@ -643,7 +682,7 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
         <div className="intel-opportunities panel">
           <div className="panel-heading">
             <div><span className="eyebrow">Opportunity queue</span><h2>Players worth checking now</h2></div>
-            <span className="method-note">Edge score measures urgency, not talent</span>
+            <span className="method-note">Edge = evidence minus market reaction</span>
           </div>
           {loading && !feed ? (
             <div className="intel-loading"><RefreshCw className="spin" size={22} /> Reading the market…</div>
@@ -659,6 +698,8 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
                     </div>
                     <p>{signal.rationale}</p>
                     <div className="signal-meta">
+                      <span><b>{signal.impactScore}</b> impact</span>
+                      <span><b>{signal.marketReactionScore}</b> reaction</span>
                       <span><b>{signal.add24}</b> adds</span>
                       <span><b>{signal.drop24}</b> drops</span>
                       <span><b>{signal.confidence}%</b> confidence</span>
@@ -699,7 +740,7 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
           <section className="intel-method panel">
             <span className="eyebrow">How to use this</span>
             <h3>A lead, not a verdict.</h3>
-            <p>Open the linked reporting, verify the context, then check the trade calculator. Headlines and add/drop activity are directional evidence—not guarantees.</p>
+            <p>Impact measures the event. Confidence measures the reporting. Market reaction measures how much Sleeper has already moved. Edge is what may remain.</p>
             <div className="source-health">
               {(feed?.sources ?? []).map((source) => (
                 <span key={source.name}><i className={source.ok ? 'online' : ''} />{source.name}</span>
@@ -903,7 +944,7 @@ function App() {
               setSelectedId={setSelectedId}
             />
           ) : view === 'trade' ? (
-            <TradeView teams={data.teams} />
+            <TradeView teams={data.teams} rosterPositions={data.leagueBundle.league.roster_positions} />
           ) : (
             <IntelView teams={data.teams} valueBundle={data.valueBundle} />
           )}

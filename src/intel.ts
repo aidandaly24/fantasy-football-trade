@@ -2,16 +2,17 @@ import type { IntelFeed, IntelSignal, NewsArticle, Team, TradyrPlayer } from './
 
 const POSITIVE_WORDS = [
   'activated',
-  'breakout',
   'cleared',
   'extension',
   'first team',
+  'full participant',
   'healthy',
   'impresses',
+  'named starter',
   'promoted',
   'returns',
+  'returns to practice',
   'sharp',
-  'signs',
   'starter',
   'starting',
 ]
@@ -19,13 +20,14 @@ const POSITIVE_WORDS = [
 const NEGATIVE_WORDS = [
   'arrested',
   'demoted',
+  'expected to miss',
   'injured',
   'injury',
   'limited',
-  'miss',
-  'out',
+  'placed on ir',
   'questionable',
   'released',
+  'ruled out',
   'setback',
   'surgery',
   'suspended',
@@ -48,6 +50,10 @@ function headlineScore(title: string): number {
   return positive - negative
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export function matchArticlePlayers(
   article: NewsArticle,
   players: TradyrPlayer[],
@@ -65,7 +71,12 @@ export function matchArticlePlayers(
     const fullName = normalize(player.name)
     if (fullName && title.includes(` ${fullName} `)) return true
     const lastName = fullName.split(' ').at(-1) ?? ''
-    return lastName.length >= 5 && lastNameCounts.get(lastName) === 1 && title.includes(` ${lastName} `)
+    if (lastName.length < 5 || lastNameCounts.get(lastName) !== 1 || !title.includes(` ${lastName} `)) {
+      return false
+    }
+    const displayLastName = player.name.split(/\s+/).at(-1) ?? ''
+    const differentFullName = new RegExp(`\\b[A-Z][A-Za-z'’-]+\\s+${escapeRegex(displayLastName)}\\b`).test(article.title)
+    return !differentFullName
   })
 }
 
@@ -81,10 +92,20 @@ function ownerMap(teams: Team[]): Map<string, Team> {
   return owners
 }
 
-function actionFor(direction: IntelSignal['direction'], ownerTeam: Team | null, isMine: boolean) {
+function actionFor(
+  direction: IntelSignal['direction'],
+  ownerTeam: Team | null,
+  isMine: boolean,
+  edgeScore: number,
+  marketReactionScore: number,
+) {
+  if (edgeScore < 35) {
+    return ownerTeam ? 'Monitor; no urgent edge' : 'No rush—verify first'
+  }
   if (direction === 'up') {
     if (!ownerTeam) return 'Add before waivers move'
     if (isMine) return 'Hold the information edge'
+    if (marketReactionScore >= 65 && edgeScore < 50) return 'Verify the price before chasing'
     return 'Quietly inquire'
   }
   if (direction === 'down') {
@@ -101,13 +122,15 @@ function rationaleFor(options: {
   add24: number
   drop24: number
   acceleration: number
+  impactScore: number
+  marketReactionScore: number
 }) {
-  const { direction, articles, add24, drop24, acceleration } = options
+  const { direction, articles, add24, drop24, acceleration, impactScore, marketReactionScore } = options
   if (articles.length && direction === 'up') {
-    return `${articles.length} linked headline${articles.length === 1 ? '' : 's'} point up, with ${add24} adds in Sleeper's 24-hour window.`
+    return `${articles.length} linked report${articles.length === 1 ? '' : 's'} point up. Impact is ${impactScore}/100; Sleeper reaction is ${marketReactionScore}/100.`
   }
   if (articles.length && direction === 'down') {
-    return `${articles.length} linked headline${articles.length === 1 ? '' : 's'} flag downside while drops reached ${drop24} in 24 hours.`
+    return `${articles.length} linked report${articles.length === 1 ? '' : 's'} flag downside. Impact is ${impactScore}/100; Sleeper reaction is ${marketReactionScore}/100.`
   }
   if (acceleration >= 1.5 && add24 > drop24) {
     return `Add pace is ${acceleration.toFixed(1)}× its 24-hour baseline, a useful early-interest flag.`
@@ -136,6 +159,7 @@ export function buildIntelSignals(
   const drops6 = trendMap(feed.trends.drops6)
   const drops24 = trendMap(feed.trends.drops24)
   const owners = ownerMap(teams)
+  const generatedAt = Number.isNaN(Date.parse(feed.generatedAt)) ? Date.now() : Date.parse(feed.generatedAt)
 
   return players
     .filter((player) => player.sleeperId)
@@ -158,14 +182,33 @@ export function buildIntelSignals(
       const directionScore = newsScore * 3 + Math.sign(trendDelta) + Math.sign(acceleration - dropAcceleration)
       const direction: IntelSignal['direction'] =
         directionScore >= 2 ? 'up' : directionScore <= -2 ? 'down' : 'watch'
-      const activity = Math.log10(add24 + drop24 + 1) * 15
-      const urgency = Math.max(acceleration, dropAcceleration) * 8
-      const evidence = articles.length * 13 + Math.abs(newsScore) * 10
-      const edgeScore = Math.round(Math.min(99, 18 + activity + urgency + evidence))
-      const agreement = articles.length > 1 && Math.abs(newsScore) >= articles.length * 0.7 ? 8 : 0
-      const confidence = Math.round(
-        Math.min(95, 42 + articles.length * 10 + activity * 0.45 + agreement),
+      const activity = Math.log10(add24 + drop24 + 1) * 24
+      const velocity = Math.max(0, Math.max(acceleration, dropAcceleration) - 1) * 12
+      const marketReactionScore = Math.round(Math.min(99, activity + Math.min(32, velocity)))
+      const impactScore = Math.round(Math.min(
+        99,
+        articles.length
+          ? 28 + Math.abs(newsScore) * 20 + articles.length * 7
+          : 15 + activity * 0.75,
+      ))
+      const newestArticle = articles.reduce(
+        (newest, article) => Math.max(newest, Date.parse(article.publishedAt) || 0),
+        0,
       )
+      const articleAgeHours = newestArticle ? Math.max(0, generatedAt - newestArticle) / 3_600_000 : 168
+      const freshnessScore = Math.round(articles.length ? Math.max(8, 100 * (0.5 ** (articleAgeHours / 48))) : 12)
+      const averageReliability = articles.length
+        ? articles.reduce((sum, article) => sum + article.reliability, 0) / articles.length
+        : 0.4
+      const agreement = articles.length > 1 && Math.abs(newsScore) >= articles.length * 0.7 ? 8 : 0
+      const confidence = Math.round(Math.min(
+        95,
+        averageReliability * 70 + Math.min(18, articles.length * 7) + agreement + Math.min(8, activity * 0.15),
+      ))
+      const edgeScore = Math.round(Math.max(
+        0,
+        Math.min(99, impactScore * 0.42 + confidence * 0.32 + freshnessScore * 0.26 - marketReactionScore * 0.45),
+      ))
       const ownerTeam = owners.get(id) ?? null
       const isMine = ownerTeam?.rosterId === myRosterId
 
@@ -173,10 +216,13 @@ export function buildIntelSignals(
         player,
         articles,
         direction,
+        impactScore,
         edgeScore,
         confidence,
-        action: actionFor(direction, ownerTeam, isMine),
-        rationale: rationaleFor({ direction, articles, add24, drop24, acceleration }),
+        marketReactionScore,
+        freshnessScore,
+        action: actionFor(direction, ownerTeam, isMine, edgeScore, marketReactionScore),
+        rationale: rationaleFor({ direction, articles, add24, drop24, acceleration, impactScore, marketReactionScore }),
         add24,
         drop24,
         acceleration,

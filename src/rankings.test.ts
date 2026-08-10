@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildOwnedPicks, evaluateTrade, futurePickContext, optimizeLineup, packageValue, rosterProfile, scoreTeams } from './rankings'
+import { buildOwnedPicks, evaluateTrade, futurePickContext, optimizeLineup, packageValue, projectPickProjections, rosterProfile, scoreTeams } from './rankings'
 import type { Asset, LeagueBundle, PickValue, Team } from './types'
 
 function asset(id: string, position: Asset['position'], value: number): Asset {
@@ -98,6 +98,36 @@ describe('buildOwnedPicks', () => {
     expect(picks.map((pick) => pick.year)).toEqual(['2027', '2028'])
     expect(picks[0].name).toBe('2027 1st · from Alpha')
   })
+
+  it('projects every future pick from the strength of its original roster', () => {
+    const strong = team(1, [asset('elite-qb', 'QB', 900), asset('elite-rb', 'RB', 850)])
+    const weak = team(2, [asset('thin-qb', 'QB', 250), asset('thin-rb', 'RB', 180)])
+    const projections = projectPickProjections([strong, weak])
+    const scenarioValues: PickValue[] = [
+      { id: 'pick_2027_1_01', name: '2027 Pick 1.01', round: 1, slot: 1, year: '2027', tier: 'early', composite: 600, position: 'PICK' },
+      { id: 'pick_2027_1_06', name: '2027 Pick 1.06', round: 1, slot: 6, year: '2027', tier: 'mid', composite: 450, position: 'PICK' },
+      { id: 'pick_2027_1_12', name: '2027 Pick 1.12', round: 1, slot: 12, year: '2027', tier: 'late', composite: 375, position: 'PICK' },
+      { id: 'pick_2027_2_01', name: '2027 Pick 2.01', round: 2, slot: 1, year: '2027', tier: 'early', composite: 310, position: 'PICK' },
+      { id: 'pick_2027_2_06', name: '2027 Pick 2.06', round: 2, slot: 6, year: '2027', tier: 'mid', composite: 267, position: 'PICK' },
+      { id: 'pick_2027_2_12', name: '2027 Pick 2.12', round: 2, slot: 12, year: '2027', tier: 'late', composite: 224, position: 'PICK' },
+    ]
+    const picks = buildOwnedPicks({
+      season: 2027,
+      rounds: 2,
+      rosterIds: [1, 2],
+      tradedPicks: [],
+      pickValues: scenarioValues,
+      pickProjections: projections,
+      teamNames: new Map([[1, 'Strong'], [2, 'Weak']]),
+    })
+    const strongPicks = picks.get(1) ?? []
+    const weakPicks = picks.get(2) ?? []
+
+    expect(strongPicks.every((pick) => pick.projectedTier === 'late')).toBe(true)
+    expect(weakPicks.every((pick) => pick.projectedTier === 'early')).toBe(true)
+    expect(strongPicks.find((pick) => pick.round === 1)!.value)
+      .toBeLessThan(weakPicks.find((pick) => pick.round === 1)!.value)
+  })
 })
 
 describe('trade evaluation', () => {
@@ -106,13 +136,44 @@ describe('trade evaluation', () => {
     const packageAssets = [asset('a', 'RB', 260), asset('b', 'WR', 260), asset('c', 'TE', 260)]
 
     expect(packageValue(elite)).toBeGreaterThan(packageValue(packageAssets))
-    expect(evaluateTrade(elite, packageAssets).verdict).toContain('Side A')
+    expect(evaluateTrade(elite, packageAssets).verdict).toContain('Side B')
   })
 
   it('calls nearly equal adjusted packages fair', () => {
     const result = evaluateTrade([asset('a', 'QB', 500)], [asset('b', 'RB', 490)])
     expect(result.fair).toBe(true)
     expect(result.verdict).toBe('Dead even')
+  })
+
+  it('improves a team rating when value is added to what it receives', () => {
+    const baseline = evaluateTrade([asset('sent', 'QB', 500)], [asset('received', 'RB', 490)])
+    const improved = evaluateTrade(
+      [asset('sent', 'QB', 500)],
+      [asset('received', 'RB', 490), asset('extra', 'WR', 120)],
+    )
+
+    expect(improved.ratingA).toBeGreaterThan(baseline.ratingA)
+  })
+
+  it('reports lineup impact and pick-value uncertainty separately from market value', () => {
+    const outgoing = asset('bench', 'WR', 150)
+    const incoming = asset('upgrade', 'QB', 600)
+    const uncertainPick = asset('future-first', 'PICK', 449)
+    uncertainPick.kind = 'pick'
+    uncertainPick.valueLow = 377
+    uncertainPick.valueHigh = 601
+    uncertainPick.confidence = 0.68
+    const teamA = team(1, [asset('starter', 'QB', 300)], [outgoing])
+    const teamB = team(2, [incoming], [], [uncertainPick])
+    const result = evaluateTrade([outgoing, uncertainPick], [incoming], {
+      teamA,
+      teamB,
+      rosterPositions: ['QB'],
+    })
+
+    expect(result.lineupImpactA).toBe(300)
+    expect(result.rangeA.worst).toBeLessThan(result.rangeA.best)
+    expect(result.confidence).toBeLessThan(100)
   })
 })
 

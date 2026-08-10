@@ -90,6 +90,14 @@ export type PickValue = {
   position: 'PICK'
 }
 
+export type PickTier = 'early' | 'mid' | 'late'
+
+export type PickProjection = {
+  tier: PickTier
+  probabilities: Record<PickTier, number>
+  contenderRank: number
+}
+
 export type ApiMeta = {
   generatedAt: string
   sources: string[]
@@ -113,6 +121,11 @@ export type Asset = {
   year?: string
   round?: number
   slot?: number
+  projectedTier?: PickTier | 'known'
+  tierProbabilities?: Record<PickTier, number>
+  valueLow?: number
+  valueHigh?: number
+  projectionConfidence?: number
   isStarter?: boolean
   isTaxi?: boolean
   isReserve?: boolean
@@ -197,8 +210,11 @@ export type IntelSignal = {
   player: TradyrPlayer
   articles: NewsArticle[]
   direction: 'up' | 'down' | 'watch'
+  impactScore: number
   edgeScore: number
   confidence: number
+  marketReactionScore: number
+  freshnessScore: number
   action: string
   rationale: string
   add24: number
