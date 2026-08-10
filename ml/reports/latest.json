@@ -1,11 +1,515 @@
 {
-  "generatedAt": "2026-08-10T04:46:49.293182Z",
-  "model": "season-transition-hgb-v1",
+  "generatedAt": "2026-08-10T14:16:22.592062Z",
+  "model": "season-transition-hgb-v1.2",
   "target": "next-season PPR points per NFL team game",
   "gate": {
     "enabled": true,
-    "requiredMaeImprovement": 0.01,
-    "observedMaeImprovement": 0.0878
+    "requiredMaeImprovement": 0.05,
+    "observedMaeImprovement": 0.1172,
+    "checks": [
+      {
+        "id": "mae",
+        "label": "Held-out MAE lift",
+        "passed": true,
+        "actual": 0.1172,
+        "requirement": ">= 5% versus the best simple baseline"
+      },
+      {
+        "id": "rank",
+        "label": "Rank correlation guardrail",
+        "passed": true,
+        "actual": 0.016,
+        "requirement": ">= -0.01 versus baseline"
+      },
+      {
+        "id": "positions",
+        "label": "Position regression guardrail",
+        "passed": true,
+        "actual": -0.0408,
+        "requirement": "no position worse by more than 2%"
+      },
+      {
+        "id": "interval",
+        "label": "Prediction interval calibration",
+        "passed": true,
+        "actual": 0.5963,
+        "requirement": "52%-72% coverage for the nominal 20-80 range"
+      }
+    ]
+  },
+  "contextCandidate": {
+    "enabled": true,
+    "model": {
+      "mae": 2.1318,
+      "rmse": 3.3332,
+      "rank_correlation": 0.7348
+    },
+    "v11": {
+      "mae": 2.2027,
+      "rmse": 3.4331,
+      "rank_correlation": 0.7163
+    },
+    "maeImprovement": 0.0322,
+    "positionChanges": {
+      "QB": 0.0193,
+      "RB": 0.0256,
+      "WR": 0.0609,
+      "TE": -0.0073
+    },
+    "checks": [
+      {
+        "id": "contextMae",
+        "label": "V1.2 incremental MAE lift",
+        "passed": true,
+        "actual": 0.0322,
+        "requirement": ">= 3% versus V1.1"
+      },
+      {
+        "id": "contextPositions",
+        "label": "Positions improved",
+        "passed": true,
+        "actual": 3,
+        "requirement": ">= 3 of 4 positions"
+      },
+      {
+        "id": "contextRegression",
+        "label": "Worst position regression",
+        "passed": true,
+        "actual": -0.0073,
+        "requirement": ">= -2%"
+      }
+    ]
+  },
+  "refreshPipeline": {
+    "enabled": true,
+    "predictionDigest": "c397a6019f7d2cdfd636467d54f1efe31535a7081baf5c5dfb6393c8090949f9",
+    "checks": [
+      {
+        "id": "snapshotFreshness",
+        "label": "Current data freshness",
+        "passed": true,
+        "actual": 0,
+        "requirement": "snapshot is no more than 8 days old"
+      },
+      {
+        "id": "projectionCoverage",
+        "label": "Current projection coverage",
+        "passed": true,
+        "actual": 239,
+        "requirement": ">= 200 current players"
+      },
+      {
+        "id": "deterministicRefresh",
+        "label": "Repeatable refresh artifact",
+        "passed": true,
+        "actual": 1,
+        "requirement": "two consecutive runs produce identical projections"
+      }
+    ],
+    "dataAsOf": "2026-08-10T13:43:43.343498Z",
+    "sourceSeason": 2025,
+    "staleAfter": "2026-08-18T13:43:43.343498Z",
+    "stale": false
+  },
+  "inSeasonModel": {
+    "enabled": false,
+    "target": "remaining-season PPR points per NFL team game",
+    "trainingRows": 7052,
+    "validationRows": 1384,
+    "testRows": 1387,
+    "model": {
+      "mae": 2.5528,
+      "rmse": 3.7331,
+      "rank_correlation": 0.7473
+    },
+    "baseline": {
+      "mae": 2.7291,
+      "rmse": 4.0486,
+      "rank_correlation": 0.7239
+    },
+    "maeImprovement": 0.0646,
+    "rankCorrelationDelta": 0.0234,
+    "checks": [
+      {
+        "id": "rosMae",
+        "label": "Rest-of-season MAE lift",
+        "passed": true,
+        "actual": 0.0646,
+        "requirement": ">= 5% versus season-to-date PPG"
+      },
+      {
+        "id": "rosRank",
+        "label": "Rest-of-season rank guardrail",
+        "passed": true,
+        "actual": 0.0234,
+        "requirement": ">= -0.01 versus baseline"
+      },
+      {
+        "id": "rosPositions",
+        "label": "Rest-of-season position guardrail",
+        "passed": false,
+        "actual": 0.0218,
+        "requirement": "no position worse by more than 2%"
+      }
+    ],
+    "validation": {
+      "selected": {
+        "mae": 2.3804,
+        "rmse": 3.4854,
+        "rank_correlation": 0.7336
+      },
+      "baseline": {
+        "mae": 2.6889,
+        "rmse": 3.969,
+        "rank_correlation": 0.7193
+      }
+    },
+    "slices": {
+      "all": {
+        "rows": 1387,
+        "model": {
+          "mae": 2.5528,
+          "rmse": 3.7331,
+          "rank_correlation": 0.7473
+        },
+        "baseline": {
+          "mae": 2.7291,
+          "rmse": 4.0486,
+          "rank_correlation": 0.7239
+        }
+      },
+      "priorPpgUnder3": {
+        "rows": 630,
+        "model": {
+          "mae": 1.4527,
+          "rmse": 2.5314,
+          "rank_correlation": 0.4452
+        },
+        "baseline": {
+          "mae": 1.4855,
+          "rmse": 2.6208,
+          "rank_correlation": 0.3723
+        }
+      },
+      "priorPpg3to6": {
+        "rows": 245,
+        "model": {
+          "mae": 2.7546,
+          "rmse": 3.6964,
+          "rank_correlation": 0.214
+        },
+        "baseline": {
+          "mae": 2.7333,
+          "rmse": 3.6702,
+          "rank_correlation": 0.159
+        }
+      },
+      "priorPpg6to10": {
+        "rows": 222,
+        "model": {
+          "mae": 3.2128,
+          "rmse": 4.2096,
+          "rank_correlation": 0.383
+        },
+        "baseline": {
+          "mae": 3.4917,
+          "rmse": 4.4568,
+          "rank_correlation": 0.2168
+        }
+      },
+      "priorPpgAtLeast10": {
+        "rows": 290,
+        "model": {
+          "mae": 4.267,
+          "rmse": 5.2559,
+          "rank_correlation": 0.458
+        },
+        "baseline": {
+          "mae": 4.8433,
+          "rmse": 6.0737,
+          "rank_correlation": 0.3498
+        }
+      },
+      "gamesObserved1to8": {
+        "rows": 1172,
+        "model": {
+          "mae": 2.4029,
+          "rmse": 3.6252,
+          "rank_correlation": 0.7261
+        },
+        "baseline": {
+          "mae": 2.6275,
+          "rmse": 4.0115,
+          "rank_correlation": 0.6987
+        }
+      },
+      "gamesObserved9to13": {
+        "rows": 215,
+        "model": {
+          "mae": 3.3703,
+          "rmse": 4.2737,
+          "rank_correlation": 0.7299
+        },
+        "baseline": {
+          "mae": 3.2826,
+          "rmse": 4.2456,
+          "rank_correlation": 0.7229
+        }
+      },
+      "QB": {
+        "rows": 188,
+        "model": {
+          "mae": 3.676,
+          "rmse": 5.0439,
+          "rank_correlation": 0.7362
+        },
+        "baseline": {
+          "mae": 3.9611,
+          "rmse": 5.5477,
+          "rank_correlation": 0.6843
+        }
+      },
+      "RB": {
+        "rows": 334,
+        "model": {
+          "mae": 2.4764,
+          "rmse": 3.4431,
+          "rank_correlation": 0.7758
+        },
+        "baseline": {
+          "mae": 2.8089,
+          "rmse": 3.9008,
+          "rank_correlation": 0.7696
+        }
+      },
+      "WR": {
+        "rows": 570,
+        "model": {
+          "mae": 2.5915,
+          "rmse": 3.8665,
+          "rank_correlation": 0.7417
+        },
+        "baseline": {
+          "mae": 2.7519,
+          "rmse": 4.1526,
+          "rank_correlation": 0.7147
+        }
+      },
+      "TE": {
+        "rows": 295,
+        "model": {
+          "mae": 1.8489,
+          "rmse": 2.6462,
+          "rank_correlation": 0.7666
+        },
+        "baseline": {
+          "mae": 1.8094,
+          "rmse": 2.6282,
+          "rank_correlation": 0.7842
+        }
+      }
+    },
+    "parameters": {
+      "learning_rate": 0.05,
+      "max_iter": 220,
+      "max_leaf_nodes": 11,
+      "min_samples_leaf": 30,
+      "l2_regularization": 2.0
+    },
+    "baselineBlendByPosition": {
+      "QB": 0.25,
+      "RB": 0.25,
+      "WR": 0.0,
+      "TE": 0.25
+    }
+  },
+  "eventModel": {
+    "generatedAt": "2026-08-10T14:16:22.123367Z",
+    "enabled": false,
+    "target": "PPR points per NFL team week over the next four weeks",
+    "trainingSeason": 2022,
+    "validationSeason": 2023,
+    "testSeason": 2024,
+    "trainingRows": 4831,
+    "validationRows": 4665,
+    "testRows": 4667,
+    "eventTestRows": 936,
+    "eventModel": {
+      "mae": 2.3714,
+      "rmse": 4.0219,
+      "rank_correlation": 0.4273
+    },
+    "statusBlindModel": {
+      "mae": 2.4082,
+      "rmse": 4.0659,
+      "rank_correlation": 0.3973
+    },
+    "allPlayers": {
+      "eventModel": {
+        "mae": 2.8951,
+        "rmse": 4.2926,
+        "rank_correlation": 0.6889
+      },
+      "statusBlindModel": {
+        "mae": 2.9026,
+        "rmse": 4.3002,
+        "rank_correlation": 0.685
+      }
+    },
+    "maeImprovement": 0.0153,
+    "maeImprovementInterval": {
+      "lower": 0.0004,
+      "median": 0.0145,
+      "upper": 0.0282
+    },
+    "rankCorrelationDelta": 0.03,
+    "positionChanges": {
+      "QB": 0.0395,
+      "RB": 0.0078,
+      "WR": 0.0144,
+      "TE": 0.0077
+    },
+    "checks": [
+      {
+        "id": "eventRows",
+        "label": "Held-out event sample",
+        "passed": true,
+        "actual": 936,
+        "requirement": ">= 100 player-week events"
+      },
+      {
+        "id": "eventMae",
+        "label": "Event-cohort MAE lift",
+        "passed": false,
+        "actual": 0.0153,
+        "requirement": ">= 5% versus the status-blind model"
+      },
+      {
+        "id": "eventRank",
+        "label": "Event-cohort rank guardrail",
+        "passed": true,
+        "actual": 0.03,
+        "requirement": ">= -0.01 versus the status-blind model"
+      },
+      {
+        "id": "eventOverall",
+        "label": "All-player MAE guardrail",
+        "passed": true,
+        "actual": -0.0026,
+        "requirement": "no more than 1% worse"
+      },
+      {
+        "id": "eventPositions",
+        "label": "Event position guardrail",
+        "passed": true,
+        "actual": 0.0077,
+        "requirement": "no position worse by more than 2%"
+      }
+    ],
+    "signals": [
+      {
+        "id": "availability_up",
+        "label": "Activated",
+        "direction": "up",
+        "sampleSize": 219,
+        "modelPpgDelta": 0.42,
+        "actualResidualPpg": 1.72,
+        "observedPpgChange": 2.19,
+        "confidence": "high"
+      },
+      {
+        "id": "availability_down",
+        "label": "Moved off active roster",
+        "direction": "down",
+        "sampleSize": 216,
+        "modelPpgDelta": -0.42,
+        "actualResidualPpg": 0.8,
+        "observedPpgChange": -1.09,
+        "confidence": "high"
+      },
+      {
+        "id": "team_change",
+        "label": "Changed teams",
+        "direction": "watch",
+        "sampleSize": 15,
+        "modelPpgDelta": 0.05,
+        "actualResidualPpg": 1.67,
+        "observedPpgChange": 1.45,
+        "confidence": "low"
+      },
+      {
+        "id": "roster_exit",
+        "label": "Cut or retired",
+        "direction": "down",
+        "sampleSize": 13,
+        "modelPpgDelta": -0.08,
+        "actualResidualPpg": 0.62,
+        "observedPpgChange": 0.37,
+        "confidence": "low"
+      },
+      {
+        "id": "current_inactive",
+        "label": "Currently inactive",
+        "direction": "down",
+        "sampleSize": 712,
+        "modelPpgDelta": -0.07,
+        "actualResidualPpg": 1.29,
+        "observedPpgChange": 0.84,
+        "confidence": "high"
+      }
+    ],
+    "features": [
+      "prior4_ppg",
+      "prior2_ppg",
+      "prior_week_ppg",
+      "prior4_games",
+      "recent_trend",
+      "pos_QB",
+      "pos_RB",
+      "pos_WR",
+      "pos_TE",
+      "current_active",
+      "availability_up",
+      "availability_down",
+      "team_change",
+      "roster_exit",
+      "inactive_streak"
+    ],
+    "parameters": {
+      "learning_rate": 0.05,
+      "max_iter": 220,
+      "max_leaf_nodes": 11,
+      "min_samples_leaf": 30,
+      "l2_regularization": 2.0
+    },
+    "baselineBlend": 0.0,
+    "validation": {
+      "eventModel": {
+        "selected": {
+          "mae": 2.8333,
+          "rmse": 4.2011,
+          "rank_correlation": 0.667
+        },
+        "baseline": {
+          "mae": 3.2246,
+          "rmse": 4.765,
+          "rank_correlation": 0.6222
+        }
+      },
+      "statusBlindModel": {
+        "selected": {
+          "mae": 2.8387,
+          "rmse": 4.2005,
+          "rank_correlation": 0.6665
+        },
+        "baseline": {
+          "mae": 3.2246,
+          "rmse": 4.765,
+          "rank_correlation": 0.6222
+        }
+      }
+    },
+    "source": "https://github.com/nflverse/nflverse-data/releases/download/weekly_rosters/roster_weekly_{season}.csv"
   },
   "data": {
     "seasons": [
@@ -20,48 +524,176 @@
     "trainingRows": 2273,
     "validationRows": 575,
     "testRows": 545,
-    "currentPlayers": 239
+    "currentPlayers": 239,
+    "dataAsOf": "2026-08-10T13:43:43.343498Z",
+    "sourceSeason": 2025,
+    "staleAfter": "2026-08-18T13:43:43.343498Z",
+    "stale": false
   },
   "selection": {
     "parameters": {
-      "learning_rate": 0.04,
-      "max_iter": 260,
-      "max_leaf_nodes": 15,
-      "min_samples_leaf": 38,
-      "l2_regularization": 4.0
+      "learning_rate": 0.05,
+      "max_iter": 220,
+      "max_leaf_nodes": 11,
+      "min_samples_leaf": 30,
+      "l2_regularization": 2.0
     },
-    "baselineBlend": 0.0
+    "baselineBlend": 0.0,
+    "bestSimpleBaseline": "repeatPrior",
+    "features": [
+      "prior_ppg",
+      "late4_ppg",
+      "late8_ppg",
+      "weekly_std",
+      "active_weeks",
+      "pass_attempts_pg",
+      "pass_yards_pg",
+      "pass_tds_pg",
+      "carries_pg",
+      "rush_yards_pg",
+      "rush_tds_pg",
+      "targets_pg",
+      "receptions_pg",
+      "rec_yards_pg",
+      "rec_tds_pg",
+      "touches_pg",
+      "total_tds_pg",
+      "pos_QB",
+      "pos_RB",
+      "pos_WR",
+      "pos_TE",
+      "age",
+      "years_experience",
+      "draft_round",
+      "draft_pick",
+      "drafted",
+      "games_played_share",
+      "pass_attempt_share",
+      "carry_share",
+      "target_share",
+      "team_opportunities_pg"
+    ]
   },
   "validation": {
     "selected": {
-      "mae": 1.9778,
-      "rmse": 3.2123,
-      "rank_correlation": 0.7132
+      "mae": 1.9262,
+      "rmse": 3.1582,
+      "rank_correlation": 0.7363
     },
     "baseline": {
       "mae": 2.2479,
       "rmse": 3.4745,
       "rank_correlation": 0.7221
-    }
+    },
+    "baselines": [
+      {
+        "id": "repeatPrior",
+        "selected": true,
+        "validation": {
+          "mae": 2.2479,
+          "rmse": 3.4745,
+          "rank_correlation": 0.7221
+        },
+        "test": {
+          "mae": 2.4148,
+          "rmse": 3.5293,
+          "rank_correlation": 0.7188
+        }
+      },
+      {
+        "id": "positionMean",
+        "selected": false,
+        "validation": {
+          "mae": 3.9255,
+          "rmse": 4.8197,
+          "rank_correlation": 0.0532
+        },
+        "test": {
+          "mae": 3.9543,
+          "rmse": 4.9465,
+          "rank_correlation": 0.0511
+        }
+      },
+      {
+        "id": "shrinkToPosition",
+        "selected": false,
+        "validation": {
+          "mae": 2.3806,
+          "rmse": 3.2761,
+          "rank_correlation": 0.7154
+        },
+        "test": {
+          "mae": 2.4654,
+          "rmse": 3.3276,
+          "rank_correlation": 0.7094
+        }
+      }
+    ]
   },
   "test": {
     "model": {
-      "mae": 2.2027,
-      "rmse": 3.4331,
-      "rank_correlation": 0.7163
+      "mae": 2.1318,
+      "rmse": 3.3332,
+      "rank_correlation": 0.7348
     },
     "baseline": {
       "mae": 2.4148,
       "rmse": 3.5293,
       "rank_correlation": 0.7188
     },
+    "baselineName": "repeatPrior",
+    "baselines": [
+      {
+        "id": "repeatPrior",
+        "selected": true,
+        "validation": {
+          "mae": 2.2479,
+          "rmse": 3.4745,
+          "rank_correlation": 0.7221
+        },
+        "test": {
+          "mae": 2.4148,
+          "rmse": 3.5293,
+          "rank_correlation": 0.7188
+        }
+      },
+      {
+        "id": "positionMean",
+        "selected": false,
+        "validation": {
+          "mae": 3.9255,
+          "rmse": 4.8197,
+          "rank_correlation": 0.0532
+        },
+        "test": {
+          "mae": 3.9543,
+          "rmse": 4.9465,
+          "rank_correlation": 0.0511
+        }
+      },
+      {
+        "id": "shrinkToPosition",
+        "selected": false,
+        "validation": {
+          "mae": 2.3806,
+          "rmse": 3.2761,
+          "rank_correlation": 0.7154
+        },
+        "test": {
+          "mae": 2.4654,
+          "rmse": 3.3276,
+          "rank_correlation": 0.7094
+        }
+      }
+    ],
+    "rankCorrelationDelta": 0.016,
     "slices": {
       "all": {
         "rows": 545,
         "model": {
-          "mae": 2.2027,
-          "rmse": 3.4331,
-          "rank_correlation": 0.7163
+          "mae": 2.1318,
+          "rmse": 3.3332,
+          "rank_correlation": 0.7348
         },
         "baseline": {
           "mae": 2.4148,
@@ -69,25 +701,51 @@
           "rank_correlation": 0.7188
         }
       },
-      "priorPpgAtLeast6": {
-        "rows": 160,
+      "priorPpgUnder3": {
+        "rows": 292,
         "model": {
-          "mae": 3.7176,
-          "rmse": 4.6946,
-          "rank_correlation": 0.4885
+          "mae": 1.2741,
+          "rmse": 2.4995,
+          "rank_correlation": 0.4187
         },
         "baseline": {
-          "mae": 4.1083,
-          "rmse": 5.0936,
-          "rank_correlation": 0.4916
+          "mae": 1.3403,
+          "rmse": 2.3624,
+          "rank_correlation": 0.3975
+        }
+      },
+      "priorPpg3to6": {
+        "rows": 93,
+        "model": {
+          "mae": 2.3529,
+          "rmse": 3.0653,
+          "rank_correlation": 0.4811
+        },
+        "baseline": {
+          "mae": 2.8749,
+          "rmse": 3.2919,
+          "rank_correlation": 0.2431
+        }
+      },
+      "priorPpg6to10": {
+        "rows": 67,
+        "model": {
+          "mae": 3.2709,
+          "rmse": 4.3257,
+          "rank_correlation": 0.3676
+        },
+        "baseline": {
+          "mae": 3.634,
+          "rmse": 4.3822,
+          "rank_correlation": 0.2588
         }
       },
       "priorPpgAtLeast10": {
         "rows": 93,
         "model": {
-          "mae": 3.8174,
-          "rmse": 4.731,
-          "rank_correlation": 0.3041
+          "mae": 3.7829,
+          "rmse": 4.7559,
+          "rank_correlation": 0.3033
         },
         "baseline": {
           "mae": 4.4501,
@@ -95,12 +753,51 @@
           "rank_correlation": 0.2512
         }
       },
+      "gamesObserved1to8": {
+        "rows": 224,
+        "model": {
+          "mae": 1.1095,
+          "rmse": 2.2646,
+          "rank_correlation": 0.4115
+        },
+        "baseline": {
+          "mae": 1.2184,
+          "rmse": 2.1595,
+          "rank_correlation": 0.3781
+        }
+      },
+      "gamesObserved9to13": {
+        "rows": 144,
+        "model": {
+          "mae": 2.6012,
+          "rmse": 3.8281,
+          "rank_correlation": 0.5
+        },
+        "baseline": {
+          "mae": 2.7547,
+          "rmse": 3.7251,
+          "rank_correlation": 0.4877
+        }
+      },
+      "gamesObserved14plus": {
+        "rows": 177,
+        "model": {
+          "mae": 3.0436,
+          "rmse": 3.9747,
+          "rank_correlation": 0.6715
+        },
+        "baseline": {
+          "mae": 3.6524,
+          "rmse": 4.6003,
+          "rank_correlation": 0.6472
+        }
+      },
       "QB": {
         "rows": 81,
         "model": {
-          "mae": 3.1198,
-          "rmse": 4.8058,
-          "rank_correlation": 0.6397
+          "mae": 3.0596,
+          "rmse": 4.7717,
+          "rank_correlation": 0.6548
         },
         "baseline": {
           "mae": 3.3474,
@@ -111,9 +808,9 @@
       "RB": {
         "rows": 136,
         "model": {
-          "mae": 2.2853,
-          "rmse": 3.6046,
-          "rank_correlation": 0.7599
+          "mae": 2.2267,
+          "rmse": 3.4873,
+          "rank_correlation": 0.7761
         },
         "baseline": {
           "mae": 2.4303,
@@ -124,9 +821,9 @@
       "WR": {
         "rows": 212,
         "model": {
-          "mae": 2.1085,
-          "rmse": 3.1254,
-          "rank_correlation": 0.742
+          "mae": 1.9801,
+          "rmse": 2.9472,
+          "rank_correlation": 0.7647
         },
         "baseline": {
           "mae": 2.4288,
@@ -137,9 +834,9 @@
       "TE": {
         "rows": 116,
         "model": {
-          "mae": 1.6378,
-          "rmse": 2.4825,
-          "rank_correlation": 0.6961
+          "mae": 1.6498,
+          "rmse": 2.4836,
+          "rank_correlation": 0.7073
         },
         "baseline": {
           "mae": 1.72,
@@ -151,40 +848,74 @@
   },
   "predictionInterval": {
     "lowerQuantile": 0.2,
-    "upperQuantile": 0.8
+    "upperQuantile": 0.8,
+    "targetCoverage": 0.6,
+    "test": {
+      "coverage": 0.5963,
+      "mean_width": 5.0535
+    },
+    "byPosition": {
+      "QB": {
+        "rows": 81,
+        "coverage": 0.6049,
+        "mean_width": 6.3698
+      },
+      "RB": {
+        "rows": 136,
+        "coverage": 0.6103,
+        "mean_width": 5.6535
+      },
+      "WR": {
+        "rows": 212,
+        "coverage": 0.6132,
+        "mean_width": 5.3055
+      },
+      "TE": {
+        "rows": 116,
+        "coverage": 0.5431,
+        "mean_width": 2.9703
+      }
+    },
+    "calibrationScales": {
+      "all": 1.0,
+      "QB": 1.2782,
+      "RB": 0.9766,
+      "WR": 0.9216,
+      "TE": 0.7808
+    }
   },
   "featureImportance": [
     {
       "feature": "prior_ppg",
-      "importance": 1.71846
-    },
-    {
-      "feature": "late8_ppg",
-      "importance": 0.06921
+      "importance": 1.47564
     },
     {
       "feature": "weekly_std",
-      "importance": 0.05412
+      "importance": 0.04736
     },
     {
-      "feature": "rush_yards_pg",
-      "importance": 0.04923
+      "feature": "draft_pick",
+      "importance": 0.02782
     },
     {
-      "feature": "rec_yards_pg",
-      "importance": 0.03418
+      "feature": "games_played_share",
+      "importance": 0.02677
+    },
+    {
+      "feature": "years_experience",
+      "importance": 0.02239
     },
     {
       "feature": "late4_ppg",
-      "importance": 0.01614
+      "importance": 0.02087
     },
     {
-      "feature": "pos_TE",
-      "importance": 0.0051
+      "feature": "late8_ppg",
+      "importance": 0.01896
     },
     {
-      "feature": "active_weeks",
-      "importance": 0.00407
+      "feature": "age",
+      "importance": 0.01524
     }
   ],
   "sources": [

@@ -147,6 +147,7 @@ export function buildIntelSignals(
 ): IntelSignal[] {
   const articlesByPlayer = new Map<string, NewsArticle[]>()
   feed.articles.forEach((article) => {
+    if (article.expiresAt && Date.parse(article.expiresAt) < Date.parse(feed.generatedAt)) return
     matchArticlePlayers(article, players).forEach((player) => {
       const id = player.sleeperId
       if (!id) return
@@ -173,7 +174,11 @@ export function buildIntelSignals(
       if (!articles.length && add24 === 0 && drop24 === 0) return null
 
       const newsScore = articles.reduce(
-        (sum, article) => sum + headlineScore(article.title) * article.reliability,
+        (sum, article) => {
+          const direction = article.eventDirection === 'up' ? 1 : article.eventDirection === 'down' ? -1 : 0
+          const classified = article.eventDirection ? direction * (article.impactWeight ?? 0.25) : headlineScore(article.title)
+          return sum + classified * article.reliability
+        },
         0,
       )
       const trendDelta = add24 - drop24
@@ -200,10 +205,11 @@ export function buildIntelSignals(
       const averageReliability = articles.length
         ? articles.reduce((sum, article) => sum + article.reliability, 0) / articles.length
         : 0.4
-      const agreement = articles.length > 1 && Math.abs(newsScore) >= articles.length * 0.7 ? 8 : 0
+      const corroboration = articles.reduce((sum, article) => sum + Math.max(0, (article.corroborationCount ?? 1) - 1), 0)
+      const agreement = (articles.length > 1 || corroboration > 0) && Math.abs(newsScore) >= articles.length * 0.5 ? 8 : 0
       const confidence = Math.round(Math.min(
         95,
-        averageReliability * 70 + Math.min(18, articles.length * 7) + agreement + Math.min(8, activity * 0.15),
+        averageReliability * 70 + Math.min(18, (articles.length + corroboration) * 7) + agreement + Math.min(8, activity * 0.15),
       ))
       const edgeScore = Math.round(Math.max(
         0,

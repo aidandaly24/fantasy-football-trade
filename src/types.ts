@@ -5,6 +5,7 @@ export type League = {
   status: string
   total_rosters: number
   draft_id: string | null
+  previous_league_id?: string | null
   avatar: string | null
   roster_positions: string[]
   scoring_settings: Record<string, number>
@@ -49,6 +50,30 @@ export type SleeperDraft = {
   status: string
   draft_order: Record<string, number> | null
   slot_to_roster_id: Record<string, number> | null
+}
+
+export type SleeperTransactionPick = {
+  season: string
+  round: number
+  roster_id: number
+  owner_id: number
+  previous_owner_id: number
+}
+
+export type SleeperTransaction = {
+  transaction_id: string
+  type: 'trade' | 'waiver' | 'free_agent' | string
+  status: string
+  created: number
+  status_updated: number
+  roster_ids: number[]
+  consenter_ids: number[]
+  adds: Record<string, number> | null
+  drops: Record<string, number> | null
+  draft_picks: SleeperTransactionPick[]
+  season?: string
+  leagueId?: string
+  transactionWeek?: number
 }
 
 export type SleeperPlayer = {
@@ -143,6 +168,7 @@ export type Asset = {
   projectedPpgFloor?: number
   projectedPpgCeiling?: number
   productionModel?: string
+  projectionDrivers?: string[]
 }
 
 export type TeamMetrics = {
@@ -194,10 +220,74 @@ export type PlayerProjection = {
   position: 'QB' | 'RB' | 'WR' | 'TE'
   sourceSeason: number
   gamesObserved: number
+  productionModel?: string
   expectedPpg: number
   floorPpg: number
   ceilingPpg: number
   confidence: number
+  drivers?: string[]
+  restOfSeasonPpg?: number
+  restOfSeasonWeek?: number
+}
+
+export type ModelMetrics = {
+  mae: number
+  rmse: number
+  rank_correlation: number
+}
+
+export type ModelGate = {
+  id: string
+  label: string
+  passed: boolean
+  actual: number
+  requirement: string
+}
+
+export type ModelHealthBundle = {
+  generatedAt: string
+  model: string
+  enabled: boolean
+  testSeason: number
+  target: string
+  currentPlayers: number
+  freshness?: {
+    dataAsOf: string
+    sourceSeason: number
+    staleAfter: string
+    stale: boolean
+  }
+  predictionDigest?: string
+  metrics: {
+    model: ModelMetrics
+    baselineName: string
+    baseline: ModelMetrics
+    maeImprovement: number
+    rankCorrelationDelta: number
+  }
+  gates: ModelGate[]
+  phaseGates?: Record<string, { enabled: boolean; checks: ModelGate[] }>
+  baselines: Array<{
+    id: string
+    selected: boolean
+    validation: ModelMetrics
+    test: ModelMetrics
+  }>
+  interval: {
+    lowerQuantile: number
+    upperQuantile: number
+    targetCoverage: number
+    test: { coverage: number; mean_width: number }
+    byPosition: Record<string, { rows: number; coverage: number; mean_width: number }>
+  }
+  slices: Array<{
+    id: string
+    rows: number
+    model: ModelMetrics
+    baseline: ModelMetrics
+    maeImprovement: number
+  }>
+  featureImportance: Array<{ feature: string; importance: number }>
 }
 
 export type ProjectionBundle = {
@@ -206,7 +296,65 @@ export type ProjectionBundle = {
   enabled: boolean
   testMaeImprovement: number
   coverage: number
+  dataAsOf?: string
+  sourceSeason?: number
+  staleAfter?: string
+  stale?: boolean
+  outlook?: 'next-season' | 'rest-of-season'
+  restOfSeasonWeek?: number | null
   projections: Record<string, PlayerProjection>
+}
+
+export type EventModelSignal = {
+  id: string
+  label: string
+  direction: 'up' | 'down' | 'watch'
+  sampleSize: number
+  modelPpgDelta: number
+  actualResidualPpg: number
+  observedPpgChange: number
+  confidence: 'low' | 'medium' | 'high'
+}
+
+export type EventModelHealthBundle = {
+  generatedAt: string
+  enabled: boolean
+  target: string
+  trainingSeason: number
+  validationSeason: number
+  testSeason: number
+  eventTestRows: number
+  eventModel: ModelMetrics
+  statusBlindModel: ModelMetrics
+  maeImprovement: number
+  maeImprovementInterval: { lower: number; median: number; upper: number }
+  rankCorrelationDelta: number
+  positionChanges: Record<string, number>
+  checks: ModelGate[]
+  signals: EventModelSignal[]
+}
+
+export type UserIdentity = {
+  id: string
+  email: string
+  name: string
+}
+
+export type LeaguePreferences = {
+  leagueId: string
+  leagueName: string
+  myRosterId: number | null
+  watchlist: string[]
+  settings: {
+    rankingMode?: RankingMode
+    strategyRosterId?: number
+  }
+  updatedAt?: string
+}
+
+export type UserState = {
+  user: UserIdentity
+  preferences: LeaguePreferences[]
 }
 
 export type RankingMode = 'overall' | 'contender' | 'future'
@@ -218,6 +366,13 @@ export type NewsArticle = {
   source: string
   publishedAt: string
   reliability: number
+  normalizedTitle?: string
+  eventType?: import('./intel-events').IntelEventType
+  eventDirection?: import('./intel-events').EventDirection
+  impactWeight?: number
+  expiresAt?: string
+  corroboratingSources?: string[]
+  corroborationCount?: number
 }
 
 export type TrendItem = {
@@ -237,6 +392,19 @@ export type IntelFeed = {
   sources: Array<{
     name: string
     ok: boolean
+  }>
+  qa?: {
+    rawArticles: number
+    publishedArticles: number
+    duplicatesRemoved: number
+    residualDuplicateRate: number
+    classifierFixtureAccuracy: number
+    classifierFixtureCount: number
+  }
+  phaseGates?: Record<string, {
+    enabled: boolean
+    advisoryOnly?: boolean
+    checks: ModelGate[]
   }>
 }
 

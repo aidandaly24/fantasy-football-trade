@@ -73,11 +73,12 @@ function toAsset(
     injuryStatus: sleeper?.injury_status,
     depthChartOrder: sleeper?.depth_chart_order,
     depthChartPosition: sleeper?.depth_chart_position,
-    projectedPpg: usableProjection?.expectedPpg,
+    projectedPpg: usableProjection?.restOfSeasonPpg ?? usableProjection?.expectedPpg,
     projectedPpgFloor: usableProjection?.floorPpg,
     projectedPpgCeiling: usableProjection?.ceilingPpg,
     projectionConfidence: usableProjection?.confidence,
-    productionModel: usableProjection ? 'season-transition-hgb-v1' : undefined,
+    productionModel: usableProjection?.productionModel,
+    projectionDrivers: usableProjection?.drivers,
     ...flags,
   }
 }
@@ -724,6 +725,13 @@ function packageRiskNotes(assets: Asset[]): string[] {
   })
 }
 
+function packageProjectionNotes(assets: Asset[]): string[] {
+  return assets.flatMap((asset) => {
+    if (asset.kind !== 'player' || !asset.projectionDrivers?.length) return []
+    return [`${asset.name}: ${asset.projectionDrivers.join(', ')}.`]
+  })
+}
+
 export function evaluateTrade(
   sideA: Asset[],
   sideB: Asset[],
@@ -799,6 +807,8 @@ export function evaluateTrade(
     incomingStabilityB: Math.round(sentStabilityA * 100),
     riskNotesA: packageRiskNotes(sideB),
     riskNotesB: packageRiskNotes(sideA),
+    projectionNotesA: packageProjectionNotes(sideB),
+    projectionNotesB: packageProjectionNotes(sideA),
     rangeA: { worst: sideBLow - sideAHigh, best: sideBHigh - sideALow },
     rangeB: { worst: sideALow - sideBHigh, best: sideAHigh - sideBLow },
   }

@@ -1,9 +1,29 @@
+import {
+  classifierFixtureAccuracy,
+  CLASSIFIER_FIXTURES,
+  classifyHeadline,
+  headlineSimilarity,
+  normalizeHeadline,
+  type EventDirection,
+  type IntelEventType,
+} from '../src/intel-events'
+import {
+  authenticatedUser,
+  ensureUserSchema,
+  getLeaguePreference,
+  listLeaguePreferences,
+  normalizePreferenceInput,
+  saveLeaguePreference,
+  type D1Database,
+} from './user-store'
+
 interface AssetsBinding {
   fetch(request: Request): Promise<Response>
 }
 
 interface Env {
   ASSETS: AssetsBinding
+  DB?: D1Database
 }
 
 type NewsArticle = {
@@ -13,6 +33,13 @@ type NewsArticle = {
   source: string
   publishedAt: string
   reliability: number
+  normalizedTitle: string
+  eventType: IntelEventType
+  eventDirection: EventDirection
+  impactWeight: number
+  expiresAt: string
+  corroboratingSources: string[]
+  corroborationCount: number
 }
 
 type TrendItem = {
@@ -61,13 +88,22 @@ function parseFeed(xml: string, source: typeof NEWS_SOURCES[number]): NewsArticl
       const title = rssField(item, 'title')
       const url = rssField(item, 'link') || rssField(item, 'guid')
       const publishedAt = rssField(item, 'pubDate') || rssField(item, 'dc:date')
+      const published = Number.isNaN(Date.parse(publishedAt)) ? new Date() : new Date(publishedAt)
+      const classification = classifyHeadline(title)
       return {
         id: `${source.name.toLowerCase().replace(/\s+/g, '-')}-${index}-${title.slice(0, 28)}`,
         title,
         url,
         source: source.name,
-        publishedAt: Number.isNaN(Date.parse(publishedAt)) ? new Date().toISOString() : new Date(publishedAt).toISOString(),
+        publishedAt: published.toISOString(),
         reliability: source.reliability,
+        normalizedTitle: normalizeHeadline(title),
+        eventType: classification.eventType,
+        eventDirection: classification.direction,
+        impactWeight: classification.impactWeight,
+        expiresAt: new Date(published.getTime() + classification.expiresInHours * 3_600_000).toISOString(),
+        corroboratingSources: [source.name],
+        corroborationCount: 1,
       }
     })
     .filter((article) => article.title && /^https?:\/\//.test(article.url))
@@ -107,17 +143,58 @@ async function intelResponse(): Promise<Response> {
     fetchTrend('drop', 24),
   ])
 
-  const seen = new Set<string>()
-  const articles = news
+  const rawArticles = news
     .flatMap((result) => result.articles)
     .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
-    .filter((article) => {
-      const key = article.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
+  const deduplicated: NewsArticle[] = []
+  rawArticles.forEach((article) => {
+    const duplicate = deduplicated.find((candidate) => headlineSimilarity(candidate.title, article.title) >= 0.82)
+    if (!duplicate) {
+      deduplicated.push(article)
+      return
+    }
+    duplicate.corroboratingSources = [...new Set([...duplicate.corroboratingSources, article.source])]
+    duplicate.corroborationCount += 1
+    duplicate.reliability = Math.max(duplicate.reliability, article.reliability)
+  })
+  const articles = deduplicated
     .slice(0, 60)
+  const remainingDuplicatePairs = articles.flatMap((article, index) =>
+    articles.slice(index + 1).map((candidate) => headlineSimilarity(article.title, candidate.title)),
+  ).filter((similarity) => similarity >= 0.82).length
+  const residualDuplicateRate = articles.length ? remainingDuplicatePairs / articles.length : 0
+  const fixtureAccuracy = classifierFixtureAccuracy()
+  const sourceSuccessRate = news.filter((source) => source.ok).length / NEWS_SOURCES.length
+  const checks = [
+    {
+      id: 'eventSample',
+      label: 'Labeled event sample',
+      passed: CLASSIFIER_FIXTURES.length >= 20,
+      actual: CLASSIFIER_FIXTURES.length,
+      requirement: '>= 20 labeled event fixtures',
+    },
+    {
+      id: 'eventAccuracy',
+      label: 'Event classification accuracy',
+      passed: fixtureAccuracy >= 0.85,
+      actual: fixtureAccuracy,
+      requirement: '>= 85% on the labeled fixture set',
+    },
+    {
+      id: 'newsDuplicates',
+      label: 'Residual duplicate rate',
+      passed: residualDuplicateRate <= 0.05,
+      actual: residualDuplicateRate,
+      requirement: '<= 5% after normalization',
+    },
+    {
+      id: 'newsSources',
+      label: 'News sources online',
+      passed: sourceSuccessRate >= 0.67,
+      actual: sourceSuccessRate,
+      requirement: '>= 67% of configured sources',
+    },
+  ]
 
   return Response.json(
     {
@@ -125,6 +202,21 @@ async function intelResponse(): Promise<Response> {
       articles,
       trends: { adds6, adds24, drops6, drops24 },
       sources: news.map(({ name, ok }) => ({ name, ok })),
+      qa: {
+        rawArticles: rawArticles.length,
+        publishedArticles: articles.length,
+        duplicatesRemoved: rawArticles.length - deduplicated.length,
+        residualDuplicateRate,
+        classifierFixtureAccuracy: fixtureAccuracy,
+        classifierFixtureCount: CLASSIFIER_FIXTURES.length,
+      },
+      phaseGates: {
+        'v2.0': {
+          enabled: checks.every((check) => check.passed),
+          advisoryOnly: true,
+          checks,
+        },
+      },
     },
     {
       headers: {
@@ -135,12 +227,69 @@ async function intelResponse(): Promise<Response> {
   )
 }
 
+function privateJson(body: unknown, status = 200): Response {
+  return Response.json(body, {
+    status,
+    headers: {
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  })
+}
+
+async function preferencesResponse(request: Request, env: Env): Promise<Response> {
+  const user = authenticatedUser(request)
+  if (!user) return privateJson({ message: 'Authenticated site access required' }, 401)
+  if (!env.DB) return privateJson({ message: 'Private storage is not configured' }, 503)
+  try {
+    await ensureUserSchema(env.DB)
+    if (request.method === 'GET') {
+      const leagueId = new URL(request.url).searchParams.get('leagueId')
+      if (leagueId && !/^\d{8,24}$/.test(leagueId)) {
+        return privateJson({ message: 'Invalid league ID' }, 400)
+      }
+      const preferences = leagueId
+        ? await getLeaguePreference(env.DB, user.id, leagueId)
+        : await listLeaguePreferences(env.DB, user.id)
+      return privateJson({ user, preferences })
+    }
+    if (request.method === 'PUT') {
+      const origin = request.headers.get('origin')
+      if (origin && origin !== new URL(request.url).origin) {
+        return privateJson({ message: 'Cross-origin writes are not allowed' }, 403)
+      }
+      let input: unknown
+      try {
+        input = await request.json()
+      } catch {
+        return privateJson({ message: 'Invalid JSON body' }, 400)
+      }
+      let preference
+      try {
+        preference = normalizePreferenceInput(input)
+      } catch (error) {
+        return privateJson({ message: error instanceof Error ? error.message : 'Invalid preferences' }, 400)
+      }
+      return privateJson({
+        user,
+        preferences: await saveLeaguePreference(env.DB, user.id, preference),
+      })
+    }
+    return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, PUT' } })
+  } catch {
+    return privateJson({ message: 'Private storage is temporarily unavailable' }, 500)
+  }
+}
+
 const worker = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
     if (url.pathname === '/api/intel') {
       if (request.method !== 'GET') return new Response('Method not allowed', { status: 405 })
       return intelResponse()
+    }
+    if (url.pathname === '/api/preferences') {
+      return preferencesResponse(request, env)
     }
 
     const response = await env.ASSETS.fetch(request)

@@ -24,10 +24,14 @@ export function sites(): Plugin {
     async closeBundle() {
       const outputDirectory = resolve(root, 'dist', '.openai')
       const hostingConfig = resolve(root, '.openai', 'hosting.json')
+      const migrations = resolve(root, 'drizzle')
       await rm(outputDirectory, { recursive: true, force: true })
       await mkdir(outputDirectory, { recursive: true })
       if (await exists(hostingConfig)) {
         await cp(hostingConfig, resolve(outputDirectory, 'hosting.json'))
+      }
+      if (await exists(migrations)) {
+        await cp(migrations, resolve(outputDirectory, 'drizzle'), { recursive: true })
       }
     },
   }

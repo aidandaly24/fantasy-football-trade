@@ -4,11 +4,13 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
+  Bookmark,
   Check,
   ChevronRight,
   CircleGauge,
   Clock3,
   ExternalLink,
+  Handshake,
   Info,
   LockKeyhole,
   Radar,
@@ -23,10 +25,12 @@ import {
   X,
 } from 'lucide-react'
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchIntel, fetchLeagueBundle, fetchProjections, fetchSleeperPlayers, fetchValues } from './api'
+import { fetchEventModelHealth, fetchIntel, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchSleeperPlayers, fetchTransactionHistory, fetchUserState, fetchValues, saveLeaguePreferences } from './api'
 import { buildIntelSignals, timeAgo } from './intel'
+import { buildManagerProfiles } from './negotiation'
+import type { ManagerProfile } from './negotiation'
 import { assetRoleLabel, buildTeams, evaluateTrade, leagueFormat, rosterProfile } from './rankings'
-import type { Asset, IntelFeed, IntelSignal, LeagueBundle, RankingMode, Team, ValueBundle } from './types'
+import type { Asset, EventModelHealthBundle, IntelFeed, IntelSignal, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, Team, UserIdentity, UserState, ValueBundle } from './types'
 
 const DEFAULT_LEAGUE_ID = '1336087922847289344'
 
@@ -34,9 +38,14 @@ type AppData = {
   leagueBundle: LeagueBundle
   valueBundle: ValueBundle
   teams: Team[]
+  modelHealth: ModelHealthBundle | null
+  eventModelHealth: EventModelHealthBundle | null
+  managerProfiles: ManagerProfile[]
+  preferences: LeaguePreferences
+  user: UserIdentity | null
 }
 
-type View = 'rankings' | 'trade' | 'intel'
+type View = 'rankings' | 'trade' | 'intel' | 'strategy' | 'model'
 
 const modeCopy: Record<RankingMode, { label: string; description: string }> = {
   overall: {
@@ -470,6 +479,12 @@ function TradeVerdict({
           {result.riskNotesB.slice(0, 2).map((note) => <p key={`b-${note}`}><AlertTriangle size={14} /><span><strong>Side B:</strong> {note}</span></p>)}
         </div>
       )}
+      {ready && (result.projectionNotesA.length > 0 || result.projectionNotesB.length > 0) && (
+        <div className="trade-risk-list trade-projection-list">
+          {result.projectionNotesA.slice(0, 2).map((note) => <p key={`pa-${note}`}><Info size={14} /><span><strong>Side A receives:</strong> {note}</span></p>)}
+          {result.projectionNotesB.slice(0, 2).map((note) => <p key={`pb-${note}`}><Info size={14} /><span><strong>Side B receives:</strong> {note}</span></p>)}
+        </div>
+      )}
       <div className="model-note">
         <Info size={16} />
         <span>ML production is expected PPR per team week, so missed games count. Market price and current role stay separate; uncovered players use a transparent fallback.</span>
@@ -603,13 +618,31 @@ function DirectionMark({ direction }: { direction: IntelSignal['direction'] }) {
   return <Radar size={16} />
 }
 
-function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBundle }) {
-  const defaultTeam = teams.find((team) => team.ownerName.toLowerCase().includes('aidandaly')) ?? teams[0]
+function IntelView({
+  teams,
+  valueBundle,
+  eventHealth,
+  preferences,
+  onUpdatePreferences,
+}: {
+  teams: Team[]
+  valueBundle: ValueBundle
+  eventHealth: EventModelHealthBundle | null
+  preferences: LeaguePreferences
+  onUpdatePreferences: (patch: Partial<LeaguePreferences>) => void
+}) {
+  const defaultTeam = teams.find((team) => team.rosterId === preferences.myRosterId) ?? teams[0]
   const [myRosterId, setMyRosterId] = useState(defaultTeam.rosterId)
   const [feed, setFeed] = useState<IntelFeed | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'mine' | 'free'>('all')
+  const [filter, setFilter] = useState<'all' | 'mine' | 'free' | 'watch'>('all')
+
+  useEffect(() => {
+    if (preferences.myRosterId && teams.some((team) => team.rosterId === preferences.myRosterId)) {
+      setMyRosterId(preferences.myRosterId)
+    }
+  }, [preferences.myRosterId, teams])
 
   const loadIntel = async () => {
     setLoading(true)
@@ -634,8 +667,15 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
   const filteredSignals = signals.filter((signal) => {
     if (filter === 'mine') return signal.isMine
     if (filter === 'free') return !signal.ownerTeam
+    if (filter === 'watch') return preferences.watchlist.includes(String(signal.player.sleeperId))
     return true
   })
+  const toggleWatch = (playerId: string) => {
+    const watchlist = preferences.watchlist.includes(playerId)
+      ? preferences.watchlist.filter((item) => item !== playerId)
+      : [...preferences.watchlist, playerId]
+    onUpdatePreferences({ watchlist })
+  }
   const myTeam = teams.find((team) => team.rosterId === myRosterId) ?? teams[0]
   const rosterPulse = signals.filter((signal) => signal.isMine).slice(0, 5)
   const freshArticles = feed?.articles.filter(
@@ -643,6 +683,7 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
   ).length ?? 0
   const healthySources = feed?.sources.filter((source) => source.ok).length ?? 0
   const actionableSignals = signals.filter((signal) => signal.edgeScore >= 50).length
+  const intelGate = feed?.phaseGates?.['v2.0']
 
   return (
     <main className="page-shell intel-page">
@@ -661,14 +702,18 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
       <section className="intel-toolbar panel">
         <label>
           <small>My team</small>
-          <select value={myRosterId} onChange={(event) => setMyRosterId(Number(event.target.value))}>
+          <select value={myRosterId} onChange={(event) => {
+            const rosterId = Number(event.target.value)
+            setMyRosterId(rosterId)
+            onUpdatePreferences({ myRosterId: rosterId })
+          }}>
             {teams.map((team) => <option key={team.rosterId} value={team.rosterId}>{team.teamName}</option>)}
           </select>
         </label>
         <div className="intel-tabs" role="group" aria-label="Signal filter">
-          {(['all', 'mine', 'free'] as const).map((item) => (
+          {(['all', 'mine', 'free', 'watch'] as const).map((item) => (
             <button key={item} type="button" className={filter === item ? 'active' : ''} onClick={() => setFilter(item)}>
-              {item === 'all' ? 'All targets' : item === 'mine' ? 'My roster' : 'Free agents'}
+              {item === 'all' ? 'All targets' : item === 'mine' ? 'My roster' : item === 'free' ? 'Free agents' : `Watchlist (${preferences.watchlist.length})`}
             </button>
           ))}
         </div>
@@ -682,7 +727,7 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
       <section className="intel-stat-strip" aria-label="Intel status">
         <div><span><Clock3 size={17} /></span><small>Fresh headlines</small><strong>{freshArticles}</strong><em>last 24 hours</em></div>
         <div><span><Zap size={17} /></span><small>Unabsorbed edges</small><strong>{actionableSignals}</strong><em>edge score 50+</em></div>
-        <div><span><Radar size={17} /></span><small>Sources online</small><strong>{healthySources}/{feed?.sources.length ?? 3}</strong><em>ESPN, CBS, Yahoo</em></div>
+        <div><span><Radar size={17} /></span><small>Intel QA gate</small><strong>{intelGate?.enabled ? 'Pass' : 'Watch'}</strong><em>{feed?.qa ? `${(feed.qa.classifierFixtureAccuracy * 100).toFixed(0)}% labels · ${(feed.qa.residualDuplicateRate * 100).toFixed(1)}% dupes` : `${healthySources}/${feed?.sources.length ?? 3} sources`}</em></div>
       </section>
 
       <section className="intel-layout">
@@ -716,7 +761,7 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
                       <div className="signal-headlines">
                         {signal.articles.slice(0, 2).map((article) => (
                           <a href={article.url} target="_blank" rel="noreferrer" key={article.id}>
-                            <span>{article.source} · {timeAgo(article.publishedAt)}</span>
+                            <span>{article.eventType ? `${article.eventType} · ` : ''}{article.source}{(article.corroborationCount ?? 1) > 1 ? ` +${(article.corroborationCount ?? 1) - 1}` : ''} · {timeAgo(article.publishedAt)}</span>
                             {article.title}<ExternalLink size={13} />
                           </a>
                         ))}
@@ -724,6 +769,14 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
                     )}
                   </div>
                   <div className="signal-action"><small>Next move</small><strong>{signal.action}</strong></div>
+                  <button
+                    type="button"
+                    className={`signal-watch ${preferences.watchlist.includes(String(signal.player.sleeperId)) ? 'active' : ''}`}
+                    onClick={() => toggleWatch(String(signal.player.sleeperId))}
+                    aria-label={`${preferences.watchlist.includes(String(signal.player.sleeperId)) ? 'Remove' : 'Add'} ${signal.player.name} ${preferences.watchlist.includes(String(signal.player.sleeperId)) ? 'from' : 'to'} watchlist`}
+                  >
+                    <Bookmark size={15} fill={preferences.watchlist.includes(String(signal.player.sleeperId)) ? 'currentColor' : 'none'} />
+                  </button>
                 </article>
               ))}
             </div>
@@ -744,10 +797,27 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
             )) : <p className="quiet-copy">No urgent news matched your roster. That’s a green light to stay patient.</p>}
           </section>
 
+          {eventHealth && (
+            <section className="intel-method panel event-evidence">
+              <span className="eyebrow">Historical event test · {eventHealth.testSeason}</span>
+              <h3>{eventHealth.enabled ? 'Adjustment model passed.' : 'Evidence only—not an auto-bump.'}</h3>
+              <p>{eventHealth.eventTestRows} held-out player-weeks produced a {signedPercent(eventHealth.maeImprovement)} MAE lift. The 5% promotion gate {eventHealth.enabled ? 'passed' : 'did not pass'}, so these deltas stay advisory.</p>
+              <div className="event-signal-list">
+                {eventHealth.signals.filter((signal) => signal.sampleSize >= 75).slice(0, 3).map((signal) => (
+                  <div key={signal.id}>
+                    <span><strong>{signal.label}</strong><small>{signal.sampleSize} examples · {signal.confidence} confidence</small></span>
+                    <b className={signal.observedPpgChange >= 0 ? 'positive' : 'negative'}>{signal.observedPpgChange >= 0 ? '+' : ''}{signal.observedPpgChange.toFixed(1)} PPG</b>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="intel-method panel">
             <span className="eyebrow">How to use this</span>
             <h3>A lead, not a verdict.</h3>
             <p>Impact measures the event. Confidence measures the reporting. Market reaction measures how much Sleeper has already moved. Edge is what may remain.</p>
+            {feed?.qa && <p>{feed.qa.duplicatesRemoved} duplicate reports collapsed. The event classifier is {(feed.qa.classifierFixtureAccuracy * 100).toFixed(0)}% accurate on {feed.qa.classifierFixtureCount} labeled fixtures. Intel remains advisory.</p>}
             <div className="source-health">
               {(feed?.sources ?? []).map((source) => (
                 <span key={source.name}><i className={source.ok ? 'online' : ''} />{source.name}</span>
@@ -756,6 +826,210 @@ function IntelView({ teams, valueBundle }: { teams: Team[]; valueBundle: ValueBu
           </section>
         </aside>
       </section>
+    </main>
+  )
+}
+
+function StrategyView({
+  teams,
+  profiles,
+  preferredRosterId,
+  onUpdatePreferences,
+}: {
+  teams: Team[]
+  profiles: ManagerProfile[]
+  preferredRosterId?: number
+  onUpdatePreferences: (patch: Partial<LeaguePreferences>) => void
+}) {
+  const ordered = useMemo(
+    () => [...profiles].sort((a, b) => b.tradeCount - a.tradeCount || a.teamName.localeCompare(b.teamName)),
+    [profiles],
+  )
+  const [selectedRosterId, setSelectedRosterId] = useState(preferredRosterId ?? ordered[0]?.rosterId ?? teams[0]?.rosterId ?? 1)
+  useEffect(() => {
+    if (preferredRosterId && profiles.some((item) => item.rosterId === preferredRosterId)) {
+      setSelectedRosterId(preferredRosterId)
+    }
+  }, [preferredRosterId, profiles])
+  const profile = profiles.find((item) => item.rosterId === selectedRosterId) ?? ordered[0]
+  const team = teams.find((item) => item.rosterId === profile?.rosterId) ?? teams[0]
+
+  if (!profile || !team) return null
+
+  return (
+    <main className="page-shell strategy-page">
+      <section className="strategy-hero">
+        <div>
+          <span className="eyebrow accent-eyebrow">Negotiation room</span>
+          <h1>Trade the manager.<br />Not just the calculator.</h1>
+          <p>Completed Sleeper trades across linked league seasons reveal preferences. Small samples are labeled instead of oversold.</p>
+        </div>
+        <div className="private-status"><LockKeyhole size={18} /><span><strong>Private league evidence</strong><small>No profile is published outside this site.</small></span></div>
+      </section>
+
+      <section className="strategy-layout">
+        <aside className="manager-list panel">
+          <div className="panel-heading"><div><span className="eyebrow">League market</span><h2>Managers</h2></div></div>
+          {ordered.map((item) => {
+            const managerTeam = teams.find((candidate) => candidate.rosterId === item.rosterId) ?? team
+            return (
+              <button type="button" key={item.rosterId} className={item.rosterId === profile.rosterId ? 'active' : ''} onClick={() => {
+                setSelectedRosterId(item.rosterId)
+                onUpdatePreferences({ settings: { strategyRosterId: item.rosterId } })
+              }}>
+                <Avatar team={managerTeam} size="sm" />
+                <span><strong>{item.teamName}</strong><small>{item.archetype} · {item.tradeCount} trades</small></span>
+                <ChevronRight size={16} />
+              </button>
+            )
+          })}
+        </aside>
+
+        <div className="manager-profile panel">
+          <div className="manager-profile-hero">
+            <Avatar team={team} size="lg" />
+            <div><span className={`confidence-pill confidence-${profile.confidence}`}>{profile.confidence} confidence</span><h2>{profile.teamName}</h2><p>{profile.ownerName} · {profile.archetype}</p></div>
+          </div>
+          <p className="manager-summary">{profile.summary}</p>
+          <div className="manager-evidence-grid">
+            <div><small>Assets acquired</small><strong>{profile.receivedPlayers + profile.receivedPicks}</strong><span>{profile.receivedPlayers} players · {profile.receivedPicks} picks</span></div>
+            <div><small>Assets sent</small><strong>{profile.sentPlayers + profile.sentPicks}</strong><span>{profile.sentPlayers} players · {profile.sentPicks} picks</span></div>
+            <div><small>Pick appetite</small><strong>{Math.round(profile.pickShare * 100)}%</strong><span>share of acquired assets</span></div>
+            <div><small>Current-value history</small><strong className={profile.currentValueDelta >= 0 ? 'positive' : 'negative'}>{profile.currentValueDelta >= 0 ? '+' : ''}{formatValue(profile.currentValueDelta)}</strong><span>hindsight, not causal skill</span></div>
+          </div>
+          <div className="negotiation-steps">
+            <article><span>01</span><div><small>Opening offer</small><strong>{profile.opening}</strong></div></article>
+            <article><span>02</span><div><small>Target structure</small><strong>{profile.target}</strong></div></article>
+            <article><span>03</span><div><small>Walk-away line</small><strong>{profile.walkAway}</strong></div></article>
+          </div>
+          <div className="model-caveat"><Info size={17} /><span>{profile.evidenceNote}</span></div>
+        </div>
+      </section>
+    </main>
+  )
+}
+
+const baselineLabels: Record<string, string> = {
+  repeatPrior: 'Repeat prior season',
+  positionMean: 'Position average',
+  shrinkToPosition: '75% prior + 25% position',
+}
+
+const sliceLabels: Record<string, string> = {
+  all: 'All players',
+  QB: 'Quarterbacks',
+  RB: 'Running backs',
+  WR: 'Wide receivers',
+  TE: 'Tight ends',
+  priorPpgUnder3: 'Under 3 prior PPG',
+  priorPpg3to6: '3–6 prior PPG',
+  priorPpg6to10: '6–10 prior PPG',
+  priorPpgAtLeast10: '10+ prior PPG',
+  gamesObserved1to8: '1–8 games observed',
+  gamesObserved9to13: '9–13 games observed',
+  gamesObserved14plus: '14+ games observed',
+}
+
+function signedPercent(value: number): string {
+  return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
+}
+
+function ModelView({ health }: { health: ModelHealthBundle | null }) {
+  if (!health) {
+    return (
+      <main className="page-shell model-page">
+        <section className="model-hero panel">
+          <span className="eyebrow accent-eyebrow">Model audit</span>
+          <h1>No trusted model report is available.</h1>
+          <p>The calculator is using its transparent market-and-role fallback.</p>
+        </section>
+      </main>
+    )
+  }
+
+  const importantSlices = health.slices.filter((slice) => slice.id !== 'all')
+  const intervalPositions = Object.entries(health.interval.byPosition)
+  const visibleGates = [
+    ...health.gates,
+    ...(health.phaseGates?.['v1.2']?.checks ?? []),
+    ...(health.phaseGates?.['v1.3']?.checks ?? []),
+    ...(health.phaseGates?.['v2.1']?.checks ?? []),
+  ]
+
+  return (
+    <main className="page-shell model-page">
+      <section className="model-hero panel">
+        <div>
+          <span className="eyebrow accent-eyebrow">Model audit · held-out {health.testSeason}</span>
+          <h1>Trust is earned<br />one gate at a time.</h1>
+          <p>The production forecast is allowed into lineup impact only when every visible test passes. Market prices and final grades remain separate.</p>
+        </div>
+        <div className={`model-status ${health.enabled ? 'enabled' : 'disabled'}`}>
+          {health.enabled ? <Check size={20} /> : <AlertTriangle size={20} />}
+          <span><strong>{health.enabled ? 'Production enabled' : 'Fallback only'}</strong><small>{health.model}</small></span>
+        </div>
+      </section>
+
+      <section className="model-metric-grid" aria-label="Held-out model results">
+        <article className="model-metric panel"><span>MAE improvement</span><strong>{signedPercent(health.metrics.maeImprovement)}</strong><small>against {baselineLabels[health.metrics.baselineName] ?? health.metrics.baselineName}</small></article>
+        <article className="model-metric panel"><span>Model MAE</span><strong>{health.metrics.model.mae.toFixed(2)}</strong><small>baseline {health.metrics.baseline.mae.toFixed(2)}</small></article>
+        <article className="model-metric panel"><span>Rank correlation</span><strong>{health.metrics.model.rank_correlation.toFixed(3)}</strong><small>{health.metrics.rankCorrelationDelta >= 0 ? '+' : ''}{health.metrics.rankCorrelationDelta.toFixed(3)} vs baseline</small></article>
+        <article className="model-metric panel"><span>20–80 coverage</span><strong>{(health.interval.test.coverage * 100).toFixed(1)}%</strong><small>target {(health.interval.targetCoverage * 100).toFixed(0)}%</small></article>
+        <article className="model-metric panel"><span>Current projections</span><strong>{health.currentPlayers}</strong><small>{health.freshness?.stale ? 'snapshot stale · fallback guarded' : `through ${health.freshness?.sourceSeason ?? 'current season'}`}</small></article>
+      </section>
+
+      <section className="model-layout">
+        <div className="panel model-gates">
+          <div className="panel-heading"><div><span className="eyebrow">Promotion gates</span><h2>All must pass</h2></div><span className="method-note">No manual override</span></div>
+          <div className="gate-list">
+            {visibleGates.map((gate) => (
+              <div className={`gate-row ${gate.passed ? 'passed' : 'failed'}`} key={gate.id}>
+                <span>{gate.passed ? <Check size={16} /> : <AlertTriangle size={16} />}</span>
+                <div><strong>{gate.label}</strong><small>{gate.requirement}</small></div>
+                <b>{['mae', 'positions', 'interval', 'contextMae', 'contextRegression', 'rosMae', 'rosPositions', 'eventMae', 'eventOverall', 'eventPositions'].includes(gate.id) ? `${(gate.actual * 100).toFixed(1)}%` : ['contextPositions', 'projectionCoverage', 'eventRows'].includes(gate.id) ? gate.actual.toFixed(0) : ['snapshotFreshness', 'deterministicRefresh'].includes(gate.id) ? (gate.passed ? 'pass' : 'fail') : gate.actual.toFixed(3)}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel interval-card">
+          <div className="panel-heading"><div><span className="eyebrow">Uncertainty calibration</span><h2>Coverage by position</h2></div></div>
+          <div className="interval-list">
+            {intervalPositions.map(([position, values]) => (
+              <div key={position}><AssetBadge position={position as Asset['position']} /><span><strong>{(values.coverage * 100).toFixed(1)}%</strong><small>{values.rows} held-out players · {values.mean_width.toFixed(1)} PPG wide</small></span></div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="panel model-table-card">
+        <div className="panel-heading"><div><span className="eyebrow">Simple challengers</span><h2>Baseline comparison</h2></div><span className="method-note">Selected on validation, judged later</span></div>
+        <div className="table-scroll">
+          <table className="model-table">
+            <thead><tr><th>Baseline</th><th>Validation MAE</th><th>Held-out MAE</th><th>Held-out rank</th></tr></thead>
+            <tbody>
+              {health.baselines.map((baseline) => (
+                <tr key={baseline.id} className={baseline.selected ? 'selected' : ''}><td>{baselineLabels[baseline.id] ?? baseline.id}{baseline.selected && <small> strongest</small>}</td><td>{baseline.validation.mae.toFixed(2)}</td><td>{baseline.test.mae.toFixed(2)}</td><td>{baseline.test.rank_correlation.toFixed(3)}</td></tr>
+              ))}
+              <tr className="model-row"><td>Production model</td><td>—</td><td>{health.metrics.model.mae.toFixed(2)}</td><td>{health.metrics.model.rank_correlation.toFixed(3)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="panel model-table-card">
+        <div className="panel-heading"><div><span className="eyebrow">Failure map</span><h2>Where the model helps—and where it doesn’t</h2></div><span className="method-note">Positive lift is better</span></div>
+        <div className="table-scroll">
+          <table className="model-table slice-table">
+            <thead><tr><th>Slice</th><th>Players</th><th>Model MAE</th><th>Baseline MAE</th><th>Lift</th></tr></thead>
+            <tbody>{importantSlices.map((slice) => (
+              <tr key={slice.id}><td>{sliceLabels[slice.id] ?? slice.id}</td><td>{slice.rows}</td><td>{slice.model.mae.toFixed(2)}</td><td>{slice.baseline.mae.toFixed(2)}</td><td className={slice.maeImprovement >= 0 ? 'positive' : 'negative'}>{signedPercent(slice.maeImprovement)}</td></tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="model-caveat panel"><Info size={17} /><span><strong>What this does not claim:</strong> production MAE improved, but rank ordering trails the simple baseline by {Math.abs(health.metrics.rankCorrelationDelta).toFixed(3)}. That is inside the guardrail, not proof the model is universally smarter.</span></section>
     </main>
   )
 }
@@ -769,6 +1043,7 @@ function AppHeader({
   setInputId,
   onSubmit,
   loading,
+  savedLeagues,
 }: {
   view: View
   setView: (view: View) => void
@@ -778,6 +1053,7 @@ function AppHeader({
   setInputId: (id: string) => void
   onSubmit: (event: FormEvent) => void
   loading: boolean
+  savedLeagues: LeaguePreferences[]
 }) {
   return (
     <>
@@ -796,11 +1072,20 @@ function AppHeader({
           <button type="button" className={view === 'intel' ? 'active' : ''} onClick={() => setView('intel')}>
             <Radar size={17} /> Intel
           </button>
+          <button type="button" className={view === 'strategy' ? 'active' : ''} onClick={() => setView('strategy')}>
+            <Handshake size={17} /> Strategy
+          </button>
+          <button type="button" className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}>
+            <CircleGauge size={17} /> Model
+          </button>
         </nav>
         <form className="league-switcher" onSubmit={onSubmit}>
           <label>
             <small>{leagueName || 'Sleeper league'}</small>
-            <input value={inputId} onChange={(event) => setInputId(event.target.value)} aria-label="Sleeper league ID" />
+            <input list="saved-sleeper-leagues" value={inputId} onChange={(event) => setInputId(event.target.value)} aria-label="Sleeper league ID" />
+            <datalist id="saved-sleeper-leagues">
+              {savedLeagues.map((preference) => <option key={preference.leagueId} value={preference.leagueId}>{preference.leagueName}</option>)}
+            </datalist>
           </label>
           <button type="submit" disabled={loading || inputId === leagueId} aria-label="Sync league">
             <RefreshCw size={17} className={loading ? 'spin' : ''} />
@@ -823,6 +1108,7 @@ function LeagueRibbon({ data }: { data: AppData }) {
         <span>{format.numQbs === 2 ? 'Superflex' : '1QB'}</span>
         <span>{league.total_rosters} teams</span>
         <span>Full PPR{tep ? ` + ${tep} TEP` : ''}</span>
+        {data.user && <span title={data.user.email}>Private for {data.user.name}</span>}
         <span className="ribbon-source">Powered by <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a></span>
       </div>
     </div>
@@ -871,9 +1157,10 @@ function App() {
   const [selectedId, setSelectedId] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [userState, setUserState] = useState<UserState | null>(null)
   const initialLoad = useRef(false)
 
-  const loadLeague = async (id: string) => {
+  const loadLeague = async (id: string, stateOverride: UserState | null = userState) => {
     const cleanId = id.trim()
     if (!/^\d+$/.test(cleanId)) {
       setError('Sleeper league IDs contain numbers only.')
@@ -886,22 +1173,58 @@ function App() {
     try {
       const leagueBundle = await fetchLeagueBundle(cleanId)
       const format = leagueFormat(leagueBundle)
-      const [valueBundle, projectionBundle] = await Promise.all([
+      const [valueBundle, projectionBundle, modelHealth, eventModelHealth, transactions] = await Promise.all([
         fetchValues({
           ...format,
           numTeams: leagueBundle.league.total_rosters,
         }),
         fetchProjections(),
+        fetchModelHealth(),
+        fetchEventModelHealth(),
+        fetchTransactionHistory(leagueBundle.league),
       ])
       const rosterIds = new Set(leagueBundle.rosters.flatMap((roster) => roster.players ?? []))
       const sleeperPlayers = await fetchSleeperPlayers([...rosterIds])
-      const playerProjections = new Map(Object.entries(projectionBundle?.projections ?? {}))
+      const playerProjections = new Map(
+        Object.entries(projectionBundle?.projections ?? {}).map(([playerId, projection]) => [
+          playerId,
+          projectionBundle?.stale
+            ? {
+                ...projection,
+                confidence: projection.confidence * 0.7,
+                drivers: ['stale source snapshot', ...(projection.drivers ?? [])].slice(0, 3),
+              }
+            : projection,
+        ]),
+      )
       const teams = buildTeams(leagueBundle, valueBundle, sleeperPlayers, playerProjections)
-      setData({ leagueBundle, valueBundle, teams })
+      const managerProfiles = buildManagerProfiles(transactions, teams, valueBundle.players, valueBundle.picks)
+      const existingPreference = stateOverride?.preferences.find((item) => item.leagueId === cleanId)
+      const basePreference: LeaguePreferences = {
+        leagueId: cleanId,
+        leagueName: leagueBundle.league.name,
+        myRosterId: existingPreference?.myRosterId ?? null,
+        watchlist: existingPreference?.watchlist ?? [],
+        settings: existingPreference?.settings ?? {},
+      }
+      const saved = await saveLeaguePreferences(basePreference).catch(() => null)
+      const preferences = saved?.preferences ?? basePreference
+      const user = saved?.user ?? stateOverride?.user ?? null
+      if (user) {
+        const nextState: UserState = {
+          user,
+          preferences: [
+            preferences,
+            ...(stateOverride?.preferences ?? []).filter((item) => item.leagueId !== cleanId),
+          ],
+        }
+        setUserState(nextState)
+      }
+      setData({ leagueBundle, valueBundle, teams, modelHealth, eventModelHealth, managerProfiles, preferences, user })
+      setMode(preferences.settings.rankingMode ?? 'overall')
       setLeagueId(cleanId)
       setInputId(cleanId)
       setSelectedId(teams[0]?.rosterId ?? 1)
-      window.localStorage.setItem('rosterlab:leagueId', cleanId)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unknown data error')
     } finally {
@@ -912,10 +1235,36 @@ function App() {
   useEffect(() => {
     if (initialLoad.current) return
     initialLoad.current = true
-    const saved = window.localStorage.getItem('rosterlab:leagueId') || DEFAULT_LEAGUE_ID
-    setInputId(saved)
-    void loadLeague(saved)
+    void (async () => {
+      const state = await fetchUserState()
+      setUserState(state)
+      const savedLeague = state?.preferences[0]?.leagueId ?? DEFAULT_LEAGUE_ID
+      setInputId(savedLeague)
+      await loadLeague(savedLeague, state)
+    })()
   }, [])
+
+  const updatePreferences = (patch: Partial<LeaguePreferences>) => {
+    if (!data) return
+    const next: LeaguePreferences = {
+      ...data.preferences,
+      ...patch,
+      settings: {
+        ...data.preferences.settings,
+        ...(patch.settings ?? {}),
+      },
+    }
+    setData({ ...data, preferences: next })
+    void saveLeaguePreferences(next).then((saved) => {
+      setData((current) => current && current.leagueBundle.league.league_id === next.leagueId
+        ? { ...current, preferences: saved.preferences, user: saved.user }
+        : current)
+      setUserState((current) => ({
+        user: saved.user,
+        preferences: [saved.preferences, ...(current?.preferences ?? []).filter((item) => item.leagueId !== saved.preferences.leagueId)],
+      }))
+    }).catch(() => setError('Your private preferences could not be saved'))
+  }
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -933,6 +1282,7 @@ function App() {
         setInputId={setInputId}
         onSubmit={handleSubmit}
         loading={loading}
+        savedLeagues={userState?.preferences ?? []}
       />
       {data && <LeagueRibbon data={data} />}
       {loading && !data ? (
@@ -946,14 +1296,21 @@ function App() {
             <RankingsView
               teams={data.teams}
               mode={mode}
-              setMode={setMode}
+              setMode={(nextMode) => {
+                setMode(nextMode)
+                updatePreferences({ settings: { rankingMode: nextMode } })
+              }}
               selectedId={selectedId}
               setSelectedId={setSelectedId}
             />
           ) : view === 'trade' ? (
             <TradeView teams={data.teams} rosterPositions={data.leagueBundle.league.roster_positions} />
+          ) : view === 'intel' ? (
+            <IntelView teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
+          ) : view === 'strategy' ? (
+            <StrategyView teams={data.teams} profiles={data.managerProfiles} preferredRosterId={data.preferences.settings.strategyRosterId} onUpdatePreferences={updatePreferences} />
           ) : (
-            <IntelView teams={data.teams} valueBundle={data.valueBundle} />
+            <ModelView health={data.modelHealth} />
           )}
           <footer>
             <span>RosterLab <b>·</b> League-relative analysis</span>

@@ -1,16 +1,21 @@
 import type {
   ApiMeta,
+  EventModelHealthBundle,
   IntelFeed,
   League,
   LeagueBundle,
+  LeaguePreferences,
   LeagueUser,
+  ModelHealthBundle,
   PickValue,
   ProjectionBundle,
   SleeperDraft,
   SleeperPlayer,
   SleeperRoster,
+  SleeperTransaction,
   TradyrPlayer,
   TradedPick,
+  UserState,
   ValueBundle,
 } from './types'
 
@@ -18,8 +23,8 @@ const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
 const sleeperPlayerCache = new Map<string, SleeperPlayer>()
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url)
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init)
   if (!response.ok) {
     let message = `Request failed (${response.status})`
     try {
@@ -46,6 +51,41 @@ export async function fetchLeagueBundle(leagueId: string): Promise<LeagueBundle>
   ])
 
   return { league, rosters, users, tradedPicks, draft }
+}
+
+export async function fetchTransactionHistory(
+  currentLeague: League,
+  maxSeasons = 3,
+): Promise<SleeperTransaction[]> {
+  const transactions = new Map<string, SleeperTransaction>()
+  let league: League | null = currentLeague
+  for (let seasonIndex = 0; league && seasonIndex < maxSeasons; seasonIndex += 1) {
+    const seasonLeague: League = league
+    const weeks = await Promise.all(
+      Array.from({ length: 18 }, (_, index) => index + 1).map(async (week) => {
+        try {
+          const items = await fetchJson<SleeperTransaction[]>(
+            `${SLEEPER_BASE}/league/${seasonLeague.league_id}/transactions/${week}`,
+          )
+          return items.map((item) => ({
+            ...item,
+            season: seasonLeague.season,
+            leagueId: seasonLeague.league_id,
+            transactionWeek: week,
+          }))
+        } catch {
+          return []
+        }
+      }),
+    )
+    weeks.flat().forEach((transaction) => {
+      if (transaction.status === 'complete') transactions.set(transaction.transaction_id, transaction)
+    })
+    league = seasonLeague.previous_league_id
+      ? await fetchJson<League>(`${SLEEPER_BASE}/league/${seasonLeague.previous_league_id}`).catch(() => null)
+      : null
+  }
+  return [...transactions.values()].sort((a, b) => b.created - a.created)
 }
 
 type TradyrResponse<T> = { data: T; meta: ApiMeta }
@@ -81,6 +121,40 @@ export async function fetchProjections(): Promise<ProjectionBundle | null> {
   } catch {
     return null
   }
+}
+
+export async function fetchModelHealth(): Promise<ModelHealthBundle | null> {
+  try {
+    return await fetchJson<ModelHealthBundle>('/data/model-health.json')
+  } catch {
+    return null
+  }
+}
+
+export async function fetchEventModelHealth(): Promise<EventModelHealthBundle | null> {
+  try {
+    return await fetchJson<EventModelHealthBundle>('/data/event-model-health.json')
+  } catch {
+    return null
+  }
+}
+
+export async function fetchUserState(): Promise<UserState | null> {
+  try {
+    return await fetchJson<UserState>('/api/preferences')
+  } catch {
+    return null
+  }
+}
+
+export async function saveLeaguePreferences(
+  preferences: LeaguePreferences,
+): Promise<{ user: UserState['user']; preferences: LeaguePreferences }> {
+  return fetchJson<{ user: UserState['user']; preferences: LeaguePreferences }>('/api/preferences', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(preferences),
+  })
 }
 
 export async function fetchSleeperPlayers(ids: string[]): Promise<Map<string, SleeperPlayer>> {

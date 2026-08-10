@@ -14,6 +14,7 @@
     "preview": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vite preview"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.31.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -24,6 +25,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.5",
+    "drizzle-kit": "^0.31.10",
     "typescript": "^7.0.2",
     "vite": "^8.2.1",
     "vitest": "^4.1.10",
