@@ -27,7 +27,7 @@ import {
   X,
 } from 'lucide-react'
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchAlerts, fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchSleeperPlayers, fetchUserState, fetchValues, saveEdgeSnapshots, saveLeaguePreferences, saveMarketTape, saveTradeOffer, syncJournal, updateAlertReadState } from './api'
+import { fetchAlerts, fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchResearchState, fetchSleeperPlayers, fetchUserState, fetchValues, saveEdgeSnapshots, saveLeaguePreferences, saveMarketTape, saveTradeOffer, syncJournal, updateAlertReadState } from './api'
 import { applyDirectionPickProjections, attributeOpportunity, buildEdgeBoard, buildTeamDirections, marketTapeAssets, opportunitySnapshot } from './edge'
 import type { EdgeCategory, TeamDirection } from './edge'
 import { emptyShadowHealth } from './edge-learning'
@@ -37,6 +37,7 @@ import { buildManagerProfiles } from './negotiation'
 import type { ManagerProfile } from './negotiation'
 import { assetRoleLabel, buildTeams, evaluateTrade, leagueFormat, rosterProfile } from './rankings'
 import { buildTradePlan, resolveTeamStrategy } from './strategy'
+import type { ResearchGate, ResearchPipelineBundle } from './research'
 import type { Asset, AlertInbox, EdgeStateBundle, EventModelHealthBundle, IntelFeed, IntelSignal, JournalBundle, JournalTrade, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, Team, TradeOfferRecord, TradeOfferStatus, UserIdentity, UserState, ValueBundle } from './types'
 
 const DEFAULT_LEAGUE_ID = '1336087922847289344'
@@ -112,6 +113,15 @@ function Avatar({ team, size = 'md' }: { team: Team; size?: 'sm' | 'md' | 'lg' }
 
 function AssetBadge({ position }: { position: Asset['position'] }) {
   return <span className={`position-badge pos-${position.toLowerCase()}`}>{position}</span>
+}
+
+function formatResearchGate(gate: ResearchGate): string {
+  const actual = gate.format === 'percent'
+    ? `${(gate.actual * 100).toFixed(1)}%`
+    : gate.format === 'decimal'
+      ? gate.actual.toFixed(3)
+      : Math.round(gate.actual).toLocaleString()
+  return `${actual} / ${gate.requirement}`
 }
 
 function scoreLabel(value: number) {
@@ -1015,6 +1025,7 @@ function EdgeView({
   const [feed, setFeed] = useState<IntelFeed | null>(null)
   const [intelLoaded, setIntelLoaded] = useState(false)
   const [edgeState, setEdgeState] = useState<EdgeStateBundle>(emptyEdgeState)
+  const [research, setResearch] = useState<ResearchPipelineBundle | null>(null)
   const [edgeError, setEdgeError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | EdgeCategory>(preferences.settings.edgeFilter ?? 'all')
   const [selectedKey, setSelectedKey] = useState('')
@@ -1033,6 +1044,9 @@ function EdgeView({
     }).finally(() => { if (active) setIntelLoaded(true) })
     void fetchEdgeState(preferences.leagueId).then((result) => { if (active) setEdgeState(result) }).catch((error) => {
       if (active) setEdgeError(error instanceof Error ? error.message : 'Private edge history unavailable')
+    })
+    void fetchResearchState(preferences.leagueId).then((result) => { if (active) setResearch(result) }).catch((error) => {
+      if (active) setEdgeError(error instanceof Error ? error.message : 'Historical research pipeline unavailable')
     })
     return () => { active = false }
   }, [preferences.leagueId])
@@ -1217,6 +1231,21 @@ function EdgeView({
           {edgeState.historicalTape.gates.map((gate) => <span className={gate.passed ? 'passed' : ''} key={gate.id}>{gate.passed ? <Check size={14} /> : <Clock3 size={14} />} {gate.label}: {['coverage', 'scale'].includes(gate.id) ? `${(gate.actual * 100).toFixed(0)}%` : gate.actual.toFixed(0)} / {gate.requirement}</span>)}
         </div>}
         <div className="model-caveat"><Info size={17} /><span>{edgeState.historicalTape.notes[1] ?? edgeState.historicalTape.notes[0]}</span></div>
+        <div className="panel-heading historical-audit-heading">
+          <div><span className="eyebrow">V5.1–V5.6 historical intelligence</span><h2>Reconstruct, join, challenge, then promote</h2></div>
+          <span className="method-note">{research ? `${research.phases.filter((phase) => phase.status === 'ready' || phase.status === 'shadow').length}/6 pipelines active` : 'Loading private audit'}</span>
+        </div>
+        {research ? <div className="research-phase-grid">
+          {research.phases.map((phase) => (
+            <article className={`research-phase research-${phase.status}`} key={phase.version}>
+              <header><span>V{phase.version}</span><i>{phase.status}</i></header>
+              <strong>{phase.title}</strong>
+              <p>{phase.summary}</p>
+              <div>{phase.gates.map((gate) => <small className={gate.passed ? 'passed' : ''} key={gate.id}>{gate.passed ? <Check size={12} /> : <Clock3 size={12} />}{gate.label}: {formatResearchGate(gate)}</small>)}</div>
+            </article>
+          ))}
+        </div> : <div className="intel-empty research-loading"><RefreshCw className="spin" size={20} /><strong>Rebuilding the historical state tape…</strong><span>The first pass follows every linked Sleeper season and then runs automatically.</span></div>}
+        {research && <div className="model-caveat"><Info size={17} /><span>{research.notes[1]}</span></div>}
       </section>
 
       <section className="direction-tape panel">

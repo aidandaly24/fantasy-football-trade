@@ -382,3 +382,93 @@ export const historicalMarketObservations = sqliteTable(
     index('idx_historical_market_asset_date').on(table.provider, table.formatKey, table.scaleKey, table.assetId, table.observedAt),
   ],
 )
+
+export const leagueWeekStates = sqliteTable(
+  'league_week_states',
+  {
+    rootLeagueId: text('root_league_id').notNull(),
+    leagueId: text('league_id').notNull(),
+    season: text('season').notNull(),
+    week: integer('week').notNull(),
+    rosterId: integer('roster_id').notNull(),
+    ownerUserId: text('owner_user_id'),
+    playersJson: text('players_json').notNull(),
+    startersJson: text('starters_json').notNull(),
+    points: real('points').notNull(),
+    pointsAgainst: real('points_against').notNull(),
+    wins: integer('wins').notNull(),
+    losses: integer('losses').notNull(),
+    ties: integer('ties').notNull(),
+    sourceVersion: text('source_version').notNull(),
+    capturedAt: text('captured_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.leagueId, table.week, table.rosterId] }),
+    index('idx_league_week_states_root').on(table.rootLeagueId, table.season, table.week, table.rosterId),
+  ],
+)
+
+export const objectivePlayerObservations = sqliteTable(
+  'objective_player_observations',
+  {
+    assetId: text('asset_id').notNull(),
+    observedDate: text('observed_date').notNull(),
+    observedAt: text('observed_at').notNull(),
+    name: text('name').notNull(),
+    position: text('position'),
+    team: text('team'),
+    age: real('age'),
+    active: integer('active', { mode: 'boolean' }),
+    status: text('status'),
+    injuryStatus: text('injury_status'),
+    depthChartOrder: integer('depth_chart_order'),
+    depthChartPosition: text('depth_chart_position'),
+    source: text('source').notNull(),
+    sourceVersion: text('source_version').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.assetId, table.observedDate] }),
+    index('idx_objective_player_observations_date').on(table.assetId, table.observedAt),
+  ],
+)
+
+export const managerBehaviorSnapshots = sqliteTable(
+  'manager_behavior_snapshots',
+  {
+    rootLeagueId: text('root_league_id').notNull(),
+    ownerUserId: text('owner_user_id').notNull(),
+    asOfDate: text('as_of_date').notNull(),
+    tradeCount: integer('trade_count').notNull(),
+    initiatedCount: integer('initiated_count').notNull(),
+    receivedPlayers: integer('received_players').notNull(),
+    receivedPicks: integer('received_picks').notNull(),
+    sentPlayers: integer('sent_players').notNull(),
+    sentPicks: integer('sent_picks').notNull(),
+    pickAffinity: real('pick_affinity').notNull(),
+    consolidationIndex: real('consolidation_index').notNull(),
+    sampleWeight: real('sample_weight').notNull(),
+    evidenceJson: text('evidence_json').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.rootLeagueId, table.ownerUserId, table.asOfDate] }),
+    index('idx_manager_behavior_root').on(table.rootLeagueId, table.asOfDate),
+  ],
+)
+
+export const researchPipelineRuns = sqliteTable(
+  'research_pipeline_runs',
+  {
+    id: text('id').primaryKey(),
+    rootLeagueId: text('root_league_id').notNull(),
+    startedAt: text('started_at').notNull(),
+    finishedAt: text('finished_at'),
+    status: text('status').notNull(),
+    seasons: integer('seasons').notNull().default(0),
+    expectedRosterWeeks: integer('expected_roster_weeks').notNull().default(0),
+    rosterWeeks: integer('roster_weeks').notNull().default(0),
+    identityParties: integer('identity_parties').notNull().default(0),
+    mappedIdentityParties: integer('mapped_identity_parties').notNull().default(0),
+    errorsJson: text('errors_json').notNull().default('[]'),
+  },
+  (table) => [index('idx_research_pipeline_runs_root').on(table.rootLeagueId, table.startedAt)],
+)

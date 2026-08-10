@@ -24,6 +24,7 @@ import type {
   UserState,
   ValueBundle,
 } from './types'
+import type { ResearchPipelineBundle } from './research'
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
@@ -226,6 +227,15 @@ export async function updateAlertReadState(
 
 export async function fetchEdgeState(leagueId: string): Promise<EdgeStateBundle> {
   return fetchJson<EdgeStateBundle>(`/api/edge?leagueId=${encodeURIComponent(leagueId)}`)
+}
+
+export async function fetchResearchState(leagueId: string, syncIfStale = true): Promise<ResearchPipelineBundle> {
+  const path = `/api/research?leagueId=${encodeURIComponent(leagueId)}`
+  const current = await fetchJson<ResearchPipelineBundle>(path)
+  const stale = !current.lastLeagueSyncAt
+    || Date.now() - Date.parse(current.lastLeagueSyncAt) > 24 * 60 * 60 * 1000
+  if (!syncIfStale || !stale) return current
+  return fetchJson<ResearchPipelineBundle>(path, { method: 'POST' })
 }
 
 export async function saveEdgeSnapshots(
