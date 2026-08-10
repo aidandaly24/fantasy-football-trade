@@ -9,7 +9,7 @@ describe('private edge research storage', () => {
       edgeScore: 78, lineupDelta: 3.2, confidence: 71, categories: ['value', 'points', 'value'],
       catalyst: 'Named the starter before the market moved.',
     }, new Date('2026-08-10T12:00:00Z'))
-    expect(snapshot.snapshotKey).toBe('4:11625:2026-08-10')
+    expect(snapshot.snapshotKey).toBe('4:11625:2026-08-10:78:510')
     expect(snapshot.categories).toEqual(['value', 'points'])
     expect(snapshot.status).toBe('tracking')
   })

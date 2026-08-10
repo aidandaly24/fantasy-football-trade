@@ -392,7 +392,7 @@ export function opportunitySnapshot(
   capturedAt = new Date().toISOString(),
 ): EdgeOpportunitySnapshot {
   return {
-    snapshotKey: `${opportunity.key}:${capturedAt.slice(0, 10)}`,
+    snapshotKey: `${opportunity.key}:${capturedAt.slice(0, 10)}:${opportunity.score}:${opportunity.projectedValues.day90}`,
     assetId: opportunity.asset.id,
     assetName: opportunity.asset.name,
     ownerRosterId: opportunity.owner.rosterId,

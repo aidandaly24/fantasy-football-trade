@@ -67,17 +67,19 @@ export function normalizeOpportunityInput(input: unknown, now = new Date()): Edg
     : []
   if (!categories.length) throw new Error('Invalid categories')
   const capturedAt = now.toISOString()
+  const edgeScore = Math.round(boundedNumber(value.edgeScore, 'edge score', 0, 100))
+  const projection90 = Math.round(boundedNumber(value.projection90, '90-day projection', 0, 100_000))
   return {
-    snapshotKey: `${ownerRosterId}:${assetId}:${capturedAt.slice(0, 10)}`,
+    snapshotKey: `${ownerRosterId}:${assetId}:${capturedAt.slice(0, 10)}:${edgeScore}:${projection90}`,
     assetId,
     assetName: boundedText(value.assetName, 'asset name', 120),
     ownerRosterId,
     capturedAt,
     currentValue: Math.round(boundedNumber(value.currentValue, 'current value', 0, 100_000)),
     projection30: Math.round(boundedNumber(value.projection30, '30-day projection', 0, 100_000)),
-    projection90: Math.round(boundedNumber(value.projection90, '90-day projection', 0, 100_000)),
+    projection90,
     projection180: Math.round(boundedNumber(value.projection180, '180-day projection', 0, 100_000)),
-    edgeScore: Math.round(boundedNumber(value.edgeScore, 'edge score', 0, 100)),
+    edgeScore,
     lineupDelta: Number(boundedNumber(value.lineupDelta, 'lineup delta', -50, 50).toFixed(2)),
     confidence: Math.round(boundedNumber(value.confidence, 'confidence', 0, 100)),
     categories,
