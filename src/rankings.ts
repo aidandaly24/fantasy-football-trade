@@ -86,6 +86,8 @@ function getPickValue(
 
 export function buildOwnedPicks(options: {
   season: number
+  seasons?: number[]
+  exactSlotSeason?: number | null
   rounds: number
   rosterIds: number[]
   tradedPicks: TradedPick[]
@@ -106,12 +108,15 @@ export function buildOwnedPicks(options: {
   })
   const midSlot = Math.max(1, Math.ceil(options.rosterIds.length / 2))
 
-  for (let year = options.season; year <= options.season + 2; year += 1) {
+  const seasons = options.seasons ?? [options.season, options.season + 1, options.season + 2]
+  const exactSlotSeason = options.exactSlotSeason === undefined ? options.season : options.exactSlotSeason
+
+  for (const year of seasons) {
     for (const originalRosterId of options.rosterIds) {
       for (let round = 1; round <= options.rounds; round += 1) {
         const key = `${year}:${round}:${originalRosterId}`
         const ownerRosterId = currentOwners.get(key) ?? originalRosterId
-        const exactSlot = year === options.season ? slotsByRoster.get(originalRosterId) : undefined
+        const exactSlot = year === exactSlotSeason ? slotsByRoster.get(originalRosterId) : undefined
         const valueSlot = exactSlot ?? midSlot
         const marketPick = getPickValue(options.pickValues, year, round, valueSlot)
         const originalTeam = options.teamNames.get(originalRosterId) ?? `Team ${originalRosterId}`
@@ -147,6 +152,28 @@ export function buildOwnedPicks(options: {
     picks.sort((a, b) => b.value - a.value || a.id.localeCompare(b.id))
   })
   return owned
+}
+
+export function futurePickContext(
+  leagueBundle: LeagueBundle,
+  pickValues: PickValue[],
+): { firstSeason: number; seasons: number[]; exactSlotSeason: number | null } {
+  const leagueSeason = Number(leagueBundle.league.season)
+  const currentDraftComplete =
+    leagueBundle.draft?.status === 'complete' && Number(leagueBundle.draft.season) === leagueSeason
+  const firstSeason = currentDraftComplete ? leagueSeason + 1 : leagueSeason
+  const marketSeasons = [...new Set(pickValues.map((pick) => Number(pick.year)))]
+    .filter((season) => Number.isFinite(season) && season >= firstSeason)
+    .sort((a, b) => a - b)
+  const seasons = marketSeasons.length
+    ? marketSeasons
+    : [firstSeason, firstSeason + 1, firstSeason + 2]
+  const exactSlotSeason =
+    !currentDraftComplete && Number(leagueBundle.draft?.season) === firstSeason
+      ? firstSeason
+      : null
+
+  return { firstSeason, seasons, exactSlotSeason }
 }
 
 function takeBest(pool: Asset[], position: string): Asset | undefined {
@@ -350,13 +377,17 @@ export function buildTeams(
     teamNames.set(roster.roster_id, user?.metadata?.team_name || user?.display_name || `Team ${roster.roster_id}`)
   })
 
+  const pickContext = futurePickContext(leagueBundle, values.picks)
+
   const ownedPicks = buildOwnedPicks({
-    season: Number(leagueBundle.league.season),
+    season: pickContext.firstSeason,
+    seasons: pickContext.seasons,
+    exactSlotSeason: pickContext.exactSlotSeason,
     rounds: leagueBundle.league.settings.draft_rounds || 3,
     rosterIds: leagueBundle.rosters.map((roster) => roster.roster_id),
     tradedPicks: leagueBundle.tradedPicks,
     pickValues: values.picks,
-    slotToRosterId: leagueBundle.draft?.slot_to_roster_id,
+    slotToRosterId: pickContext.exactSlotSeason ? leagueBundle.draft?.slot_to_roster_id : null,
     teamNames,
   })
 

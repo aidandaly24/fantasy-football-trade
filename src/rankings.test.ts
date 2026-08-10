@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildOwnedPicks, evaluateTrade, optimizeLineup, packageValue, rosterProfile, scoreTeams } from './rankings'
-import type { Asset, PickValue, Team } from './types'
+import { buildOwnedPicks, evaluateTrade, futurePickContext, optimizeLineup, packageValue, rosterProfile, scoreTeams } from './rankings'
+import type { Asset, LeagueBundle, PickValue, Team } from './types'
 
 function asset(id: string, position: Asset['position'], value: number): Asset {
   return {
@@ -70,6 +70,33 @@ describe('buildOwnedPicks', () => {
     const traded = picks.get(2)?.find((pick) => pick.id === 'pick:2026:1:1')
     expect(traded?.name).toBe('2026 1.02')
     expect(traded?.value).toBe(500)
+  })
+
+  it('starts after a completed rookie draft and never reuses that draft order', () => {
+    const leagueBundle = {
+      league: { season: '2026' },
+      draft: { season: '2026', status: 'complete', slot_to_roster_id: { '2': 1 } },
+    } as unknown as LeagueBundle
+    const availableValues: PickValue[] = [
+      ...pickValues,
+      { id: 'pick_2028_1_06', name: '2028 Pick 1.06', round: 1, slot: 6, year: '2028', tier: 'mid', composite: 350, position: 'PICK' },
+    ]
+    const context = futurePickContext(leagueBundle, availableValues)
+    const picks = buildOwnedPicks({
+      season: context.firstSeason,
+      seasons: context.seasons,
+      exactSlotSeason: context.exactSlotSeason,
+      rounds: 1,
+      rosterIds: [1],
+      tradedPicks: [],
+      pickValues: availableValues,
+      slotToRosterId: leagueBundle.draft?.slot_to_roster_id,
+      teamNames: new Map([[1, 'Alpha']]),
+    }).get(1) ?? []
+
+    expect(context).toEqual({ firstSeason: 2027, seasons: [2027, 2028], exactSlotSeason: null })
+    expect(picks.map((pick) => pick.year)).toEqual(['2027', '2028'])
+    expect(picks[0].name).toBe('2027 1st · from Alpha')
   })
 })
 
