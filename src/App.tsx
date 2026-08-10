@@ -803,7 +803,11 @@ function IntelView({
               <h3>{eventHealth.enabled ? 'Adjustment model passed.' : 'Evidence only—not an auto-bump.'}</h3>
               <p>{eventHealth.eventTestRows} held-out player-weeks produced a {signedPercent(eventHealth.maeImprovement)} MAE lift. The 5% promotion gate {eventHealth.enabled ? 'passed' : 'did not pass'}, so these deltas stay advisory.</p>
               <div className="event-signal-list">
-                {eventHealth.signals.filter((signal) => signal.sampleSize >= 75).slice(0, 3).map((signal) => (
+                {eventHealth.signals.filter((signal) => signal.sampleSize >= 75 && (
+                  signal.direction === 'watch'
+                  || (signal.direction === 'up' && signal.observedPpgChange > 0)
+                  || (signal.direction === 'down' && signal.observedPpgChange < 0)
+                )).slice(0, 3).map((signal) => (
                   <div key={signal.id}>
                     <span><strong>{signal.label}</strong><small>{signal.sampleSize} examples · {signal.confidence} confidence</small></span>
                     <b className={signal.observedPpgChange >= 0 ? 'positive' : 'negative'}>{signal.observedPpgChange >= 0 ? '+' : ''}{signal.observedPpgChange.toFixed(1)} PPG</b>
