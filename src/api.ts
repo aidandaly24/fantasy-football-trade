@@ -15,6 +15,7 @@ import type {
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
+const sleeperPlayerCache = new Map<string, SleeperPlayer>()
 
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url)
@@ -72,12 +73,17 @@ export async function fetchValues(options: {
   return { players: players.data, picks: picks.data, meta: players.meta }
 }
 
-export async function fetchMissingPlayers(ids: string[]): Promise<Map<string, SleeperPlayer>> {
+export async function fetchSleeperPlayers(ids: string[]): Promise<Map<string, SleeperPlayer>> {
   const playerMap = new Map<string, SleeperPlayer>()
-  const filtered = ids.filter((id) => id !== '0' && /^\d+$/.test(id))
+  const filtered = [...new Set(ids.filter((id) => id !== '0' && /^\d+$/.test(id)))]
+  const uncached = filtered.filter((id) => {
+    const cached = sleeperPlayerCache.get(id)
+    if (cached) playerMap.set(id, cached)
+    return !cached
+  })
 
-  for (let offset = 0; offset < filtered.length; offset += 40) {
-    const batch = filtered.slice(offset, offset + 40)
+  for (let offset = 0; offset < uncached.length; offset += 40) {
+    const batch = uncached.slice(offset, offset + 40)
     const results = await Promise.all(
       batch.map(async (id) => {
         try {
@@ -88,7 +94,10 @@ export async function fetchMissingPlayers(ids: string[]): Promise<Map<string, Sl
       }),
     )
     results.forEach((player) => {
-      if (player?.player_id) playerMap.set(player.player_id, player)
+      if (player?.player_id) {
+        sleeperPlayerCache.set(player.player_id, player)
+        playerMap.set(player.player_id, player)
+      }
     })
   }
 

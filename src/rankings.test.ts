@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildOwnedPicks, evaluateTrade, futurePickContext, optimizeLineup, packageValue, projectPickProjections, rosterProfile, scoreTeams } from './rankings'
+import { buildOwnedPicks, currentRoleValue, evaluateTrade, futurePickContext, optimizeLineup, packageValue, projectPickProjections, rosterProfile, scoreTeams } from './rankings'
 import type { Asset, LeagueBundle, PickValue, Team } from './types'
 
 function asset(id: string, position: Asset['position'], value: number): Asset {
@@ -45,6 +45,16 @@ describe('optimizeLineup', () => {
 
     expect(lineup.map((player) => player.id)).toEqual(['qb1', 'rb1', 'wr1', 'te1', 'wr2', 'qb2'])
     expect(new Set(lineup.map((player) => player.id)).size).toBe(lineup.length)
+  })
+
+  it('does not present an NFL backup as a full-value current starter', () => {
+    const starter = asset('starter', 'RB', 240)
+    starter.depthChartOrder = 1
+    const expensiveBackup = asset('backup', 'RB', 420)
+    expensiveBackup.depthChartOrder = 2
+
+    expect(currentRoleValue(expensiveBackup)).toBe(168)
+    expect(optimizeLineup([starter, expensiveBackup], ['RB']).map((player) => player.id)).toEqual(['starter'])
   })
 })
 
@@ -174,6 +184,37 @@ describe('trade evaluation', () => {
     expect(result.lineupImpactA).toBe(300)
     expect(result.rangeA.worst).toBeLessThan(result.rangeA.best)
     expect(result.confidence).toBeLessThan(100)
+  })
+
+  it('downgrades a market win when much of the return is contingent backup value', () => {
+    const lateFirst = asset('1.12', 'PICK', 360)
+    lateFirst.kind = 'pick'
+    lateFirst.projectionConfidence = 0.95
+    const earlySecond = asset('2.02', 'PICK', 250)
+    earlySecond.kind = 'pick'
+    earlySecond.projectionConfidence = 0.95
+    const shough = asset('Tyler Shough', 'QB', 408)
+    shough.depthChartOrder = 1
+    const corum = asset('Blake Corum', 'RB', 275)
+    corum.depthChartOrder = 2
+    const myQb = asset('my-qb', 'QB', 300)
+    myQb.depthChartOrder = 1
+    const myRb = asset('my-rb', 'RB', 260)
+    myRb.depthChartOrder = 1
+    const theirRb = asset('their-rb', 'RB', 240)
+    theirRb.depthChartOrder = 1
+
+    const result = evaluateTrade([lateFirst, earlySecond], [shough, corum], {
+      teamA: team(1, [myQb, myRb]),
+      teamB: team(2, [shough, theirRb], [corum]),
+      rosterPositions: ['QB', 'RB'],
+    })
+
+    expect(result.marketNetA).toBeGreaterThan(0)
+    expect(result.ratingA).toBeLessThan(64)
+    expect(result.gradeA).not.toMatch(/^A/)
+    expect(result.riskNotesA[0]).toContain('RB2')
+    expect(result.incomingStabilityA).toBeLessThan(result.incomingStabilityB)
   })
 })
 

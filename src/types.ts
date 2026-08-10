@@ -60,6 +60,11 @@ export type SleeperPlayer = {
   fantasy_positions?: string[] | null
   team?: string | null
   age?: number | null
+  active?: boolean
+  status?: string | null
+  injury_status?: string | null
+  depth_chart_order?: number | null
+  depth_chart_position?: string | null
 }
 
 export type TradyrPlayer = {
@@ -129,6 +134,11 @@ export type Asset = {
   isStarter?: boolean
   isTaxi?: boolean
   isReserve?: boolean
+  active?: boolean
+  nflStatus?: string | null
+  injuryStatus?: string | null
+  depthChartOrder?: number | null
+  depthChartPosition?: string | null
 }
 
 export type TeamMetrics = {

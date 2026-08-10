@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   ArrowLeftRight,
   ArrowDownRight,
   ArrowUpRight,
@@ -22,9 +23,9 @@ import {
   X,
 } from 'lucide-react'
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchIntel, fetchLeagueBundle, fetchMissingPlayers, fetchValues } from './api'
+import { fetchIntel, fetchLeagueBundle, fetchSleeperPlayers, fetchValues } from './api'
 import { buildIntelSignals, timeAgo } from './intel'
-import { buildTeams, evaluateTrade, leagueFormat, rosterProfile } from './rankings'
+import { assetRoleLabel, buildTeams, evaluateTrade, leagueFormat, rosterProfile } from './rankings'
 import type { Asset, IntelFeed, IntelSignal, LeagueBundle, RankingMode, Team, ValueBundle } from './types'
 
 const DEFAULT_LEAGUE_ID = '1336087922847289344'
@@ -309,7 +310,7 @@ function TradeAssetRow({
         <strong>{asset.name}</strong>
         <small>
           {asset.kind === 'player'
-            ? [asset.team, asset.rank ? `#${asset.rank} overall` : 'Unranked'].filter(Boolean).join(' · ')
+            ? [asset.team, assetRoleLabel(asset), asset.rank ? `#${asset.rank} overall` : 'Unranked'].filter(Boolean).join(' · ')
             : asset.slot
               ? 'Known slot'
               : `Auto: likely ${asset.projectedTier ?? 'mid'} · ${formatValue(asset.valueLow ?? asset.value)}–${formatValue(asset.valueHigh ?? asset.value)}`}
@@ -460,12 +461,18 @@ function TradeVerdict({
         <div className="trade-lenses">
           <span><small>A market edge</small><b className={result.marketNetA > 0 ? 'positive' : result.marketNetA < 0 ? 'negative' : ''}>{result.marketNetA > 0 ? '+' : ''}{formatValue(result.marketNetA)}</b></span>
           <span><small>Model confidence</small><b>{result.confidence}%</b></span>
-          <span><small>A scenario range</small><b>{formatValue(result.rangeA.worst)} to {formatValue(result.rangeA.best)}</b></span>
+          <span><small>A incoming stability</small><b>{result.incomingStabilityA}%</b></span>
+        </div>
+      )}
+      {ready && (result.riskNotesA.length > 0 || result.riskNotesB.length > 0) && (
+        <div className="trade-risk-list">
+          {result.riskNotesA.slice(0, 2).map((note) => <p key={`a-${note}`}><AlertTriangle size={14} /><span><strong>Side A:</strong> {note}</span></p>)}
+          {result.riskNotesB.slice(0, 2).map((note) => <p key={`b-${note}`}><AlertTriangle size={14} /><span><strong>Side B:</strong> {note}</span></p>)}
         </div>
       )}
       <div className="model-note">
         <Info size={16} />
-        <span>Market value, legal-lineup impact, and early-to-late pick risk are scored separately before the final rating.</span>
+        <span>Market price stays separate from current NFL role. The final grade also discounts fragile depth-chart value and pick uncertainty.</span>
       </div>
     </section>
   )
@@ -493,7 +500,7 @@ function RosterImpact({
 
   const rows = [
     { label: 'Adjusted market value', a: netA, b: netB, suffix: '' },
-    { label: 'Starting-lineup value', a: value.lineupImpactA ?? 0, b: value.lineupImpactB ?? 0, suffix: '' },
+    { label: 'Current-role lineup value', a: value.lineupImpactA ?? 0, b: value.lineupImpactB ?? 0, suffix: '' },
     { label: 'Roster spots opened', a: spotsA, b: -spotsA, suffix: '' },
   ]
 
@@ -504,7 +511,7 @@ function RosterImpact({
           <span className="eyebrow">Deal context</span>
           <h2>What changes after the trade</h2>
         </div>
-        <span className="method-note">Market view, not a projection</span>
+        <span className="method-note">Price and current role separated</span>
       </div>
       <div className="impact-grid">
         <div className="impact-team-name"><Avatar team={teamA} size="sm" /><span><small>Side A</small><strong>{teamA.teamName}</strong></span></div>
@@ -556,7 +563,7 @@ function TradeView({ teams, rosterPositions }: { teams: Team[]; rosterPositions:
         <div>
           <span className="eyebrow accent-eyebrow">Trade laboratory</span>
           <h1>Price the deal.<br />Then read the room.</h1>
-          <p>Consensus market value, roster fit, and pick-risk scenarios—rated separately, then combined transparently.</p>
+          <p>Consensus market price, current NFL role, roster fit, and downside risk—rated separately, then combined transparently.</p>
         </div>
         <div className="live-value-chip"><span /> Daily market values</div>
       </section>
@@ -883,12 +890,8 @@ function App() {
         ...format,
         numTeams: leagueBundle.league.total_rosters,
       })
-      const knownIds = new Set(
-        valueBundle.players.map((player) => player.sleeperId).filter((id): id is string => Boolean(id)),
-      )
       const rosterIds = new Set(leagueBundle.rosters.flatMap((roster) => roster.players ?? []))
-      const missingIds = [...rosterIds].filter((id) => !knownIds.has(id))
-      const sleeperPlayers = await fetchMissingPlayers(missingIds)
+      const sleeperPlayers = await fetchSleeperPlayers([...rosterIds])
       const teams = buildTeams(leagueBundle, valueBundle, sleeperPlayers)
       setData({ leagueBundle, valueBundle, teams })
       setLeagueId(cleanId)
