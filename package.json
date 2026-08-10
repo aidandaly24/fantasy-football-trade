@@ -10,7 +10,9 @@
     "ml:train": ".venv/bin/python ml/pipeline.py train",
     "ml:refresh": ".venv/bin/python ml/pipeline.py refresh",
     "ml:audit-sources": ".venv/bin/python ml/source_audit.py",
-    "ml:test": ".venv/bin/python -m unittest ml/test_pipeline.py ml/test_source_audit.py",
+    "ml:rookies": ".venv/bin/python ml/rookie_pipeline.py refresh",
+    "ml:rookies:offline": ".venv/bin/python ml/rookie_pipeline.py refresh --offline",
+    "ml:test": ".venv/bin/python -m unittest ml/test_pipeline.py ml/test_source_audit.py ml/test_rookie_pipeline.py",
     "test": "vitest run --config vitest.config.ts",
     "preview": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vite preview"
   },

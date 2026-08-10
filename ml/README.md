@@ -78,3 +78,34 @@ The model is enabled only when its mean absolute error is at least 1% lower
 than predicting that every player repeats the prior season's PPR points per
 team game. Model selection uses one season, and the gate is measured on a later
 season that was not used for fitting or selection.
+
+## Rookie sleeper pipeline (V6.0-V6.2)
+
+The rookie model is a separate shadow pipeline because incoming rookies have no
+prior NFL production for the production model above. It reconstructs dated
+DynastyProcess/FantasyPros dynasty ECR snapshots from git history, retains
+unranked players at the source floor so busts cannot disappear, and measures
+180- and 365-day changes in source-relative market percentile.
+
+```sh
+npm run ml:rookies
+```
+
+Use `npm run ml:rookies:offline` to reproduce the build from the private local
+cache. Raw snapshots, normalized tape and fitted binaries remain gitignored.
+The aggregate audit is retained in:
+
+- `ml/reports/rookie-model-latest.json`
+- `ml/reports/rookie-model-latest.md`
+
+V6.0 builds the historical tape. V6.1 compares a small market-return model with
+a no-change error baseline and an NFL-draft-capital sleeper basket on the two
+latest held-out rookie classes. V6.2 tests whether pre-anchor 30/90-day market
+movement improves that base model. Current FantasyCalc values and Sleeper
+add/drop trends are collected as corroborating evidence only; they cannot alter
+the forecast until equivalent historical data exists.
+
+The rookie pipeline is hard-blocked from live recommendations while its label
+is expert-consensus movement rather than a complete historical tape of prices
+inferred from completed trades. A model binary or a visually plausible ranking
+does not override that source gate.
