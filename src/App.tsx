@@ -23,7 +23,7 @@ import {
   X,
 } from 'lucide-react'
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchIntel, fetchLeagueBundle, fetchSleeperPlayers, fetchValues } from './api'
+import { fetchIntel, fetchLeagueBundle, fetchProjections, fetchSleeperPlayers, fetchValues } from './api'
 import { buildIntelSignals, timeAgo } from './intel'
 import { assetRoleLabel, buildTeams, evaluateTrade, leagueFormat, rosterProfile } from './rankings'
 import type { Asset, IntelFeed, IntelSignal, LeagueBundle, RankingMode, Team, ValueBundle } from './types'
@@ -310,7 +310,7 @@ function TradeAssetRow({
         <strong>{asset.name}</strong>
         <small>
           {asset.kind === 'player'
-            ? [asset.team, assetRoleLabel(asset), asset.rank ? `#${asset.rank} overall` : 'Unranked'].filter(Boolean).join(' · ')
+            ? [asset.team, assetRoleLabel(asset), asset.projectedPpg !== undefined ? `${asset.projectedPpg.toFixed(1)} ML PPG` : null, asset.rank ? `#${asset.rank} overall` : 'Unranked'].filter(Boolean).join(' · ')
             : asset.slot
               ? 'Known slot'
               : `Auto: likely ${asset.projectedTier ?? 'mid'} · ${formatValue(asset.valueLow ?? asset.value)}–${formatValue(asset.valueHigh ?? asset.value)}`}
@@ -460,7 +460,7 @@ function TradeVerdict({
       {ready && (
         <div className="trade-lenses">
           <span><small>A market edge</small><b className={result.marketNetA > 0 ? 'positive' : result.marketNetA < 0 ? 'negative' : ''}>{result.marketNetA > 0 ? '+' : ''}{formatValue(result.marketNetA)}</b></span>
-          <span><small>Model confidence</small><b>{result.confidence}%</b></span>
+          <span><small>ML coverage</small><b>{result.projectionCoverage}%</b></span>
           <span><small>A incoming stability</small><b>{result.incomingStabilityA}%</b></span>
         </div>
       )}
@@ -472,7 +472,7 @@ function TradeVerdict({
       )}
       <div className="model-note">
         <Info size={16} />
-        <span>Market price stays separate from current NFL role. The final grade also discounts fragile depth-chart value and pick uncertainty.</span>
+        <span>ML production is expected PPR per team week, so missed games count. Market price and current role stay separate; uncovered players use a transparent fallback.</span>
       </div>
     </section>
   )
@@ -499,9 +499,9 @@ function RosterImpact({
   const spotsA = sideA.length - sideB.length
 
   const rows = [
-    { label: 'Adjusted market value', a: netA, b: netB, suffix: '' },
-    { label: 'Current-role lineup value', a: value.lineupImpactA ?? 0, b: value.lineupImpactB ?? 0, suffix: '' },
-    { label: 'Roster spots opened', a: spotsA, b: -spotsA, suffix: '' },
+    { label: 'Adjusted market value', a: netA, b: netB, suffix: '', decimals: false },
+    { label: 'Projected lineup PPG', a: value.lineupImpactA ?? 0, b: value.lineupImpactB ?? 0, suffix: '', decimals: true },
+    { label: 'Roster spots opened', a: spotsA, b: -spotsA, suffix: '', decimals: false },
   ]
 
   return (
@@ -511,7 +511,7 @@ function RosterImpact({
           <span className="eyebrow">Deal context</span>
           <h2>What changes after the trade</h2>
         </div>
-        <span className="method-note">Price and current role separated</span>
+        <span className="method-note">Price, production, and role separated</span>
       </div>
       <div className="impact-grid">
         <div className="impact-team-name"><Avatar team={teamA} size="sm" /><span><small>Side A</small><strong>{teamA.teamName}</strong></span></div>
@@ -519,9 +519,9 @@ function RosterImpact({
         <div className="impact-team-name align-right"><span><small>Side B</small><strong>{teamB.teamName}</strong></span><Avatar team={teamB} size="sm" /></div>
         {rows.map((row) => (
           <div className="impact-row" key={row.label}>
-            <b className={row.a > 0 ? 'positive' : row.a < 0 ? 'negative' : ''}>{row.a > 0 ? '+' : ''}{formatValue(row.a)}{row.suffix}</b>
+            <b className={row.a > 0 ? 'positive' : row.a < 0 ? 'negative' : ''}>{row.a > 0 ? '+' : ''}{row.decimals ? row.a.toFixed(1) : formatValue(row.a)}{row.suffix}</b>
             <span>{row.label}</span>
-            <b className={row.b > 0 ? 'positive' : row.b < 0 ? 'negative' : ''}>{row.b > 0 ? '+' : ''}{formatValue(row.b)}{row.suffix}</b>
+            <b className={row.b > 0 ? 'positive' : row.b < 0 ? 'negative' : ''}>{row.b > 0 ? '+' : ''}{row.decimals ? row.b.toFixed(1) : formatValue(row.b)}{row.suffix}</b>
           </div>
         ))}
         {(value.rangeA.worst !== value.rangeA.best || value.rangeB.worst !== value.rangeB.best) && (
@@ -563,7 +563,7 @@ function TradeView({ teams, rosterPositions }: { teams: Team[]; rosterPositions:
         <div>
           <span className="eyebrow accent-eyebrow">Trade laboratory</span>
           <h1>Price the deal.<br />Then read the room.</h1>
-          <p>Consensus market price, current NFL role, roster fit, and downside risk—rated separately, then combined transparently.</p>
+          <p>Consensus market price, tested production forecasts, current NFL role, and downside risk—kept separate, then combined transparently.</p>
         </div>
         <div className="live-value-chip"><span /> Daily market values</div>
       </section>
@@ -886,13 +886,17 @@ function App() {
     try {
       const leagueBundle = await fetchLeagueBundle(cleanId)
       const format = leagueFormat(leagueBundle)
-      const valueBundle = await fetchValues({
-        ...format,
-        numTeams: leagueBundle.league.total_rosters,
-      })
+      const [valueBundle, projectionBundle] = await Promise.all([
+        fetchValues({
+          ...format,
+          numTeams: leagueBundle.league.total_rosters,
+        }),
+        fetchProjections(),
+      ])
       const rosterIds = new Set(leagueBundle.rosters.flatMap((roster) => roster.players ?? []))
       const sleeperPlayers = await fetchSleeperPlayers([...rosterIds])
-      const teams = buildTeams(leagueBundle, valueBundle, sleeperPlayers)
+      const playerProjections = new Map(Object.entries(projectionBundle?.projections ?? {}))
+      const teams = buildTeams(leagueBundle, valueBundle, sleeperPlayers, playerProjections)
       setData({ leagueBundle, valueBundle, teams })
       setLeagueId(cleanId)
       setInputId(cleanId)

@@ -139,6 +139,10 @@ export type Asset = {
   injuryStatus?: string | null
   depthChartOrder?: number | null
   depthChartPosition?: string | null
+  projectedPpg?: number
+  projectedPpgFloor?: number
+  projectedPpgCeiling?: number
+  productionModel?: string
 }
 
 export type TeamMetrics = {
@@ -183,6 +187,26 @@ export type ValueBundle = {
   players: TradyrPlayer[]
   picks: PickValue[]
   meta: ApiMeta
+}
+
+export type PlayerProjection = {
+  name: string
+  position: 'QB' | 'RB' | 'WR' | 'TE'
+  sourceSeason: number
+  gamesObserved: number
+  expectedPpg: number
+  floorPpg: number
+  ceilingPpg: number
+  confidence: number
+}
+
+export type ProjectionBundle = {
+  generatedAt: string
+  model: string
+  enabled: boolean
+  testMaeImprovement: number
+  coverage: number
+  projections: Record<string, PlayerProjection>
 }
 
 export type RankingMode = 'overall' | 'contender' | 'future'

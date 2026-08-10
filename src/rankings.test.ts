@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildOwnedPicks, currentRoleValue, evaluateTrade, futurePickContext, optimizeLineup, packageValue, projectPickProjections, rosterProfile, scoreTeams } from './rankings'
+import { buildOwnedPicks, currentRoleValue, evaluateTrade, futurePickContext, optimizeLineup, packageValue, projectedLineupPpg, projectPickProjections, rosterProfile, scoreTeams } from './rankings'
 import type { Asset, LeagueBundle, PickValue, Team } from './types'
 
 function asset(id: string, position: Asset['position'], value: number): Asset {
@@ -181,9 +181,30 @@ describe('trade evaluation', () => {
       rosterPositions: ['QB'],
     })
 
-    expect(result.lineupImpactA).toBe(300)
+    expect(result.lineupImpactA).toBeGreaterThan(0)
     expect(result.rangeA.worst).toBeLessThan(result.rangeA.best)
     expect(result.confidence).toBeLessThan(100)
+  })
+
+  it('uses held-out production projections only for lineup impact', () => {
+    const starter = asset('starter', 'QB', 500)
+    starter.depthChartOrder = 1
+    starter.projectedPpg = 10
+    const upgrade = asset('upgrade', 'QB', 500)
+    upgrade.depthChartOrder = 1
+    upgrade.projectedPpg = 14
+    const outgoing = asset('pick', 'PICK', 500)
+    outgoing.kind = 'pick'
+    const result = evaluateTrade([outgoing], [upgrade], {
+      teamA: team(1, [starter], [], [outgoing]),
+      teamB: team(2, [upgrade]),
+      rosterPositions: ['QB'],
+    })
+
+    expect(projectedLineupPpg(upgrade)).toBe(14)
+    expect(result.lineupImpactA).toBe(4)
+    expect(result.projectionCoverage).toBe(100)
+    expect(result.marketNetA).toBe(0)
   })
 
   it('downgrades a market win when much of the return is contingent backup value', () => {

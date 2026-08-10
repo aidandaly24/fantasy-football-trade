@@ -5,6 +5,7 @@ import type {
   LeagueBundle,
   LeagueUser,
   PickValue,
+  ProjectionBundle,
   SleeperDraft,
   SleeperPlayer,
   SleeperRoster,
@@ -71,6 +72,15 @@ export async function fetchValues(options: {
   ])
 
   return { players: players.data, picks: picks.data, meta: players.meta }
+}
+
+export async function fetchProjections(): Promise<ProjectionBundle | null> {
+  try {
+    const bundle = await fetchJson<ProjectionBundle>('/data/player-projections.json')
+    return bundle.enabled ? bundle : null
+  } catch {
+    return null
+  }
 }
 
 export async function fetchSleeperPlayers(ids: string[]): Promise<Map<string, SleeperPlayer>> {

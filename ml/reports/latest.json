@@ -1,0 +1,195 @@
+{
+  "generatedAt": "2026-08-10T04:46:49.293182Z",
+  "model": "season-transition-hgb-v1",
+  "target": "next-season PPR points per NFL team game",
+  "gate": {
+    "enabled": true,
+    "requiredMaeImprovement": 0.01,
+    "observedMaeImprovement": 0.0878
+  },
+  "data": {
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024
+    ],
+    "trainingRows": 2273,
+    "validationRows": 575,
+    "testRows": 545,
+    "currentPlayers": 239
+  },
+  "selection": {
+    "parameters": {
+      "learning_rate": 0.04,
+      "max_iter": 260,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 38,
+      "l2_regularization": 4.0
+    },
+    "baselineBlend": 0.0
+  },
+  "validation": {
+    "selected": {
+      "mae": 1.9778,
+      "rmse": 3.2123,
+      "rank_correlation": 0.7132
+    },
+    "baseline": {
+      "mae": 2.2479,
+      "rmse": 3.4745,
+      "rank_correlation": 0.7221
+    }
+  },
+  "test": {
+    "model": {
+      "mae": 2.2027,
+      "rmse": 3.4331,
+      "rank_correlation": 0.7163
+    },
+    "baseline": {
+      "mae": 2.4148,
+      "rmse": 3.5293,
+      "rank_correlation": 0.7188
+    },
+    "slices": {
+      "all": {
+        "rows": 545,
+        "model": {
+          "mae": 2.2027,
+          "rmse": 3.4331,
+          "rank_correlation": 0.7163
+        },
+        "baseline": {
+          "mae": 2.4148,
+          "rmse": 3.5293,
+          "rank_correlation": 0.7188
+        }
+      },
+      "priorPpgAtLeast6": {
+        "rows": 160,
+        "model": {
+          "mae": 3.7176,
+          "rmse": 4.6946,
+          "rank_correlation": 0.4885
+        },
+        "baseline": {
+          "mae": 4.1083,
+          "rmse": 5.0936,
+          "rank_correlation": 0.4916
+        }
+      },
+      "priorPpgAtLeast10": {
+        "rows": 93,
+        "model": {
+          "mae": 3.8174,
+          "rmse": 4.731,
+          "rank_correlation": 0.3041
+        },
+        "baseline": {
+          "mae": 4.4501,
+          "rmse": 5.5499,
+          "rank_correlation": 0.2512
+        }
+      },
+      "QB": {
+        "rows": 81,
+        "model": {
+          "mae": 3.1198,
+          "rmse": 4.8058,
+          "rank_correlation": 0.6397
+        },
+        "baseline": {
+          "mae": 3.3474,
+          "rmse": 4.9084,
+          "rank_correlation": 0.6533
+        }
+      },
+      "RB": {
+        "rows": 136,
+        "model": {
+          "mae": 2.2853,
+          "rmse": 3.6046,
+          "rank_correlation": 0.7599
+        },
+        "baseline": {
+          "mae": 2.4303,
+          "rmse": 3.6832,
+          "rank_correlation": 0.7542
+        }
+      },
+      "WR": {
+        "rows": 212,
+        "model": {
+          "mae": 2.1085,
+          "rmse": 3.1254,
+          "rank_correlation": 0.742
+        },
+        "baseline": {
+          "mae": 2.4288,
+          "rmse": 3.2794,
+          "rank_correlation": 0.7542
+        }
+      },
+      "TE": {
+        "rows": 116,
+        "model": {
+          "mae": 1.6378,
+          "rmse": 2.4825,
+          "rank_correlation": 0.6961
+        },
+        "baseline": {
+          "mae": 1.72,
+          "rmse": 2.4778,
+          "rank_correlation": 0.6962
+        }
+      }
+    }
+  },
+  "predictionInterval": {
+    "lowerQuantile": 0.2,
+    "upperQuantile": 0.8
+  },
+  "featureImportance": [
+    {
+      "feature": "prior_ppg",
+      "importance": 1.71846
+    },
+    {
+      "feature": "late8_ppg",
+      "importance": 0.06921
+    },
+    {
+      "feature": "weekly_std",
+      "importance": 0.05412
+    },
+    {
+      "feature": "rush_yards_pg",
+      "importance": 0.04923
+    },
+    {
+      "feature": "rec_yards_pg",
+      "importance": 0.03418
+    },
+    {
+      "feature": "late4_ppg",
+      "importance": 0.01614
+    },
+    {
+      "feature": "pos_TE",
+      "importance": 0.0051
+    },
+    {
+      "feature": "active_weeks",
+      "importance": 0.00407
+    }
+  ],
+  "sources": [
+    "https://github.com/nflverse/nflverse-data/releases/tag/player_stats",
+    "https://api.tradyr.app/docs",
+    "https://docs.sleeper.com/"
+  ]
+}
