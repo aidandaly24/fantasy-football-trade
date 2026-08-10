@@ -44,6 +44,12 @@ import {
   refreshTrackedMarketTapes,
   saveMarketTape,
 } from './edge-learning-store'
+import {
+  ensureHistoricalTapeSchema,
+  queueHistoricalTapeAudit,
+  readHistoricalTapeAudit,
+  refreshHistoricalTapeAudits,
+} from './historical-tape-store'
 
 interface AssetsBinding {
   fetch(request: Request): Promise<Response>
@@ -521,13 +527,14 @@ async function edgeResponse(request: Request, env: Env): Promise<Response> {
   const leagueId = url.searchParams.get('leagueId')
   if (!validLeagueId(leagueId)) return privateJson({ message: 'Invalid league ID' }, 400)
   try {
-    await Promise.all([ensureEdgeSchema(env.DB), ensureEdgeLearningSchema(env.DB)])
+    await Promise.all([ensureEdgeSchema(env.DB), ensureEdgeLearningSchema(env.DB), ensureHistoricalTapeSchema(env.DB)])
     const readState = async () => {
-      const [edge, learning] = await Promise.all([
+      const [edge, learning, historicalTape] = await Promise.all([
         readEdgeState(env.DB!, user.id, leagueId),
         readEdgeLearningState(env.DB!, user.id, leagueId),
+        readHistoricalTapeAudit(env.DB!, user.id, leagueId),
       ])
-      return { ...edge, ...learning }
+      return { ...edge, ...learning, historicalTape }
     }
     if (request.method === 'GET') return privateJson(await readState())
     if (request.method !== 'POST') {
@@ -546,6 +553,7 @@ async function edgeResponse(request: Request, env: Env): Promise<Response> {
     } else if (input?.action === 'market') {
       const tape = normalizeMarketTapeInput(input.marketTape)
       await saveMarketTape(env.DB, user.id, leagueId, tape)
+      await queueHistoricalTapeAudit(env.DB, user.id, leagueId, tape)
       await rebuildEdgeLearningState(env.DB, user.id, leagueId)
     } else {
       return privateJson({ message: 'Invalid edge action' }, 400)
@@ -598,6 +606,7 @@ const worker = {
           await refreshAlertEvents(env.DB!)
         })(),
         refreshTrackedMarketTapes(env.DB!),
+        refreshHistoricalTapeAudits(env.DB!),
       ])
     })())
   },

@@ -36,7 +36,7 @@ import { journalTransactionsForCurrentManagers, tradePartyNames } from './journa
 import { buildManagerProfiles } from './negotiation'
 import type { ManagerProfile } from './negotiation'
 import { assetRoleLabel, buildTeams, evaluateTrade, leagueFormat, rosterProfile } from './rankings'
-import { buildTradePlan } from './strategy'
+import { buildTradePlan, resolveTeamStrategy } from './strategy'
 import type { Asset, AlertInbox, EdgeStateBundle, EventModelHealthBundle, IntelFeed, IntelSignal, JournalBundle, JournalTrade, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, Team, TradeOfferRecord, TradeOfferStatus, UserIdentity, UserState, ValueBundle } from './types'
 
 const DEFAULT_LEAGUE_ID = '1336087922847289344'
@@ -53,6 +53,14 @@ function emptyEdgeState(): EdgeStateBundle {
     calibration: [],
     shadowModel: emptyShadowHealth(),
     shadowPredictions: [],
+    historicalTape: {
+      provider: 'tradyr', status: 'not-started', formatKey: 'tradyr-default-history',
+      queuedAt: null, updatedAt: null, completedAt: null, targetAssets: 0, attemptedAssets: 0,
+      coveredAssets: 0, missingAssets: 0, failedAssets: 0, observationCount: 0, labelCount: 0,
+      coverageRate: 0, medianObservations: 0, medianSpanDays: 0, medianGapDays: 0,
+      scaleCompatibleRate: 0, sourceRelativeReady: false, liveScaleReady: false, featureReady: false, gates: [],
+      notes: ['The audit starts automatically after this league seeds its private market tape.'],
+    },
   }
 }
 
@@ -1012,6 +1020,11 @@ function EdgeView({
   const [selectedKey, setSelectedKey] = useState('')
   const snapshotDigest = useRef('')
   const tapeDigest = useRef('')
+  const myTeam = teams.find((team) => team.rosterId === myRosterId) ?? teams[0]
+  const teamStrategy = useMemo(
+    () => resolveTeamStrategy(myTeam, preferences.settings.teamStrategy),
+    [myTeam, preferences.settings.teamStrategy],
+  )
 
   useEffect(() => {
     let active = true
@@ -1029,8 +1042,8 @@ function EdgeView({
     [feed, myRosterId, teams, valueBundle.players],
   )
   const allOpportunities = useMemo(
-    () => buildEdgeBoard(teams, { myRosterId, rosterPositions, directions, profiles, intelSignals: signals, maxResults: 500 }),
-    [teams, myRosterId, rosterPositions, directions, profiles, signals],
+    () => buildEdgeBoard(teams, { myRosterId, rosterPositions, directions, profiles, intelSignals: signals, maxResults: 500, teamStrategy: preferences.settings.teamStrategy }),
+    [teams, myRosterId, rosterPositions, directions, profiles, signals, preferences.settings.teamStrategy],
   )
   const opportunities = allOpportunities.slice(0, 24)
   const filtered = opportunities.filter((opportunity) => filter === 'all' || opportunity.categories.includes(filter))
@@ -1049,6 +1062,7 @@ function EdgeView({
     rosterPositions,
     targetAssetId: selected.asset.id,
     maxTargets: 20,
+    teamStrategy: preferences.settings.teamStrategy,
     manager: selectedProfile ? {
       pickAffinity: selectedProfile.pickShare,
       playerAffinity: 1 - selectedProfile.pickShare,
@@ -1057,7 +1071,7 @@ function EdgeView({
       positionAffinity: Object.fromEntries(selectedProfile.favoritePositions.map((position) => [position, 0.8])),
       sampleWeight: Math.min(1, selectedProfile.tradeCount / 12),
     } : undefined,
-  }) : null, [selected, selectedProfile, teams, myRosterId, rosterPositions])
+  }) : null, [selected, selectedProfile, teams, myRosterId, rosterPositions, preferences.settings.teamStrategy])
 
   const dailyDigest = opportunities.slice(0, 15).map((opportunity) => `${opportunity.key}:${opportunity.asset.value}:${opportunity.score}`).join('|')
   useEffect(() => {
@@ -1070,8 +1084,8 @@ function EdgeView({
   }, [dailyDigest, intelLoaded, opportunities, preferences.leagueId])
 
   const tapeAssets = useMemo(
-    () => marketTapeAssets(teams, directions, allOpportunities),
-    [teams, directions, allOpportunities],
+    () => marketTapeAssets(teams, directions, allOpportunities, teamStrategy),
+    [teams, directions, allOpportunities, teamStrategy],
   )
   const marketDigest = `${new Date().toISOString().slice(0, 10)}:${valueBundle.meta.generatedAt}:${tapeAssets.length}:${tapeAssets.reduce((sum, asset) => sum + asset.currentValue + asset.features.edgeScore, 0)}`
   useEffect(() => {
@@ -1140,14 +1154,25 @@ function EdgeView({
     : edgeState.shadowModel.status === 'shadow'
       ? 'Shadow evaluation'
       : 'Collecting labels'
+  const historicalStatus = edgeState.historicalTape.status === 'passed'
+    ? 'History cleared every gate'
+    : edgeState.historicalTape.status === 'blocked'
+      ? 'History isolated by audit'
+      : edgeState.historicalTape.status === 'running'
+        ? `Auditing ${edgeState.historicalTape.attemptedAssets}/${edgeState.historicalTape.targetAssets}`
+        : edgeState.historicalTape.status === 'queued'
+          ? 'Historical audit queued'
+          : edgeState.historicalTape.status === 'failed'
+            ? 'Historical audit needs retry'
+            : 'Waiting for market seed'
 
   return (
     <main className="page-shell edge-page">
       <section className="edge-hero">
         <div>
-          <span className="eyebrow accent-eyebrow">V4.7–V4.9 · private evidence engine</span>
-          <h1>Find the misprice.<br />Trade before it closes.</h1>
-          <p>Every roster, manager tendency, catalyst, projected lineup gain, and future pick path is scanned together. Recommendations are timestamped so the model has to prove its edge.</p>
+          <span className="eyebrow accent-eyebrow">V5.0 · private rebuild and evidence engine</span>
+          <h1>Buy future value.<br />Preserve the exit.</h1>
+          <p>Your {teamStrategy.horizonYears}-year {teamStrategy.mode} plan prioritizes appreciation, resale liquidity, and manager leverage. Temporary points cannot outrank value decay.</p>
         </div>
         <div className="private-status"><LockKeyhole size={18} /><span><strong>Private research book</strong><small>Signals, overrides, offers, and outcomes are isolated to your account and league.</small></span></div>
       </section>
@@ -1178,6 +1203,20 @@ function EdgeView({
           {edgeState.calibration.slice(0, 4).map((group) => <article key={group.key}><small>{group.label}</small><strong>{signedPercent(group.shrunkenReturn)}</strong><span>{group.sampleSize} labels · {group.confidence}% confidence</span></article>)}
         </div>}
         <div className="model-caveat"><Info size={17} /><span>The shadow model is deliberately firewalled from live recommendations. It advances only after later, time-split examples beat the current rule projection.</span></div>
+        <div className="panel-heading historical-audit-heading">
+          <div><span className="eyebrow">V5.0 historical tape audit</span><h2>Backfill only what survives provenance checks</h2></div>
+          <span className={`learning-status learning-${edgeState.historicalTape.status}`}>{historicalStatus}</span>
+        </div>
+        <div className="calibration-strip historical-audit-stats">
+          <article><small>Coverage</small><strong>{Math.round(edgeState.historicalTape.coverageRate * 100)}%</strong><span>{edgeState.historicalTape.coveredAssets}/{edgeState.historicalTape.targetAssets} sampled players</span></article>
+          <article><small>Provider observations</small><strong>{edgeState.historicalTape.observationCount}</strong><span>{edgeState.historicalTape.labelCount} source-relative 30-day labels</span></article>
+          <article><small>Median depth</small><strong>{edgeState.historicalTape.medianSpanDays}</strong><span>days · {edgeState.historicalTape.medianObservations} observations/player</span></article>
+          <article><small>Scale compatible</small><strong>{Math.round(edgeState.historicalTape.scaleCompatibleRate * 100)}%</strong><span>Raw provider scales are never blended.</span></article>
+        </div>
+        {edgeState.historicalTape.gates.length > 0 && <div className="learning-gates">
+          {edgeState.historicalTape.gates.map((gate) => <span className={gate.passed ? 'passed' : ''} key={gate.id}>{gate.passed ? <Check size={14} /> : <Clock3 size={14} />} {gate.label}: {['coverage', 'scale'].includes(gate.id) ? `${(gate.actual * 100).toFixed(0)}%` : gate.actual.toFixed(0)} / {gate.requirement}</span>)}
+        </div>}
+        <div className="model-caveat"><Info size={17} /><span>{edgeState.historicalTape.notes[1] ?? edgeState.historicalTape.notes[0]}</span></div>
       </section>
 
       <section className="direction-tape panel">
@@ -1195,11 +1234,24 @@ function EdgeView({
 
       <section className="edge-toolbar panel">
         <label><small>My team</small><select value={myRosterId} onChange={(event) => onUpdatePreferences({ myRosterId: Number(event.target.value) })}>{teams.map((team) => <option value={team.rosterId} key={team.rosterId}>{team.teamName}</option>)}</select></label>
+        <label><small>My objective</small><select value={preferences.settings.teamStrategy?.mode ?? 'auto'} onChange={(event) => {
+          const mode = event.target.value as 'auto' | 'contender' | 'retooling' | 'rebuilding'
+          onUpdatePreferences({ settings: { teamStrategy: {
+            mode,
+            horizonYears: mode === 'rebuilding' ? 3 : mode === 'retooling' ? 2 : mode === 'contender' ? 1 : teamStrategy.horizonYears,
+            flipPriority: mode === 'rebuilding' ? 0.9 : mode === 'retooling' ? 0.6 : mode === 'contender' ? 0.25 : teamStrategy.flipPriority,
+          } } })
+        }}><option value="auto">Automatic · {teamStrategy.mode}</option><option value="rebuilding">Rebuild / flip</option><option value="retooling">Retool</option><option value="contender">Contend</option></select></label>
+        <label><small>Value horizon</small><select value={teamStrategy.horizonYears} onChange={(event) => onUpdatePreferences({ settings: { teamStrategy: {
+          mode: preferences.settings.teamStrategy?.mode ?? teamStrategy.mode,
+          horizonYears: Number(event.target.value) as 1 | 2 | 3 | 4,
+          flipPriority: preferences.settings.teamStrategy?.flipPriority ?? teamStrategy.flipPriority,
+        } } })}><option value={1}>1 year</option><option value={2}>2 years</option><option value={3}>3 years</option><option value={4}>4+ years</option></select></label>
         <div className="intel-tabs" role="group" aria-label="Opportunity filter">
-          {(['all', 'value', 'points', 'intel'] as const).map((item) => <button type="button" key={item} className={filter === item ? 'active' : ''} onClick={() => {
+          {(['all', 'value', 'flip', 'points', 'intel'] as const).map((item) => <button type="button" key={item} className={filter === item ? 'active' : ''} onClick={() => {
             setFilter(item)
             onUpdatePreferences({ settings: { edgeFilter: item } })
-          }}>{item === 'all' ? 'All edge' : item === 'value' ? 'Value gain' : item === 'points' ? 'Points now' : 'Intel edge'}</button>)}
+          }}>{item === 'all' ? 'All edge' : item === 'value' ? 'Value gain' : item === 'flip' ? 'Flip value' : item === 'points' ? 'Points now' : 'Intel edge'}</button>)}
         </div>
         <span>{filtered.length} ranked opportunities</span>
       </section>
@@ -1207,15 +1259,15 @@ function EdgeView({
 
       <section className="edge-layout">
         <div className="edge-board panel">
-          <div className="panel-heading"><div><span className="eyebrow">League-wide opportunity board</span><h2>Mispricing candidates</h2></div><span className="method-note">Future value + points + catalyst + seller fit</span></div>
+          <div className="panel-heading"><div><span className="eyebrow">League-wide opportunity board</span><h2>Mispricing candidates</h2></div><span className="method-note">Profit + resale + decay + seller fit</span></div>
           <div className="edge-list">
             {filtered.length ? filtered.slice(0, 15).map((opportunity, index) => (
               <button type="button" className={`edge-row ${selected?.key === opportunity.key ? 'active' : ''}`} key={opportunity.key} onClick={() => setSelectedKey(opportunity.key)}>
                 <span className="edge-rank">{String(index + 1).padStart(2, '0')}</span>
                 <span className="edge-player"><AssetBadge position={opportunity.asset.position} /><span><strong>{opportunity.asset.name}</strong><small>{opportunity.owner.teamName} · {opportunity.direction.label}</small></span></span>
                 <span className="edge-categories">{opportunity.categories.map((category) => <i key={category}>{category}</i>)}</span>
-                <span><small>Projected value</small><strong className={opportunity.projectedGainPercent >= 0 ? 'positive' : 'negative'}>{signedPercent(opportunity.projectedGainPercent)}</strong></span>
-                <span><small>Lineup</small><strong>{opportunity.lineupDelta >= 0 ? '+' : ''}{opportunity.lineupDelta.toFixed(1)}</strong></span>
+                <span><small>{teamStrategy.mode === 'rebuilding' ? 'Profit' : 'Projected value'}</small><strong className={opportunity.projectedGainPercent >= 0 ? 'positive' : 'negative'}>{teamStrategy.mode === 'rebuilding' ? `${opportunity.profitScore}/100` : signedPercent(opportunity.projectedGainPercent)}</strong></span>
+                <span><small>{teamStrategy.mode === 'rebuilding' ? 'Decay risk' : 'Lineup'}</small><strong className={teamStrategy.mode === 'rebuilding' && opportunity.decayRisk >= 55 ? 'negative' : ''}>{teamStrategy.mode === 'rebuilding' ? `${opportunity.decayRisk}/100` : `${opportunity.lineupDelta >= 0 ? '+' : ''}${opportunity.lineupDelta.toFixed(1)}`}</strong></span>
                 <span className="edge-score"><strong>{opportunity.score}</strong><small>edge</small></span>
                 <ChevronRight size={16} />
               </button>
@@ -1229,8 +1281,9 @@ function EdgeView({
             <div><small>30 days</small><strong>{formatValue(selected.projectedValues.day30)}</strong></div>
             <div><small>90 days</small><strong>{formatValue(selected.projectedValues.day90)}</strong></div>
             <div><small>180 days</small><strong>{formatValue(selected.projectedValues.day180)}</strong></div>
+            <div><small>{teamStrategy.horizonYears}-year exit</small><strong>{formatValue(selected.projectedExitValue)}</strong></div>
           </div>
-          {shadowPrediction && <div className="shadow-read"><span><small>V4.9 shadow · 30 days</small><strong>{formatValue(shadowPrediction.expectedValue30)}</strong></span><span><small>Expected movement</small><strong className={shadowPrediction.expectedReturn30 >= 0 ? 'positive' : 'negative'}>{signedPercent(shadowPrediction.expectedReturn30)}</strong></span><em>{shadowPrediction.confidence}% research confidence · not used in the live score</em></div>}
+          {shadowPrediction && <div className="shadow-read"><span><small>V5.0 shadow · 30 days</small><strong>{formatValue(shadowPrediction.expectedValue30)}</strong></span><span><small>Expected movement</small><strong className={shadowPrediction.expectedReturn30 >= 0 ? 'positive' : 'negative'}>{signedPercent(shadowPrediction.expectedReturn30)}</strong></span><em>{shadowPrediction.confidence}% research confidence · not used in the live score</em></div>}
           <div className="edge-thesis"><small>Thesis</small><p>{selected.thesis}</p><small>Catalyst</small><p>{selected.catalyst}</p><small>Invalidation</small><p>{selected.invalidation}</p></div>
           <div className="edge-owner-control">
             <div><small>Owner direction</small><strong>{selected.direction.label} · {selected.direction.confidence}%</strong></div>
@@ -1251,7 +1304,7 @@ function EdgeView({
             <div><small>You send</small><strong>{tradePackage.send.map((asset) => asset.name).join(' + ')}</strong></div>
             <ArrowLeftRight size={17} />
             <div><small>You receive</small><strong>{tradePackage.receive.map((asset) => asset.name).join(' + ')}</strong></div>
-            <div className="package-scores"><span>Market <b>{tradePackage.marketDelta >= 0 ? '+' : ''}{formatValue(tradePackage.marketDelta)}</b></span><span>Partner fit <b>{tradePackage.acceptanceScore}</b></span><span>Lineup <b>{tradePackage.lineupDeltaMe >= 0 ? '+' : ''}{tradePackage.lineupDeltaMe.toFixed(1)}</b></span></div>
+            <div className="package-scores"><span>Market <b>{tradePackage.marketDelta >= 0 ? '+' : ''}{formatValue(tradePackage.marketDelta)}</b></span><span>Partner fit <b>{tradePackage.acceptanceScore}</b></span><span>{teamStrategy.mode === 'rebuilding' ? 'Exit value' : 'Lineup'} <b>{teamStrategy.mode === 'rebuilding' ? `${tradePackage.exitValueDelta >= 0 ? '+' : ''}${formatValue(tradePackage.exitValueDelta)}` : `${tradePackage.lineupDeltaMe >= 0 ? '+' : ''}${tradePackage.lineupDeltaMe.toFixed(1)}`}</b></span></div>
             {tradePackage.stage !== 'walk-away' && <button type="button" className="log-offer" onClick={() => logPackage(tradePackage)}>Log draft</button>}
           </article>
         )) : <div className="intel-empty"><Target size={22} /><strong>No safe package cleared the limits.</strong><span>Keep the target on the board; do not force the price.</span></div>}
@@ -1604,7 +1657,17 @@ function App() {
         leagueName: leagueBundle.league.name,
         myRosterId: existingPreference?.myRosterId ?? inferredRosterId,
         watchlist: existingPreference?.watchlist ?? [],
-        settings: existingPreference?.settings ?? {},
+        settings: { ...(existingPreference?.settings ?? {}) },
+      }
+      const initialRosterId = basePreference.myRosterId ?? teams[0]?.rosterId
+      const initialTeam = teams.find((team) => team.rosterId === initialRosterId) ?? teams[0]
+      if (initialTeam && !basePreference.settings.teamStrategy) {
+        const inferred = resolveTeamStrategy(initialTeam)
+        basePreference.settings.teamStrategy = {
+          mode: 'auto',
+          horizonYears: inferred.horizonYears,
+          flipPriority: inferred.flipPriority,
+        }
       }
       const saved = await saveLeaguePreferences(basePreference).catch(() => null)
       const preferences = saved?.preferences ?? basePreference
@@ -1622,15 +1685,18 @@ function App() {
       setData({ leagueBundle, valueBundle, teams, modelHealth, eventModelHealth, managerProfiles, directions, journal, preferences, user })
       const seedRosterId = preferences.myRosterId ?? teams[0]?.rosterId
       if (seedRosterId) {
+        const seedTeam = teams.find((team) => team.rosterId === seedRosterId) ?? teams[0]
+        const seedStrategy = resolveTeamStrategy(seedTeam, preferences.settings.teamStrategy)
         const seedOpportunities = buildEdgeBoard(teams, {
           myRosterId: seedRosterId,
           rosterPositions: leagueBundle.league.roster_positions,
           directions,
           profiles: managerProfiles,
           maxResults: 500,
+          teamStrategy: preferences.settings.teamStrategy,
         })
         void saveMarketTape(cleanId, {
-          assets: marketTapeAssets(teams, directions, seedOpportunities),
+          assets: marketTapeAssets(teams, directions, seedOpportunities, seedStrategy),
           format: { ...format, numTeams: leagueBundle.league.total_rosters },
           sourceVersion: valueBundle.meta.generatedAt,
         }).catch(() => undefined)

@@ -24,8 +24,13 @@ export type StoredLeaguePreference = {
   settings: {
     rankingMode?: 'overall' | 'contender' | 'future'
     strategyRosterId?: number
-    edgeFilter?: 'all' | 'value' | 'points' | 'intel'
+    edgeFilter?: 'all' | 'value' | 'flip' | 'points' | 'intel'
     teamDirectionOverrides?: Record<string, 'contender' | 'retooling' | 'rebuilding'>
+    teamStrategy?: {
+      mode: 'auto' | 'contender' | 'retooling' | 'rebuilding'
+      horizonYears: 1 | 2 | 3 | 4
+      flipPriority: number
+    }
   }
   updatedAt: string
 }
@@ -135,7 +140,7 @@ export function normalizePreferenceInput(input: unknown): Omit<StoredLeaguePrefe
   if (Number.isInteger(strategyRosterId) && strategyRosterId >= 1 && strategyRosterId <= 100) {
     settings.strategyRosterId = strategyRosterId
   }
-  if (['all', 'value', 'points', 'intel'].includes(String(rawSettings.edgeFilter))) {
+  if (['all', 'value', 'flip', 'points', 'intel'].includes(String(rawSettings.edgeFilter))) {
     settings.edgeFilter = rawSettings.edgeFilter as StoredLeaguePreference['settings']['edgeFilter']
   }
   if (rawSettings.teamDirectionOverrides && typeof rawSettings.teamDirectionOverrides === 'object' && !Array.isArray(rawSettings.teamDirectionOverrides)) {
@@ -144,6 +149,25 @@ export function normalizePreferenceInput(input: unknown): Omit<StoredLeaguePrefe
         .filter(([rosterId, direction]) => /^\d{1,3}$/.test(rosterId) && ['contender', 'retooling', 'rebuilding'].includes(String(direction)))
         .slice(0, 100),
     ) as Record<string, 'contender' | 'retooling' | 'rebuilding'>
+  }
+  if (rawSettings.teamStrategy && typeof rawSettings.teamStrategy === 'object' && !Array.isArray(rawSettings.teamStrategy)) {
+    const strategy = rawSettings.teamStrategy as Record<string, unknown>
+    const mode = String(strategy.mode)
+    const horizonYears = Number(strategy.horizonYears)
+    const flipPriority = Number(strategy.flipPriority)
+    if (
+      ['auto', 'contender', 'retooling', 'rebuilding'].includes(mode)
+      && [1, 2, 3, 4].includes(horizonYears)
+      && Number.isFinite(flipPriority)
+      && flipPriority >= 0
+      && flipPriority <= 1
+    ) {
+      settings.teamStrategy = {
+        mode: mode as NonNullable<StoredLeaguePreference['settings']['teamStrategy']>['mode'],
+        horizonYears: horizonYears as 1 | 2 | 3 | 4,
+        flipPriority,
+      }
+    }
   }
   return { leagueId, leagueName, myRosterId, watchlist, settings }
 }

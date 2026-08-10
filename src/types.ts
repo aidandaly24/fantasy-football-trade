@@ -353,8 +353,9 @@ export type LeaguePreferences = {
   settings: {
     rankingMode?: RankingMode
     strategyRosterId?: number
-    edgeFilter?: 'all' | 'value' | 'points' | 'intel'
+    edgeFilter?: 'all' | 'value' | 'flip' | 'points' | 'intel'
     teamDirectionOverrides?: Record<string, 'contender' | 'retooling' | 'rebuilding'>
+    teamStrategy?: TeamStrategyProfile
   }
   updatedAt?: string
 }
@@ -546,7 +547,7 @@ export type EdgeOpportunitySnapshot = {
   edgeScore: number
   lineupDelta: number
   confidence: number
-  categories: Array<'value' | 'points' | 'intel'>
+  categories: Array<'value' | 'flip' | 'points' | 'intel'>
   catalyst: string
   status: 'tracking' | 'acted' | 'expired' | string
 }
@@ -583,6 +584,10 @@ export type EdgeFeatureVector = {
   age: number
   contenderProbability: number
   rebuildingProbability: number
+  profitScore?: number
+  resaleScore?: number
+  decayRisk?: number
+  horizonYears?: number
 }
 
 export type MarketTapeAssetInput = {
@@ -673,6 +678,46 @@ export type EdgeShadowPrediction = {
   mode: 'shadow'
 }
 
+export type TeamStrategyProfile = {
+  mode: 'auto' | 'contender' | 'retooling' | 'rebuilding'
+  horizonYears: 1 | 2 | 3 | 4
+  flipPriority: number
+}
+
+export type HistoricalTapeGate = {
+  id: 'coverage' | 'observations' | 'span' | 'cadence' | 'format' | 'scale'
+  label: string
+  passed: boolean
+  actual: number
+  requirement: string
+}
+
+export type HistoricalTapeAudit = {
+  provider: 'tradyr'
+  status: 'not-started' | 'queued' | 'running' | 'passed' | 'blocked' | 'failed'
+  formatKey: string
+  queuedAt: string | null
+  updatedAt: string | null
+  completedAt: string | null
+  targetAssets: number
+  attemptedAssets: number
+  coveredAssets: number
+  missingAssets: number
+  failedAssets: number
+  observationCount: number
+  labelCount: number
+  coverageRate: number
+  medianObservations: number
+  medianSpanDays: number
+  medianGapDays: number
+  scaleCompatibleRate: number
+  sourceRelativeReady: boolean
+  liveScaleReady: boolean
+  featureReady: false
+  gates: HistoricalTapeGate[]
+  notes: string[]
+}
+
 export type EdgeStateBundle = {
   opportunities: EdgeOpportunitySnapshot[]
   offers: TradeOfferRecord[]
@@ -680,4 +725,5 @@ export type EdgeStateBundle = {
   calibration: EdgeCalibrationGroup[]
   shadowModel: EdgeShadowModelHealth
   shadowPredictions: EdgeShadowPrediction[]
+  historicalTape: HistoricalTapeAudit
 }

@@ -90,6 +90,10 @@ function featureNumber(features: Record<string, unknown>, key: string, min: numb
   return boundedNumber(features[key], `feature ${key}`, min, max)
 }
 
+function optionalFeatureNumber(features: Record<string, unknown>, key: string, min: number, max: number, fallback: number): number {
+  return features[key] == null ? fallback : featureNumber(features, key, min, max)
+}
+
 function normalizeTapeAsset(input: unknown): MarketTapeAssetInput {
   const value = object(input)
   const assetId = boundedText(value.assetId, 'asset ID', 80)
@@ -134,6 +138,10 @@ function normalizeTapeAsset(input: unknown): MarketTapeAssetInput {
       age: featureNumber(features, 'age', 0, 60),
       contenderProbability: featureNumber(features, 'contenderProbability', 0, 1),
       rebuildingProbability: featureNumber(features, 'rebuildingProbability', 0, 1),
+      profitScore: optionalFeatureNumber(features, 'profitScore', 0, 100, 50),
+      resaleScore: optionalFeatureNumber(features, 'resaleScore', 0, 100, 50),
+      decayRisk: optionalFeatureNumber(features, 'decayRisk', 0, 100, 50),
+      horizonYears: optionalFeatureNumber(features, 'horizonYears', 1, 4, 2),
     },
     metadata: {
       year: typeof metadata.year === 'string' && /^20\d{2}$/.test(metadata.year) ? metadata.year : undefined,
@@ -249,6 +257,7 @@ function snapshotFromRow(row: SnapshotRow): MarketSnapshotRecord {
       ruleGain30: 0, ruleGain90: 0, edgeScore: 0, lineupDelta: 0, catalystScore: 0,
       sellerFit: 0, liquidityScore: 0, timingScore: 0, uncertaintyPenalty: 100,
       confidence: 0, age: 0, contenderProbability: 0.33, rebuildingProbability: 0.33,
+      profitScore: 50, resaleScore: 50, decayRisk: 50, horizonYears: 2,
     }),
     metadata: parseJson(row.metadata_json, {}),
   }
@@ -353,10 +362,26 @@ type TapeConfig = {
   user_id: string; league_id: string; num_qbs: 1 | 2; tep: number; num_teams: number
   last_auto_refresh_at: string | null
 }
-type TradyrPlayer = { sleeperId: string | null; composite: number }
+export type TradyrPlayer = {
+  sleeperId: string | null
+  slug?: string
+  name?: string
+  position?: string
+  composite: number
+  sources?: { ktc?: number | null; fantasycalc?: number | null }
+}
 type TradyrPick = { year: string; round: number; slot?: number; tier?: string; composite: number }
-type TradyrResponse<T> = { data: T; meta?: { generatedAt?: string } }
-type MarketCatalog = { players: Map<string, number>; picks: TradyrPick[]; sourceVersion: string }
+export type TradyrResponse<T> = {
+  data: T
+  meta?: { generatedAt?: string; version?: string; sources?: string[]; attribution?: string }
+}
+export type MarketCatalog = {
+  players: Map<string, number>
+  playerDetails: Map<string, TradyrPlayer>
+  picks: TradyrPick[]
+  sourceVersion: string
+  provenance: { version?: string; sources: string[]; attribution?: string }
+}
 
 async function requestJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { headers: { 'User-Agent': 'RosterLab/4.9 private market tape' } })
@@ -364,7 +389,7 @@ async function requestJson<T>(url: string): Promise<T> {
   return response.json<T>()
 }
 
-async function fetchCatalog(config: TapeConfig): Promise<MarketCatalog> {
+export async function fetchCatalog(config: { num_qbs: 1 | 2; tep: number; num_teams: number }): Promise<MarketCatalog> {
   const playerParams = new URLSearchParams({ format: 'dynasty', numQbs: String(config.num_qbs), tep: String(Boolean(config.tep)), limit: '1000' })
   const pickParams = new URLSearchParams({ numQbs: String(config.num_qbs), numTeams: String(config.num_teams) })
   const [players, picks] = await Promise.all([
@@ -373,8 +398,14 @@ async function fetchCatalog(config: TapeConfig): Promise<MarketCatalog> {
   ])
   return {
     players: new Map(players.data.filter((player) => player.sleeperId).map((player) => [String(player.sleeperId), player.composite])),
+    playerDetails: new Map(players.data.filter((player) => player.sleeperId).map((player) => [String(player.sleeperId), player])),
     picks: picks.data,
     sourceVersion: players.meta?.generatedAt ?? new Date().toISOString(),
+    provenance: {
+      version: players.meta?.version,
+      sources: players.meta?.sources ?? [],
+      attribution: players.meta?.attribution,
+    },
   }
 }
 

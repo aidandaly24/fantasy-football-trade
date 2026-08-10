@@ -7,7 +7,7 @@ import type {
 } from './types'
 
 const DAY_MS = 86_400_000
-const MODEL_VERSION = 'edge-return-ridge-v4.9-shadow'
+const MODEL_VERSION = 'edge-return-ridge-v5.0-shadow'
 const MIN_TRAIN_ROWS = 160
 const MIN_VALIDATION_ROWS = 40
 const MIN_UNIQUE_ASSETS = 75
@@ -66,6 +66,10 @@ const FEATURE_NAMES = [
   'age',
   'contenderProbability',
   'rebuildingProbability',
+  'profitScore',
+  'resaleScore',
+  'decayRisk',
+  'horizonYears',
   'isPick',
   'isQB',
   'isRB',
@@ -96,6 +100,10 @@ function valuesFor(input: Pick<MarketSnapshotRecord, 'features' | 'kind' | 'posi
     clamp((features.age - 25) / 10, -1.5, 2),
     features.contenderProbability,
     features.rebuildingProbability,
+    (features.profitScore ?? 50) / 100,
+    (features.resaleScore ?? 50) / 100,
+    (features.decayRisk ?? 50) / 100,
+    clamp(((features.horizonYears ?? 2) - 1) / 3, 0, 1),
     input.kind === 'pick' ? 1 : 0,
     input.position === 'QB' ? 1 : 0,
     input.position === 'RB' ? 1 : 0,

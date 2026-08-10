@@ -1,6 +1,6 @@
 import type { ManagerProfile } from './negotiation'
 import { assetStability, evaluateTrade, scoreTeams } from './rankings'
-import { findTargets } from './strategy'
+import { assetStrategyMetrics, findTargets, resolveTeamStrategy, type ResolvedTeamStrategy } from './strategy'
 import type {
   Asset,
   EdgeOpportunitySnapshot,
@@ -10,6 +10,7 @@ import type {
   PickValue,
   SleeperTransaction,
   Team,
+  TeamStrategyProfile,
 } from './types'
 
 export type TeamDirectionLabel = 'contender' | 'retooling' | 'rebuilding'
@@ -29,7 +30,7 @@ export type TeamDirection = {
   reasons: string[]
 }
 
-export type EdgeCategory = 'value' | 'points' | 'intel'
+export type EdgeCategory = 'value' | 'flip' | 'points' | 'intel'
 
 export type EdgeOpportunity = {
   key: string
@@ -43,6 +44,9 @@ export type EdgeOpportunity = {
   catalystScore: number
   sellerFit: number
   liquidityScore: number
+  profitScore: number
+  decayRisk: number
+  projectedExitValue: number
   timingScore: number
   uncertaintyPenalty: number
   confidence: number
@@ -63,6 +67,7 @@ export type EdgeBoardOptions = {
   directions: TeamDirection[]
   profiles: ManagerProfile[]
   intelSignals?: IntelSignal[]
+  teamStrategy?: TeamStrategyProfile
   maxResults?: number
   now?: Date
 }
@@ -286,6 +291,7 @@ function managerSellerFit(profile: ManagerProfile | undefined): number {
 export function buildEdgeBoard(teams: Team[], options: EdgeBoardOptions): EdgeOpportunity[] {
   const mine = teams.find((team) => team.rosterId === options.myRosterId)
   if (!mine) return []
+  const strategy = resolveTeamStrategy(mine, options.teamStrategy)
   const now = options.now ?? new Date()
   const directions = new Map(options.directions.map((direction) => [direction.rosterId, direction]))
   const profiles = new Map(options.profiles.map((profile) => [profile.rosterId, profile]))
@@ -300,6 +306,7 @@ export function buildEdgeBoard(teams: Team[], options: EdgeBoardOptions): EdgeOp
       counterpartRosterId: owner.rosterId,
       rosterPositions: options.rosterPositions,
       maxTargets: 20,
+      teamStrategy: options.teamStrategy,
     })
     candidates.forEach((candidate) => {
       const asset = candidate.asset
@@ -319,20 +326,34 @@ export function buildEdgeBoard(teams: Team[], options: EdgeBoardOptions): EdgeOp
           : signal
             ? signal.edgeScore * 0.5
             : 12
-      const liquidityScore = Math.round(clamp(assetStability(asset) * 72 + normalizedConfidence(asset.confidence) * 0.28))
+      const strategyMetrics = assetStrategyMetrics(asset, strategy)
+      const liquidityScore = Math.round(strategyMetrics.liquidityScore)
       const timingScore = signal ? clamp(signal.freshnessScore * 0.65 + (100 - signal.marketReactionScore) * 0.35) : 20
       const uncertaintyPenalty = Math.round(clamp(candidate.uncertaintyPenalty * 0.72 + (100 - direction.confidence) * 0.28))
-      const score = Math.round(clamp(
-        futureScore * 0.35
-        + pointsScore * 0.2
-        + catalystScore * 0.15
-        + sellerFit * 0.15
-        + liquidityScore * 0.1
-        + timingScore * 0.05
-        - uncertaintyPenalty * 0.15,
-      ))
+      const score = Math.round(strategy.mode === 'rebuilding'
+        ? clamp(
+          strategyMetrics.profitScore * 0.3
+          + strategyMetrics.liquidityScore * 0.2
+          + futureScore * 0.18
+          + sellerFit * 0.14
+          + catalystScore * 0.1
+          + timingScore * 0.08
+          + pointsScore * 0.02
+          - uncertaintyPenalty * 0.14
+          - strategyMetrics.decayRisk * 0.2,
+        )
+        : clamp(
+          futureScore * 0.35
+          + pointsScore * 0.2
+          + catalystScore * 0.15
+          + sellerFit * 0.15
+          + liquidityScore * 0.1
+          + timingScore * 0.05
+          - uncertaintyPenalty * 0.15,
+        ))
       const categories: EdgeCategory[] = []
       if (gain >= 0.045) categories.push('value')
+      if (strategyMetrics.profitScore >= 68 && strategyMetrics.decayRisk < 55) categories.push('flip')
       if (lineupDelta >= 1) categories.push('points')
       if (signal && signal.edgeScore >= 35) categories.push('intel')
       if (!categories.length) categories.push(lineupDelta > 0 ? 'points' : 'value')
@@ -351,7 +372,9 @@ export function buildEdgeBoard(teams: Team[], options: EdgeBoardOptions): EdgeOp
         ?? `${owner.teamName} is ${Math.round(Math.max(direction.contenderProbability, direction.rebuildingProbability, direction.retoolingProbability) * 100)}% ${direction.label} with ${candidate.availabilityScore}/100 target availability.`
       const thesis = signal
         ? `${signal.rationale} ${owner.teamName}'s ${direction.label} direction creates a ${sellerFit}/100 seller fit.`
-        : `${asset.name} adds ${lineupDelta >= 0 ? '+' : ''}${lineupDelta.toFixed(1)} projected weekly points and fits a ${direction.label} seller.`
+        : strategy.mode === 'rebuilding'
+          ? `${asset.name} has ${strategyMetrics.profitScore.toFixed(0)}/100 profit potential, ${strategyMetrics.liquidityScore.toFixed(0)}/100 resale liquidity, and ${strategyMetrics.decayRisk.toFixed(0)}/100 age-decay risk over the ${strategy.horizonYears}-year window.`
+          : `${asset.name} adds ${lineupDelta >= 0 ? '+' : ''}${lineupDelta.toFixed(1)} projected weekly points and fits a ${direction.label} seller.`
       const invalidation = signal
         ? 'Price absorbs the report, the role signal reverses, or the seller asks above the walk-away value.'
         : 'Owner direction changes, lineup utility falls, or the acquisition price clears the walk-away value.'
@@ -367,12 +390,17 @@ export function buildEdgeBoard(teams: Team[], options: EdgeBoardOptions): EdgeOp
         catalystScore,
         sellerFit,
         liquidityScore,
+        profitScore: Math.round(strategyMetrics.profitScore),
+        decayRisk: Math.round(strategyMetrics.decayRisk),
+        projectedExitValue: strategyMetrics.projectedExitValue,
         timingScore: Math.round(timingScore),
         uncertaintyPenalty,
         confidence,
-        openingPrice: Math.round(asset.value * (gain < 0 ? 0.78 : 0.88)),
-        targetPrice: Math.round(asset.value * (gain < 0 ? 0.88 : 0.97)),
-        walkAwayPrice: Math.round(Math.min(asset.value * (gain < 0 ? 0.92 : 1.06), projectedValues.day90 * 0.98)),
+        openingPrice: Math.round(asset.value * (strategy.mode === 'rebuilding' ? 0.82 : gain < 0 ? 0.78 : 0.88)),
+        targetPrice: Math.round(asset.value * (strategy.mode === 'rebuilding' ? 0.94 : gain < 0 ? 0.88 : 0.97)),
+        walkAwayPrice: Math.round(strategy.mode === 'rebuilding'
+          ? Math.min(asset.value, strategyMetrics.projectedExitValue * 0.92)
+          : Math.min(asset.value * (gain < 0 ? 0.92 : 1.06), projectedValues.day90 * 0.98)),
         catalyst,
         thesis,
         invalidation,
@@ -393,6 +421,7 @@ export function marketTapeAssets(
   teams: Team[],
   directions: TeamDirection[],
   opportunities: EdgeOpportunity[],
+  strategy: ResolvedTeamStrategy = { mode: 'retooling', horizonYears: 2, flipPriority: 0.6 },
 ): MarketTapeAssetInput[] {
   const directionByRoster = new Map(directions.map((direction) => [direction.rosterId, direction]))
   const opportunityByAsset = new Map(opportunities.map((opportunity) => [`${opportunity.owner.rosterId}:${opportunity.asset.id}`, opportunity]))
@@ -405,6 +434,7 @@ export function marketTapeAssets(
     const direction = directionByRoster.get(team.rosterId)
     const currentValue = Math.max(0, Math.round(asset.value))
     const projection30 = opportunity?.projectedValues.day30 ?? currentValue
+    const strategyMetrics = assetStrategyMetrics(asset, strategy)
     return [{
       assetId: asset.id,
       assetName: asset.name,
@@ -430,6 +460,10 @@ export function marketTapeAssets(
         age: asset.age ?? (asset.kind === 'pick' ? 0 : 27),
         contenderProbability: direction?.contenderProbability ?? 0.33,
         rebuildingProbability: direction?.rebuildingProbability ?? 0.33,
+        profitScore: opportunity?.profitScore ?? Math.round(strategyMetrics.profitScore),
+        resaleScore: opportunity?.liquidityScore ?? Math.round(strategyMetrics.liquidityScore),
+        decayRisk: opportunity?.decayRisk ?? Math.round(strategyMetrics.decayRisk),
+        horizonYears: strategy.horizonYears,
       },
       metadata: {
         year: asset.year,

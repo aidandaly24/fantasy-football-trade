@@ -14,7 +14,12 @@ describe('deterministic strategy engine', () => {
   it('ranks a lineup need above an equally valued luxury target', () => {
     const mine = team(1, [asset('qb', 'QB', 500), asset('wr', 'WR', 500), asset('te', 'TE', 500)])
     const theirs = team(2, [asset('rb-target', 'RB', 600), asset('wr-luxury', 'WR', 600), asset('rb-depth', 'RB', 520)])
-    expect(findTargets([mine, theirs], { myRosterId: 1, counterpartRosterId: 2, rosterPositions })[0].asset.id).toBe('rb-target')
+    expect(findTargets([mine, theirs], {
+      myRosterId: 1,
+      counterpartRosterId: 2,
+      rosterPositions,
+      teamStrategy: { mode: 'contender', horizonYears: 1, flipPriority: 0.25 },
+    })[0].asset.id).toBe('rb-target')
   })
 
   it('changes timeline preference between contender and future build', () => {
@@ -23,6 +28,23 @@ describe('deterministic strategy engine', () => {
     const rebuild = team(1, contender.players, [], 35, 85)
     expect(findTargets([contender, theirs], { myRosterId: 1, counterpartRosterId: 2, rosterPositions })[0].asset.id).toBe('old')
     expect(findTargets([rebuild, theirs], { myRosterId: 1, counterpartRosterId: 2, rosterPositions })[0].asset.id).toBe('young')
+  })
+
+  it('keeps a three-year rebuild away from high-decay veteran flips', () => {
+    const mine = team(1, [asset('young-qb', 'QB', 500)], [asset('future-first', 'PICK', 450)], 20, 90)
+    const theirs = team(2, [
+      asset('dak-profile', 'QB', 620, { age: 33 }),
+      asset('young-market-qb', 'QB', 620, { age: 24 }),
+    ])
+    const targets = findTargets([mine, theirs], {
+      myRosterId: 1,
+      counterpartRosterId: 2,
+      rosterPositions,
+      teamStrategy: { mode: 'rebuilding', horizonYears: 3, flipPriority: 0.9 },
+    })
+    expect(targets.map((target) => target.asset.id)).toContain('young-market-qb')
+    expect(targets.map((target) => target.asset.id)).not.toContain('dak-profile')
+    expect(targets[0].profitScore).toBeGreaterThan(targets[0].decayRisk)
   })
 
   it('returns stable, capped packages and honors the walk-away price cap', () => {

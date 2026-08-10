@@ -305,3 +305,80 @@ export const edgeModelRuns = sqliteTable(
     index('idx_edge_model_runs_latest').on(table.userId, table.leagueId, table.trainedAt),
   ],
 )
+
+export const historicalTapeConfigs = sqliteTable(
+  'historical_tape_configs',
+  {
+    userId: text('user_id').notNull(),
+    leagueId: text('league_id').notNull(),
+    provider: text('provider').notNull(),
+    status: text('status').notNull(),
+    formatKey: text('format_key').notNull(),
+    numQbs: integer('num_qbs').notNull(),
+    tep: integer('tep', { mode: 'boolean' }).notNull(),
+    numTeams: integer('num_teams').notNull(),
+    queuedAt: text('queued_at').notNull(),
+    startedAt: text('started_at'),
+    updatedAt: text('updated_at').notNull(),
+    completedAt: text('completed_at'),
+    reportJson: text('report_json').notNull().default('{}'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.leagueId, table.provider] }),
+    index('idx_historical_tape_configs_status').on(table.status, table.updatedAt),
+  ],
+)
+
+export const historicalTapeAssets = sqliteTable(
+  'historical_tape_assets',
+  {
+    userId: text('user_id').notNull(),
+    leagueId: text('league_id').notNull(),
+    provider: text('provider').notNull(),
+    assetId: text('asset_id').notNull(),
+    assetName: text('asset_name').notNull(),
+    position: text('position').notNull(),
+    currentComposite: integer('current_composite').notNull(),
+    slug: text('slug'),
+    status: text('status').notNull().default('pending'),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    lastAttemptAt: text('last_attempt_at'),
+    errorMessage: text('error_message'),
+    observationCount: integer('observation_count').notNull().default(0),
+    labelCount: integer('label_count').notNull().default(0),
+    firstObservedAt: text('first_observed_at'),
+    lastObservedAt: text('last_observed_at'),
+    spanDays: integer('span_days').notNull().default(0),
+    medianGapDays: real('median_gap_days').notNull().default(0),
+    scaleStatus: text('scale_status').notNull().default('unknown'),
+    scaleGap: real('scale_gap'),
+    sourceVersion: text('source_version'),
+    metadataJson: text('metadata_json').notNull().default('{}'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.leagueId, table.provider, table.assetId] }),
+    index('idx_historical_tape_assets_pending').on(table.userId, table.leagueId, table.provider, table.status),
+  ],
+)
+
+export const historicalMarketObservations = sqliteTable(
+  'historical_market_observations',
+  {
+    provider: text('provider').notNull(),
+    formatKey: text('format_key').notNull(),
+    scaleKey: text('scale_key').notNull(),
+    assetId: text('asset_id').notNull(),
+    assetName: text('asset_name').notNull(),
+    position: text('position').notNull(),
+    observedAt: text('observed_at').notNull(),
+    providerValue: real('provider_value').notNull(),
+    rawValue: real('raw_value'),
+    sourceVersion: text('source_version').notNull(),
+    provenanceJson: text('provenance_json').notNull(),
+    ingestedAt: text('ingested_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.provider, table.formatKey, table.scaleKey, table.assetId, table.observedAt] }),
+    index('idx_historical_market_asset_date').on(table.provider, table.formatKey, table.scaleKey, table.assetId, table.observedAt),
+  ],
+)
