@@ -1310,9 +1310,9 @@ function App() {
           ) : view === 'trade' ? (
             <TradeView teams={data.teams} rosterPositions={data.leagueBundle.league.roster_positions} />
           ) : view === 'intel' ? (
-            <IntelView teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
+            <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
           ) : view === 'strategy' ? (
-            <StrategyView teams={data.teams} profiles={data.managerProfiles} preferredRosterId={data.preferences.settings.strategyRosterId} onUpdatePreferences={updatePreferences} />
+            <StrategyView key={`strategy-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} preferredRosterId={data.preferences.settings.strategyRosterId} onUpdatePreferences={updatePreferences} />
           ) : (
             <ModelView health={data.modelHealth} />
           )}
