@@ -1,5 +1,19 @@
 import type { JournalBundle, JournalIdentity, JournalTrade, SleeperTransaction } from './types'
 
+export type JournalDisplayAsset = {
+  key: string
+  name: string
+  kind: 'player' | 'pick'
+  value: number | null
+}
+
+export type JournalTradeSide = {
+  rosterId: number
+  teamName: string
+  received: JournalDisplayAsset[]
+  marketNet: number | null
+}
+
 function identityKey(leagueId: string, rosterId: number): string {
   return `${leagueId}:${rosterId}`
 }
@@ -14,6 +28,63 @@ export function tradePartyNames(trade: JournalTrade, identities: JournalIdentity
     rosterId,
     lookup.get(identityKey(trade.leagueId, rosterId))?.teamName ?? `Roster ${rosterId}`,
   ]))
+}
+
+/**
+ * Builds a display-safe trade tape from the immutable Sleeper record. Value
+ * snapshots enrich the row when available, but they are never required for a
+ * completed trade to remain visible.
+ */
+export function journalTradeSides(
+  trade: JournalTrade,
+  journal: JournalBundle,
+  playerNames: Map<string, string> = new Map(),
+): JournalTradeSide[] {
+  const names = tradePartyNames(trade, journal.identities)
+  const snapshots = journal.snapshots.filter(
+    (item) => item.leagueId === trade.leagueId && item.transactionId === trade.transactionId,
+  )
+  const baseline = snapshots.find((item) => item.kind === 'ingestion')
+    ?? snapshots.find((item) => item.kind === 'backfill-current')
+    ?? snapshots[0]
+
+  return [...new Set(trade.raw.roster_ids)].sort((a, b) => a - b).map((rosterId) => {
+    const snapshotAssets = baseline?.values.assets
+      .filter((asset) => asset.toRosterId === rosterId)
+      .map((asset) => {
+        const playerId = asset.kind === 'player' ? asset.key.replace(/^player:/, '') : null
+        return {
+          key: asset.key,
+          name: playerId ? playerNames.get(playerId) ?? asset.name : asset.name,
+          kind: asset.kind,
+          value: asset.value,
+        }
+      }) ?? []
+    const rawAssets: JournalDisplayAsset[] = [
+      ...Object.entries(trade.raw.adds ?? {})
+        .filter(([, ownerRosterId]) => ownerRosterId === rosterId)
+        .map(([playerId]) => ({
+          key: `player:${playerId}`,
+          name: playerNames.get(playerId) ?? `Player ${playerId}`,
+          kind: 'player' as const,
+          value: null,
+        })),
+      ...trade.raw.draft_picks
+        .filter((pick) => pick.owner_id === rosterId)
+        .map((pick) => ({
+          key: `pick:${pick.season}:${pick.round}:${pick.roster_id}`,
+          name: `${pick.season} round ${pick.round} pick`,
+          kind: 'pick' as const,
+          value: null,
+        })),
+    ]
+    return {
+      rosterId,
+      teamName: names.get(rosterId) ?? `Roster ${rosterId}`,
+      received: snapshotAssets.length ? snapshotAssets : rawAssets,
+      marketNet: baseline?.values.parties.find((party) => party.rosterId === rosterId)?.net ?? null,
+    }
+  })
 }
 
 /**
@@ -56,4 +127,3 @@ export function journalTransactionsForCurrentManagers(
     }
   })
 }
-

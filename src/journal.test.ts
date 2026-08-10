@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { journalTransactionsForCurrentManagers, tradePartyNames } from './journal'
+import { journalTradeSides, journalTransactionsForCurrentManagers, tradePartyNames } from './journal'
 import type { JournalBundle } from './types'
 
 const trade = {
@@ -32,5 +32,21 @@ describe('journal identity mapping', () => {
 
   it('labels journal parties from the trade season', () => {
     expect(tradePartyNames(trade, bundle.identities).get(1)).toBe('Old Alice')
+  })
+
+  it('keeps completed trades visible without a value snapshot', () => {
+    const sides = journalTradeSides(trade, bundle, new Map([['p', 'Luther Burden III']]))
+    expect(sides).toEqual([
+      expect.objectContaining({
+        rosterId: 1,
+        teamName: 'Old Alice',
+        received: [expect.objectContaining({ name: 'Luther Burden III', kind: 'player', value: null })],
+      }),
+      expect.objectContaining({
+        rosterId: 2,
+        teamName: 'Old Bob',
+        received: [expect.objectContaining({ name: '2027 round 1 pick', kind: 'pick', value: null })],
+      }),
+    ])
   })
 })

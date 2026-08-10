@@ -32,7 +32,7 @@ import { applyDirectionPickProjections, buildEdgeBoard, buildTeamDirections, mar
 import type { EdgeCategory, TeamDirection } from './edge'
 import { emptyShadowHealth } from './edge-learning'
 import { buildIntelSignals, timeAgo } from './intel'
-import { journalTransactionsForCurrentManagers, tradePartyNames } from './journal'
+import { journalTradeSides, journalTransactionsForCurrentManagers, tradePartyNames } from './journal'
 import { buildManagerProfiles } from './negotiation'
 import type { ManagerProfile } from './negotiation'
 import { assetRoleLabel, buildTeams, evaluateTrade, leagueFormat, rosterProfile } from './rankings'
@@ -991,6 +991,9 @@ function EdgeView({
   marketFormat,
   onUpdatePreferences,
   onOpenTrade,
+  journalSyncing,
+  onSyncJournal,
+  onOpenJournal,
 }: {
   teams: Team[]
   profiles: ManagerProfile[]
@@ -1003,6 +1006,9 @@ function EdgeView({
   marketFormat: { numQbs: 1 | 2; tep: boolean; numTeams: number }
   onUpdatePreferences: (patch: Partial<LeaguePreferences>) => void
   onOpenTrade: (draft: Omit<TradeDraft, 'nonce'>) => void
+  journalSyncing: boolean
+  onSyncJournal: () => void
+  onOpenJournal: () => void
 }) {
   const [feed, setFeed] = useState<IntelFeed | null>(null)
   const [intelLoaded, setIntelLoaded] = useState(false)
@@ -1119,6 +1125,11 @@ function EdgeView({
   }
 
   const completedTradeChecks = journal.outcomes.filter((outcome) => outcome.status === 'complete').length
+  const playerNames = useMemo(
+    () => new Map(valueBundle.players.flatMap((player) => player.sleeperId ? [[player.sleeperId, player.name] as const] : [])),
+    [valueBundle.players],
+  )
+  const recentTrades = journal.trades.slice(0, 6)
   const activeOffers = edgeState.offers.filter((offer) => !['rejected', 'withdrawn', 'accepted'].includes(offer.status)).length
   const shadowGatesPassed = edgeState.shadowModel.gates.filter((gate) => gate.passed).length
   const shadowStatus = edgeState.shadowModel.status === 'passed-shadow'
@@ -1155,6 +1166,42 @@ function EdgeView({
         <article className="panel"><small>Temporal labels</small><strong>{edgeState.marketTape.labeledExamples}</strong><span>{edgeState.marketTape.spanDays} days observed</span></article>
         <article className="panel"><small>Completed trades</small><strong>{journal.trades.length}</strong><span>{completedTradeChecks} outcome checkpoints</span></article>
         <article className="panel"><small>Offer labels</small><strong>{edgeState.marketTape.labeledOffers}</strong><span>{activeOffers} open records</span></article>
+      </section>
+
+      <section className="panel evidence-trade-tape">
+        <div className="panel-heading">
+          <div><span className="eyebrow">Completed league tape</span><h2>What managers actually traded</h2></div>
+          <div className="evidence-trade-actions">
+            <button type="button" onClick={onSyncJournal} disabled={journalSyncing}><RefreshCw size={14} className={journalSyncing ? 'spin' : ''} /> {journalSyncing ? 'Syncing…' : 'Sync Sleeper'}</button>
+            <button type="button" className="secondary" onClick={onOpenJournal}><BookOpen size={14} /> Full journal</button>
+          </div>
+        </div>
+        {journal.sync?.status === 'partial' && <div className="journal-warning evidence-trade-warning"><AlertTriangle size={15} /> Some linked-season requests failed; prior stored trades are still shown.</div>}
+        <div className="evidence-trade-list">
+          {recentTrades.length ? recentTrades.map((trade) => {
+            const sides = journalTradeSides(trade, journal, playerNames)
+            return (
+              <article className="evidence-trade-row" key={`${trade.leagueId}:${trade.transactionId}`}>
+                <header>
+                  <span>{trade.season} · week {trade.week}</span>
+                  <time>{new Date(trade.createdAtMs).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time>
+                </header>
+                <div className="evidence-trade-sides">
+                  {sides.map((side) => (
+                    <section key={side.rosterId}>
+                      <strong>{side.teamName} received</strong>
+                      <div>{side.received.length ? side.received.map((asset) => (
+                        <span key={asset.key}><AssetBadge position={asset.kind === 'pick' ? 'PICK' : 'NA'} /><b>{asset.name}</b>{asset.value !== null && <em>{formatValue(asset.value)}</em>}</span>
+                      )) : <span><b>No received assets resolved</b></span>}</div>
+                      {side.marketNet !== null && <small className={side.marketNet >= 0 ? 'positive' : 'negative'}>{side.marketNet >= 0 ? '+' : ''}{formatValue(side.marketNet)} captured market net</small>}
+                    </section>
+                  ))}
+                </div>
+              </article>
+            )
+          }) : <div className="intel-empty evidence-trade-empty"><BookOpen size={22} /><strong>No completed trades loaded.</strong><span>Sleeper has a completed Week 1 trade for this league. Sync the ledger to bring it into Evidence.</span><button type="button" onClick={onSyncJournal} disabled={journalSyncing}>{journalSyncing ? 'Syncing Sleeper…' : 'Sync now'}</button></div>}
+        </div>
+        {journal.trades.length > recentTrades.length && <button type="button" className="evidence-trade-more" onClick={onOpenJournal}>View all {journal.trades.length} completed trades</button>}
       </section>
 
       <section className="learning-desk panel">
@@ -1834,7 +1881,7 @@ function App() {
           ) : view === 'intel' ? (
             <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
           ) : view === 'strategy' ? (
-            <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} marketFormat={{ ...leagueFormat(data.leagueBundle), numTeams: data.leagueBundle.league.total_rosters }} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} />
+            <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} marketFormat={{ ...leagueFormat(data.leagueBundle), numTeams: data.leagueBundle.league.total_rosters }} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} journalSyncing={journalSyncing} onSyncJournal={() => void refreshJournal()} onOpenJournal={() => setView('journal')} />
           ) : (
             <ModelView health={data.modelHealth} />
           )}
