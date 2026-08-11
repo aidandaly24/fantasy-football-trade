@@ -180,24 +180,37 @@ The rookie pipeline is separate because incoming rookies have no prior NFL
 season. Its production target is position-relative rookie regular-season PPR
 percentile, including players with zero NFL stats.
 
-The V6.3 decision rule selects the eight highest predictions after rookie
-market rank 24. Rolling class evaluation compares that basket with simple
-market, NFL draft order, and market-versus-capital-gap rules. The current report
-passed its declared sleeper-basket gate.
+The currently validated V6.3 decision rule applies only to the basket of the
+eight highest predictions after rookie market rank 24. It does not validate a
+selection at a known rookie pick. Rolling class evaluation compares that basket
+with simple market, NFL draft order, and market-versus-capital-gap rules. The
+current report passed this declared sleeper-basket gate.
+
+The offline V6.3 known-pick extension separately simulates slots 1-24, with
+special reporting for 1.08-2.04. It reports each held-out class, hindsight
+selection regret, positional slices, and sensitivity to whether prior picks
+follow market order, NFL draft order, or learned market-plus-capital order. The
+learned market-plus-capital model is the primary baseline and advisory decision
+model. College and athletic feature families are not promoted for a known slot
+unless they add repeatable value for that exact decision.
 
 Artifacts and reports:
 
 - `ml/reports/rookie-model-latest.json`
 - `ml/reports/rookie-model-latest.md`
+- `ml/reports/rookie-known-pick-latest.json` (offline shadow/advisory contract)
 - `ml/reports/rookie-complexity-ledger.md`
 - `worker/generated/rookie-board.json`
 
-The pipeline derives the Worker-only artifact from the same in-memory report;
-it is not hand-edited. The authenticated `GET /api/rookies` route returns only
+The pipeline derives both the Worker-only artifact and the offline known-pick
+artifact from the same in-memory report; neither is hand-edited. The
+authenticated `GET /api/rookies` route returns only
 the versioned production board, aggregate validation, evidence fields used by
 the UI, and active blockers. Raw rows, provider payloads, model binaries, and
 shadow market-return forecasts are excluded. The Rookie board remains advisory
 and does not alter `Asset.value`, trade scoring, packages, or future-pick values.
+The known-pick artifact is not served by the Worker. Its production percentile
+is never converted into dynasty value, pick value, or profit.
 
 The 180/365-day market-return head remains shadow-only because the target is
 expert-consensus movement rather than a complete price tape from actual

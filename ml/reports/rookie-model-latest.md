@@ -1,10 +1,10 @@
 # Rookie sleeper model
 
-Generated: `2026-08-11T13:54:09.436156Z`
+Generated: `2026-08-11T22:10:05.210132Z`
 
 ## Decision
 
-The rookie-production evidence board passed its rolling sleeper-basket gate. The market-return head remains shadow-only because its target is expert consensus rather than completed-trade pricing.
+The rookie-production evidence board passed its rolling sleeper-basket gate. That validation applies only to the top-eight basket after rookie market rank 24, not to any known pick slot. The known-pick evaluation and market-return head remain shadow-only.
 
 | Phase | Status | Evidence |
 |---|---:|---|
@@ -51,6 +51,62 @@ The rookie-production evidence board passed its rolling sleeper-basket gate. The
 | 10 | +0.027 | 3/5 | +0.010 | 3/5 | pass |
 | 12 | +0.037 | 4/5 | +0.030 | 4/5 | pass |
 
+## Shadow known-pick evaluation
+
+Slots 1-24 are evaluated in every rolling held-out class. The primary availability assumption removes earlier players in historical rookie market order; NFL draft order and learned market-plus-capital order are sensitivity checks. Selection regret is the remaining hindsight-best production percentile minus the selected player's percentile.
+
+The learned market-plus-capital model is the primary baseline and decision model. The richer full model is not promoted unless its extra college and athletic feature families demonstrate repeatable value for the exact 1.12 decision.
+
+### Special window: 1.08-2.04
+
+| Selection model | Mean outcome | Mean selection regret |
+|---|---:|---:|
+| fullModel | 0.921 | 0.078 |
+| marketOrder | 0.890 | 0.109 |
+| nflDraftOrder | 0.885 | 0.114 |
+| learnedMarketPlusCapital | 0.905 | 0.093 |
+
+### Every held-out class
+
+| Class | Full regret, slots 1-24 | Capital regret, slots 1-24 | Full regret, 1.08-2.04 | Capital regret, 1.08-2.04 |
+|---:|---:|---:|---:|---:|
+| 2021 | 0.097 | 0.200 | 0.089 | 0.070 |
+| 2022 | 0.142 | 0.168 | 0.097 | 0.115 |
+| 2023 | 0.114 | 0.138 | 0.052 | 0.156 |
+| 2024 | 0.125 | 0.103 | 0.064 | 0.042 |
+| 2025 | 0.119 | 0.111 | 0.087 | 0.084 |
+
+### Exact 1.12 decision by held-out class
+
+| Class | Full selection | Full outcome | Full regret | Capital selection | Capital outcome | Capital regret | Full lift |
+|---:|---|---:|---:|---|---:|---:|---:|
+| 2021 | Rashod Bateman | 0.926 | 0.074 | Rashod Bateman | 0.926 | 0.074 | +0.000 |
+| 2022 | Alec Pierce | 0.913 | 0.087 | George Pickens | 0.957 | 0.043 | -0.043 |
+| 2023 | Sam LaPorta | 1.000 | 0.000 | Michael Mayer | 0.846 | 0.154 | +0.154 |
+| 2024 | Brian Thomas Jr. | 1.000 | 0.000 | Brian Thomas Jr. | 1.000 | 0.000 | +0.000 |
+| 2025 | Matthew Golden | 0.883 | 0.117 | Matthew Golden | 0.883 | 0.117 | +0.000 |
+
+Extra-feature exact-slot gate: **fail**; 1/5 primary-rule class wins, mean lift +0.022, minimum lift -0.043, exact sign p 0.96875.
+
+### 1.12 availability sensitivity
+
+| Availability rule | Selection model | Mean outcome | Mean regret |
+|---|---|---:|---:|
+| marketOrder | fullModel | 0.945 | 0.055 |
+| marketOrder | marketOrder | 0.913 | 0.087 |
+| marketOrder | nflDraftOrder | 0.886 | 0.114 |
+| marketOrder | learnedMarketPlusCapital | 0.922 | 0.078 |
+| nflDraftOrder | fullModel | 0.944 | 0.047 |
+| nflDraftOrder | marketOrder | 0.731 | 0.260 |
+| nflDraftOrder | nflDraftOrder | 0.680 | 0.311 |
+| nflDraftOrder | learnedMarketPlusCapital | 0.930 | 0.061 |
+| learnedMarketPlusCapital | fullModel | 0.893 | 0.107 |
+| learnedMarketPlusCapital | marketOrder | 0.844 | 0.156 |
+| learnedMarketPlusCapital | nflDraftOrder | 0.932 | 0.068 |
+| learnedMarketPlusCapital | learnedMarketPlusCapital | 0.811 | 0.189 |
+
+Positional slices for every model, availability rule, and both the full 1-24 range and 1.08-2.04 window are included in the JSON report.
+
 ## Shadow market-return evaluation
 
 | Horizon | Train | Holdout | Baseline MAE | Base MAE | Updated MAE | Base gate | Updater gate |
@@ -95,3 +151,4 @@ The percentile is expected position-relative rookie PPR production. The historic
 - The market-return head still uses expert consensus rather than a complete historical completed-trade tape.
 - Current Sleeper add/drop counts lack historical point-in-time counterparts and therefore do not change forecasts.
 - The 2026 production board has passed retrospective rolling gates but still needs prospective tracking before its lift can be treated as permanent.
+- Known-pick availability is simulated; the 1.12 advisory remains separate from live trade values and recommendations.

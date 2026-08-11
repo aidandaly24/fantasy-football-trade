@@ -10,7 +10,8 @@
 - Team and operations: one user; offline refresh; no new service, queue or live
   inference system.
 - Exclusions through V6.3: trade-grade influence, automatic transactions,
-  article-text sentiment and historical Sleeper-trend inference.
+  article-text sentiment, historical Sleeper-trend inference, and any
+  production-percentile conversion into dynasty or pick value.
 
 ## Ledger
 
@@ -26,6 +27,9 @@
 | Athletic testing | Product/model | Confirmed nflverse combine rows and stable CFB/PFR identities | Imported | Add measured speed and explosion without scouting grades | Non-invites and incomplete drills are not failures | Omit athletic data | Keep raw results and explicit missingness; never replace missing drills with a player penalty |
 | Rookie NFL production outcome | Product/model | Confirmed nflverse regular-season PPR rows for 2019-2025; no stat row is an observed zero outcome | Essential | Test whether a late-cost basket produces, independent of opinion movement | One season misses slower developmental arcs | Market movement alone | Keep as a separate position-relative target; do not merge it with market return into one grade |
 | Cost-aware sleeper decision rule | Product/model | Five eligible rolling classes; exact top-eight rule beat the strongest simple baseline in all five; sizes 6/8/10/12 have positive mean lift and majority class wins versus both market and draft order | Essential | Match the actual draft decision instead of optimizing average error | Cutoff instability and retrospective model selection | MAE only | Lock the five-seed ensemble and rule; require >=5/5 primary class wins, exact one-sided sign p <= 0.05, and adjacent-size sensitivity; track 2026 prospectively |
+| Known rookie pick-slot decision | Product/model | Requested 2026 slot begins at 1.12; the passed top-eight post-rank-24 gate answers a different decision | Essential | Evaluate the player selected at each exact slot rather than inherit basket validation | A strong average ranking can still make the wrong marginal choice at 1.12 | Treat the top-eight gate as pick validation | Keep the known-pick evaluation shadow-only; compare slots 1-24 and require repeatable exact-slot lift before promoting extra feature families |
+| Player availability before a known pick | Product/model | Historical draft-room selections are not observed in the current tape | Unknown | Define the candidate set remaining at each slot | One assumed order can manufacture apparent selector performance | Report only the full pre-draft board | Use market order as the primary assumption and report NFL draft order and learned market-plus-capital order as sensitivity rules |
+| Known-pick advisory artifact | Product/system | One offline consumer needs candidates, uncertainty, provenance, and blockers; the live Worker does not | Transitional | Make the 1.12 output reproducible without changing live recommendations | Contract drift or accidental production use | Read the full research report by hand | Generate a separate shadow artifact inside the existing pipeline; remove or replace it only after a validated production consumer exists |
 | News text and camp sentiment | Product/model | Existing headline rules have no historical return validation | Accidental through V6.2 | None yet | Narrative leakage and arbitrary hype weights | Structured market movement and factual status events | Exclude from model; reconsider only after a labeled, rights-safe event tape shows incremental held-out lift |
 | Separate online model service | Operations | No independent scale or latency requirement | Accidental | None | Deployment, drift and availability burden | Offline artifact | Do not add before a promoted model needs runtime inference |
 
@@ -43,8 +47,12 @@
   combine and real NFL outcomes pass coverage/leakage gates and the exact
   cost-aware basket beats the strongest simple baseline in every eligible
   rolling class.
+- V6.3 known-pick shadow: evaluate slots 1-24 with learned market-plus-capital
+  as the primary baseline, special reporting for 1.08-2.04, and a separate 1.12
+  advisory artifact. Do not inherit validation from the late-rookie basket.
 - Later: prospective 2026 tracking, a two-season developmental target when a
-  full additional class matures, and historical availability modeling.
+  full additional class matures, and observed historical draft-room
+  availability if a complete point-in-time source becomes available.
 - Not until the separate market-return promotion: trade-grade influence,
   automated actions, article-text modeling or an online inference service.
 
