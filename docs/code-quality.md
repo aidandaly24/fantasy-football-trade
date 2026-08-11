@@ -57,6 +57,9 @@ validation status must remain inspectable.
 - A Pareto label must name the inspected objectives and candidate boundary. It
   means non-dominated within that boundary, not optimal, likely accepted, or
   profitable.
+- A market dislocation is a visible disagreement or roster fact, not an "edge
+  score." Keep provider spread, production percentile, lineup coverage, owner
+  depth/activity, and declared-horizon age individually inspectable.
 - Do not duplicate a calculation in JSX merely to format it differently.
 
 `src/App.tsx` is the shared league-loading and view-composition surface. Keep
