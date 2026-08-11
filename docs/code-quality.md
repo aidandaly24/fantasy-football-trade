@@ -171,4 +171,3 @@ unrelated rewrites:
 
 Address one risk only when it is in the PR's scope and the replacement has a
 clear verification path.
-

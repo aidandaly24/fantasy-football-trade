@@ -150,4 +150,3 @@ Use a concise imperative commit subject. The PR should contain:
 - follow-up work that is deliberately deferred.
 
 Repository docs changed by a behavior change should be updated in the same PR.
-

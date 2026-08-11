@@ -28,4 +28,3 @@ Record exact results and explain any intentionally skipped command.
 
 Call out conflict-prone files, known limitations, and deferred follow-ups. Do
 not merge until the user explicitly approves the pull request.
-

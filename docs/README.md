@@ -25,4 +25,3 @@ belong here; they live outside the repository in the parent workspace's
 The code and generated evidence reports are the final source of truth. If a
 document disagrees with current behavior, update the document in the same pull
 request that changes the behavior.
-

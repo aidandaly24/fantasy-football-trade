@@ -159,4 +159,3 @@ direction.
 7. Offline models cannot silently promote themselves into trade logic.
 8. New infrastructure requires an observed need and an explicit removal or
    ownership story.
-

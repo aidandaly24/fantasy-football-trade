@@ -178,4 +178,3 @@ Before implementation, document:
 
 Prefer a bounded offline experiment. Do not add online inference, a queue, or a
 new database until a promoted capability requires it.
-
