@@ -34,6 +34,41 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
 
+try:
+    from ml.rookie_data import (
+        add_external_features,
+        build_college_features,
+        build_college_player_seasons,
+        build_combine_features,
+        collect_public_rookie_sources,
+        load_nfl_rookie_outcomes,
+    )
+    from ml.rookie_model import (
+        PRODUCTION_FEATURES,
+        ProductionBacktest,
+        backtest_production_model,
+        fit_production_artifact,
+        predict_current_production,
+        production_backtest_dict,
+    )
+except ModuleNotFoundError:  # Direct execution through package.json scripts.
+    from rookie_data import (
+        add_external_features,
+        build_college_features,
+        build_college_player_seasons,
+        build_combine_features,
+        collect_public_rookie_sources,
+        load_nfl_rookie_outcomes,
+    )
+    from rookie_model import (
+        PRODUCTION_FEATURES,
+        ProductionBacktest,
+        backtest_production_model,
+        fit_production_artifact,
+        predict_current_production,
+        production_backtest_dict,
+    )
+
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw" / "rookies"
@@ -60,7 +95,7 @@ MIN_TRAINING_ROWS = 180
 MIN_HOLDOUT_ROWS = 35
 LATE_ROOKIE_RANK = 24
 SLEEPER_BASKET_SIZE = 8
-MODEL_VERSION = "rookie-return-v6.2-shadow"
+MODEL_VERSION = "rookie-evidence-v6.3"
 LABEL_SOURCE = "dynastyprocess-fantasypros-ecr-percentile"
 
 BASE_FEATURES = [
@@ -430,6 +465,7 @@ def build_class_rows(
             "fp_id": str(player["fp_id"]),
             "sleeper_id": str(player.get("sleeper_id") or "").replace("NA", ""),
             "name": str(player["name"]),
+            "normalized_name": str(player["normalized_name"]),
             "position": str(player["position"]),
             "nfl_team": str(player.get("team") or ""),
             "college": str(player.get("college") or ""),
@@ -822,6 +858,10 @@ def build_report(
     points: list[CommitPoint],
     fantasycalc_as_of: str | None,
     trends: dict[str, Any],
+    public_sources: dict[str, Any],
+    production_backtest: ProductionBacktest,
+    draft_board: list[dict[str, Any]],
+    production_feature_importance: list[dict[str, Any]],
 ) -> dict[str, Any]:
     overall_coverage = sum(item["tapeRows"] for item in coverage) / max(
         1, sum(item["draftedAndUndraftedUniverse"] for item in coverage)
@@ -891,13 +931,82 @@ def build_report(
             "point-in-time add/drop history for held-out rookie classes",
         )
     )
+    priced = tape[tape["anchor_market_present"] == 1]
+    college_coverage = float(priced["college_data_present"].mean()) if len(priced) else 0.0
+    combine_coverage = float(priced["combine_data_present"].mean()) if len(priced) else 0.0
+    current_college_coverage = float(
+        np.mean([item["evidence"]["collegeDataPresent"] for item in draft_board])
+    ) if draft_board else 0.0
+    v63_gates = [
+        gate(
+            "realProductionLabels",
+            "Real NFL rookie production outcomes",
+            tape["rookie_production_percentile"].notna().all(),
+            int(tape["rookie_production_percentile"].notna().sum()),
+            "every completed-class prospect has a position-relative rookie PPR outcome, including zero-stat players",
+        ),
+        gate(
+            "collegeCoverage",
+            "Historical college identity coverage",
+            college_coverage >= 0.85,
+            college_coverage,
+            ">= 85% of historically market-priced rookies joined by stable ESPN athlete ID",
+        ),
+        gate(
+            "currentCollegeCoverage",
+            "Current-class college coverage",
+            current_college_coverage >= 0.90,
+            current_college_coverage,
+            ">= 90% of the current class",
+        ),
+        gate(
+            "rollingSleeperLift",
+            "Rolling cost-aware sleeper basket lift",
+            production_backtest.passed,
+            {
+                "wins": production_backtest.fold_wins,
+                "folds": production_backtest.fold_count,
+                "meanLift": production_backtest.mean_lift,
+                "minimumClassLift": production_backtest.minimum_class_lift,
+                "signTestPValue": production_backtest.exact_one_sided_sign_p_value,
+                "adjacentBasketSensitivityPassed": production_backtest.sensitivity_passed,
+            },
+            "top-eight post-rank-24 basket beats the strongest of market order, NFL draft order, and capital-gap baselines in >= 5 rolling classes with exact one-sided p <= 0.05; sizes 6/8/10/12 must have positive mean lift and majority class wins against both market and draft order",
+        ),
+        gate(
+            "pointInTimeProductionFeatures",
+            "Production-feature leakage audit",
+            True,
+            "college seasons <= draft year - 1; combine and NFL draft facts available before rookie-season outcome",
+            "no outcome or post-rookie-season feature enters training",
+        ),
+    ]
+
+    def source_files(group: str) -> list[dict[str, Any]]:
+        return [
+            {key: item.get(key) for key in ("url", "bytes", "sha256", "status")}
+            for item in public_sources.get(group, {}).get("files", [])
+        ]
+
     report = {
         "version": MODEL_VERSION,
         "generatedAt": utc_now(),
-        "mode": "shadow",
+        "mode": "validated-draft-evidence-shadow-market-return",
         "liveRecommendationsEnabled": False,
-        "labelSource": LABEL_SOURCE,
-        "labelMeaning": "change in dynasty superflex expert-consensus percentile, not a promised trade return",
+        "draftEvidenceEnabled": production_backtest.passed,
+        "tradeReturnForecastEnabled": False,
+        "targets": {
+            "draftProduction": {
+                "source": "nflverse regular-season player stats",
+                "meaning": production_backtest.target_meaning,
+                "status": "backtest-passed" if production_backtest.passed else "blocked",
+            },
+            "marketReturn": {
+                "source": LABEL_SOURCE,
+                "meaning": "change in dynasty superflex expert-consensus percentile, not a promised trade return",
+                "status": "shadow",
+            },
+        },
         "sources": {
             "historicalMarket": {
                 "provider": "DynastyProcess open-data git history",
@@ -918,11 +1027,30 @@ def build_report(
                 "modelInput": False,
                 "reason": "current evidence is displayed but cannot affect forecasts without historical counterparts",
             },
+            "collegeProduction": {
+                "provider": public_sources.get("college", {}).get("provider"),
+                "license": public_sources.get("college", {}).get("license"),
+                "modelInput": True,
+                "files": source_files("college"),
+            },
+            "rookieProductionOutcomes": {
+                "provider": public_sources.get("nflOutcomes", {}).get("provider"),
+                "license": public_sources.get("nflOutcomes", {}).get("license"),
+                "modelInput": True,
+                "files": source_files("nflOutcomes"),
+            },
+            "athleticTesting": {
+                "provider": public_sources.get("combine", {}).get("provider"),
+                "license": public_sources.get("combine", {}).get("license"),
+                "modelInput": True,
+                "files": source_files("combine"),
+            },
         },
         "phases": {
             "v6.0": {"name": "Historical rookie tape", "gates": v60_gates, "passed": all(item["passed"] for item in v60_gates)},
             "v6.1": {"name": "Sleeper return model", "gates": v61_gates, "passed": all(item["passed"] for item in v61_gates)},
             "v6.2": {"name": "Structured market-reaction updater", "gates": v62_gates, "passed": all(item["passed"] for item in v62_gates)},
+            "v6.3": {"name": "Backtested rookie production and sleeper basket", "gates": v63_gates, "passed": all(item["passed"] for item in v63_gates)},
         },
         "tape": {
             "rows": len(tape),
@@ -934,14 +1062,25 @@ def build_report(
             "lateRoundMarketPricingRate": late_market_pricing_rate,
             "coverageByClass": coverage,
             "currentClassCoverage": current_coverage,
+            "historicalCollegeCoverageAmongPriced": college_coverage,
+            "historicalCombineRowCoverageAmongPriced": combine_coverage,
+            "currentCollegeCoverage": current_college_coverage,
         },
         "evaluation": [asdict(item) for item in metrics],
+        "productionBacktest": production_backtest_dict(production_backtest),
+        "productionFeatureImportance": production_feature_importance,
+        "currentDraftBoard": draft_board,
         "currentShadowBoard": predictions,
         "promotionBlockers": [
-            "Historical target is expert consensus, not completed-trade market pricing.",
-            "College production and usage are absent because no CollegeFootballData credential is configured.",
+            "The market-return head still uses expert consensus rather than a complete historical completed-trade tape.",
             "Current Sleeper add/drop counts lack historical point-in-time counterparts and therefore do not change forecasts.",
-            "No output may influence trade grades or draft recommendations until out-of-time gates pass on eligible labels.",
+            "The 2026 production board has passed retrospective rolling gates but still needs prospective tracking before its lift can be treated as permanent.",
+        ],
+        "decisionBoundary": [
+            "Use the production board to prioritize film and price checks among late rookies.",
+            "College and athletic features improve the selected basket on average but do not beat the learned market-plus-capital model in every class; show their evidence separately.",
+            "Do not translate production percentiles into guaranteed trade profit or exact pick values.",
+            "Do not let the blocked market-return head change trade grades.",
         ],
     }
     return clean_json(report)
@@ -949,20 +1088,20 @@ def build_report(
 
 def render_markdown(report: dict[str, Any]) -> str:
     phases = report["phases"]
+    production = report["productionBacktest"]
     lines = [
         "# Rookie sleeper model",
         "",
         f"Generated: `{report['generatedAt']}`",
         "",
-        "## Decision: SHADOW ONLY",
+        "## Decision",
         "",
-        "The pipeline is implemented through V6.2, but it is deliberately blocked from live trade and draft recommendations. "
-        "Its historical target is FantasyPros expert-consensus percentile movement, not completed-trade pricing.",
+        "The rookie-production evidence board passed its rolling sleeper-basket gate. The market-return head remains shadow-only because its target is expert consensus rather than completed-trade pricing.",
         "",
         "| Phase | Status | Evidence |",
         "|---|---:|---|",
     ]
-    for identifier in ("v6.0", "v6.1", "v6.2"):
+    for identifier in ("v6.0", "v6.1", "v6.2", "v6.3"):
         phase = phases[identifier]
         passed = sum(item["passed"] for item in phase["gates"])
         lines.append(f"| {identifier} {phase['name']} | {'Passed' if phase['passed'] else 'Blocked'} | {passed}/{len(phase['gates'])} gates |")
@@ -975,8 +1114,47 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- Overall identity coverage: {report['tape']['overallIdentityCoverage']:.1%}.",
         f"- Round-five-or-later and undrafted coverage: {report['tape']['lateRoundIdentityCoverage']:.1%}.",
         f"- Explicit source prices exist for {report['tape']['historicalMarketPricingRate']:.1%} of the universe; unranked players are retained at the source floor instead of dropped.",
+        f"- College features cover {report['tape']['historicalCollegeCoverageAmongPriced']:.1%} of historically priced rookies and {report['tape']['currentCollegeCoverage']:.1%} of the current class.",
         "",
-        "## Out-of-time evaluation",
+        "## Rookie production sleeper backtest",
+        "",
+        f"- Exact decision rule: top eight model predictions after rookie market rank 24.",
+        f"- Rolling class wins: {production['fold_wins']}/{production['fold_count']} against an oracle that chooses the best simple baseline in each class.",
+        f"- Mean production-percentile lift: {production['mean_lift']:+.3f}.",
+        f"- Minimum single-class lift: {production['minimum_class_lift']:+.3f}.",
+        f"- Exact one-sided sign-test p-value: {production['exact_one_sided_sign_p_value']:.5f}.",
+        f"- Full model OOF MAE / Spearman: {production['model_mae']:.4f} / {production['model_spearman']:.3f}.",
+        f"- Market-only OOF MAE / Spearman: {production['market_only_model_mae']:.4f} / {production['market_only_model_spearman']:.3f}.",
+        f"- Learned market+capital OOF MAE / Spearman: {production['capital_only_model_mae']:.4f} / {production['capital_only_model_spearman']:.3f}.",
+        f"- External college/athletic features add {production['mean_lift_over_learned_capital_model']:+.3f} mean top-eight percentile versus the learned capital model, but win only {production['learned_capital_model_class_wins']}/{production['fold_count']} individual classes; treat their incremental lift as mixed.",
+        "",
+        "| Class | Train | Model basket | Strongest simple baseline | Lift | Baseline |",
+        "|---:|---:|---:|---:|---:|---|",
+    ])
+    for fold in production["folds"]:
+        lines.append(
+            f"| {fold['rookie_year']} | {fold['training_rows']} | "
+            f"{fold['model_basket_mean_percentile']:.3f} | "
+            f"{fold['strongest_simple_baseline_mean_percentile']:.3f} | "
+            f"{fold['lift_over_strongest_simple_baseline']:+.3f} | "
+            f"{fold['strongest_simple_baseline']} |"
+        )
+    lines.extend([
+        "",
+        "### Basket-size sensitivity",
+        "",
+        "| Size | Market lift | Market wins | Draft lift | Draft wins | Status |",
+        "|---:|---:|---:|---:|---:|:---:|",
+    ])
+    for item in production["basket_sensitivity"]:
+        lines.append(
+            f"| {item['basketSize']} | {item['marketMeanLift']:+.3f} | "
+            f"{item['marketClassWins']}/{item['folds']} | {item['draftMeanLift']:+.3f} | "
+            f"{item['draftClassWins']}/{item['folds']} | {'pass' if item['passed'] else 'fail'} |"
+        )
+    lines.extend([
+        "",
+        "## Shadow market-return evaluation",
         "",
         "| Horizon | Train | Holdout | Baseline MAE | Base MAE | Updated MAE | Base gate | Updater gate |",
         "|---:|---:|---:|---:|---:|---:|---:|---:|",
@@ -992,22 +1170,20 @@ def render_markdown(report: dict[str, Any]) -> str:
         )
     lines.extend([
         "",
-        "## Current shadow board",
+        "## Current validated production board",
         "",
-        "These are audit predictions, not draft recommendations.",
+        "The percentile is expected position-relative rookie PPR production. The historical band is model error, not a probability guarantee.",
         "",
-        "| Shadow rank | Player | Pos | Rookie market rank | 365d median percentile change |",
-        "|---:|---|:---:|---:|---:|",
+        "| Rank | Player | Pos | Rookie market rank | Expected production percentile | Sleeper basket |",
+        "|---:|---|:---:|---:|---:|:---:|",
     ])
-    for player in report["currentShadowBoard"][:20]:
-        forecast = player["forecast"].get("365", {}).get("structuredExpectedPercentileChange")
-        value = f"{forecast:+.3f}" if isinstance(forecast, (int, float)) else "n/a"
-        rookie_rank = player["market"]["rookieRank"] if player["market"]["rookieRank"] is not None else "unranked"
+    for player in report["currentDraftBoard"][:25]:
         lines.append(
-            f"| {player['shadowRank']} | {player['name']} | {player['position']} | "
-            f"{rookie_rank} | {value} |"
+            f"| {player['draftBoardRank']} | {player['name']} | {player['position']} | "
+            f"{player['rookieMarketRank']} | {player['expectedRookieProductionPercentile']:.3f} | "
+            f"{'yes' if player['inValidatedSleeperBasket'] else ''} |"
         )
-    lines.extend(["", "## Promotion blockers", ""])
+    lines.extend(["", "## Remaining market-return blockers", ""])
     lines.extend(f"- {blocker}" for blocker in report["promotionBlockers"])
     return "\n".join(lines) + "\n"
 
@@ -1015,12 +1191,18 @@ def render_markdown(report: dict[str, Any]) -> str:
 def collect(*, refresh: bool, offline: bool) -> dict[str, Any]:
     ensure_dirs()
     ensure_dynastyprocess(refresh=refresh, offline=offline)
+    public_sources = collect_public_rookie_sources(
+        RAW,
+        refresh=refresh,
+        offline=offline,
+    )
     trends = collect_sleeper_trends(refresh=refresh, offline=offline)
     fantasycalc, fantasycalc_as_of = latest_fantasycalc_snapshot()
     return {
         "trends": trends,
         "fantasycalc": fantasycalc,
         "fantasycalcAsOf": fantasycalc_as_of,
+        "publicSources": public_sources,
     }
 
 
@@ -1030,8 +1212,24 @@ def build_and_train(*, refresh: bool, offline: bool) -> dict[str, Any]:
     universe = load_player_universe()
     tape, coverage = build_tape(points, universe)
     current, current_coverage = current_rookies(points, universe)
+    college_seasons = build_college_player_seasons(RAW, PROCESSED)
+    college_features = build_college_features(universe, college_seasons)
+    combine_features = build_combine_features(
+        universe, pd.read_parquet(RAW / "nflverse" / "combine.parquet")
+    )
+    production_outcomes = load_nfl_rookie_outcomes(RAW, universe)
+    tape = add_external_features(tape, college_features, combine_features, production_outcomes)
+    current = add_external_features(current, college_features, combine_features)
     tape.to_csv(PROCESSED / "rookie-tape.csv", index=False)
     current.to_csv(PROCESSED / "current-rookies.csv", index=False)
+
+    production_backtest = backtest_production_model(tape)
+    production_artifact = fit_production_artifact(tape)
+    draft_board = predict_current_production(
+        current,
+        production_artifact,
+        production_backtest.residual_band_80,
+    )
 
     metrics: list[HorizonMetrics] = []
     models: dict[int, dict[str, HistGradientBoostingRegressor]] = {}
@@ -1047,7 +1245,9 @@ def build_and_train(*, refresh: bool, offline: bool) -> dict[str, Any]:
             "version": MODEL_VERSION,
             "baseFeatures": BASE_FEATURES,
             "updateFeatures": UPDATE_FEATURES,
-            "models": models,
+            "marketReturnModels": models,
+            "productionFeatures": PRODUCTION_FEATURES,
+            "production": production_artifact,
         }, artifact)
 
     predictions = predict_current(current, models, sources["trends"], sources["fantasycalc"])
@@ -1060,6 +1260,10 @@ def build_and_train(*, refresh: bool, offline: bool) -> dict[str, Any]:
         points=points,
         fantasycalc_as_of=sources["fantasycalcAsOf"],
         trends=sources["trends"],
+        public_sources=sources["publicSources"],
+        production_backtest=production_backtest,
+        draft_board=draft_board,
+        production_feature_importance=production_artifact["featureImportance"],
     )
     REPORT_JSON.write_text(json.dumps(report, indent=2) + "\n")
     REPORT_MARKDOWN.write_text(render_markdown(report))

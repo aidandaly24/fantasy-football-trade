@@ -79,13 +79,15 @@ than predicting that every player repeats the prior season's PPR points per
 team game. Model selection uses one season, and the gate is measured on a later
 season that was not used for fitting or selection.
 
-## Rookie sleeper pipeline (V6.0-V6.2)
+## Rookie sleeper pipeline (V6.0-V6.3)
 
-The rookie model is a separate shadow pipeline because incoming rookies have no
-prior NFL production for the production model above. It reconstructs dated
+The rookie model is separate because incoming rookies have no prior NFL
+production for the veteran model above. It reconstructs dated
 DynastyProcess/FantasyPros dynasty ECR snapshots from git history, retains
-unranked players at the source floor so busts cannot disappear, and measures
-180- and 365-day changes in source-relative market percentile.
+unranked players so busts cannot disappear, and joins public cfbfastR college
+play-participant data, nflverse combine testing and nflverse rookie-season PPR
+outcomes through stable provider IDs. Raw source files include SHA-256 evidence
+in the private cache manifest.
 
 ```sh
 npm run ml:rookies
@@ -105,7 +107,16 @@ movement improves that base model. Current FantasyCalc values and Sleeper
 add/drop trends are collected as corroborating evidence only; they cannot alter
 the forecast until equivalent historical data exists.
 
-The rookie pipeline is hard-blocked from live recommendations while its label
-is expert-consensus movement rather than a complete historical tape of prices
-inferred from completed trades. A model binary or a visually plausible ranking
-does not override that source gate.
+V6.3 adds a distinct production target: position-relative rookie regular-season
+PPR percentile, including zero-stat players. Its exact sleeper rule selects the
+top eight forecasts after rookie market rank 24. Rolling class tests compare
+that basket with an oracle that takes the best of market order, NFL draft order
+and capital/market gap in each class. The production board is enabled only if it
+wins at least five eligible rolling classes, wins every class, and clears the
+declared exact sign-test gate.
+
+The production board is evidence for prioritizing film and acquisition-price
+checks; it is not a player grade or a promised return. The market-return head
+remains hard-blocked from trade grades while its label is expert-consensus
+movement rather than a complete historical tape of prices inferred from
+completed trades.

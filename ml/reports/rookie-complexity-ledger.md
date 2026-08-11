@@ -2,13 +2,14 @@
 
 ## Boundary
 
-- Outcome: identify rookies whose future dynasty-market movement may exceed the
-  cost implied by their current market rank.
+- Outcomes: (1) identify late-cost rookies likely to produce in their first NFL
+  season and (2) separately test future dynasty-market movement.
 - Observer: one private 12-team superflex, full-PPR, 0.75-TEP rebuild manager.
-- Horizon: 180 and 365 days, with current 2026 decisions remaining shadow-only.
+- Horizon: rookie regular season for production; 180 and 365 days for the
+  still-shadow market-return head.
 - Team and operations: one user; offline refresh; no new service, queue or live
   inference system.
-- Exclusions through V6.2: trade grades, automatic draft recommendations,
+- Exclusions through V6.3: trade-grade influence, automatic transactions,
   article-text sentiment and historical Sleeper-trend inference.
 
 ## Ledger
@@ -21,7 +22,10 @@
 | One combined rookie grade | Product/system | Prior hard-coded scores were not trusted | Accidental | None | Hides label quality, uncertainty and phase failures | Separate tape, base model, updater and gates | Delete; export evidence and distributions rather than a synthetic grade |
 | DynastyProcess ECR as a temporary historical label | Product/model | Confirmed 332 dated snapshots; not completed-trade pricing | Transitional | Test the pipeline before a full trade-price tape exists | Expert opinion can move differently from actual deal prices | Wait without testing | Keep shadow-only; remove as primary label when a complete completed-trade tape passes coverage tests |
 | Historical completed-trade prices for delisted players | Product/model | FantasyCalc current-player histories do not reconstruct the full universe | Unknown | Train the requested profit model on actual market behavior | Unknown coverage and source-format fidelity | Use ECR forever | Continue the bounded source audit; promote only after delisted-player and league-format gates pass |
-| College production and usage | Product/model | CollegeFootballData credential is not configured | Unknown | Distinguish similar draft-capital profiles such as converted positions | Identity joins and point-in-time feature availability | Draft capital and size only | Add behind a separate adapter after credential/access and historical coverage are verified |
+| College production and usage | Product/model | Confirmed public cfbfastR play-participant seasons 2014-2025; stable ESPN IDs cover 93.0% of historically priced rookies | Essential for V6.3 experiment | Distinguish similar market and draft-capital profiles | Imported schema, missing lower-division players and incorrect team shares | Draft capital and size only | Keep behind the isolated adapter; expose missingness and source hashes; never hand-fill a player's production |
+| Athletic testing | Product/model | Confirmed nflverse combine rows and stable CFB/PFR identities | Imported | Add measured speed and explosion without scouting grades | Non-invites and incomplete drills are not failures | Omit athletic data | Keep raw results and explicit missingness; never replace missing drills with a player penalty |
+| Rookie NFL production outcome | Product/model | Confirmed nflverse regular-season PPR rows for 2019-2025; no stat row is an observed zero outcome | Essential | Test whether a late-cost basket produces, independent of opinion movement | One season misses slower developmental arcs | Market movement alone | Keep as a separate position-relative target; do not merge it with market return into one grade |
+| Cost-aware sleeper decision rule | Product/model | Five eligible rolling classes; exact top-eight rule beat the strongest simple baseline in all five; sizes 6/8/10/12 have positive mean lift and majority class wins versus both market and draft order | Essential | Match the actual draft decision instead of optimizing average error | Cutoff instability and retrospective model selection | MAE only | Lock the five-seed ensemble and rule; require >=5/5 primary class wins, exact one-sided sign p <= 0.05, and adjacent-size sensitivity; track 2026 prospectively |
 | News text and camp sentiment | Product/model | Existing headline rules have no historical return validation | Accidental through V6.2 | None yet | Narrative leakage and arbitrary hype weights | Structured market movement and factual status events | Exclude from model; reconsider only after a labeled, rights-safe event tape shows incremental held-out lift |
 | Separate online model service | Operations | No independent scale or latency requirement | Accidental | None | Deployment, drift and availability burden | Offline artifact | Do not add before a promoted model needs runtime inference |
 
@@ -35,11 +39,15 @@
   completed-trade pricing.
 - Next / V6.2: structured updater. It advances only if it improves base-model
   error without reducing sleeper-basket returns in either held-out class.
-- Later: CollegeFootballData features and historical availability modeling,
-  unlocked by verified access and point-in-time coverage.
-- Not until promotion: site recommendations, trade-grade influence, automated
-  actions, article-text modeling or an online inference service.
+- V6.3: production evidence board. It advances only when stable-ID college,
+  combine and real NFL outcomes pass coverage/leakage gates and the exact
+  cost-aware basket beats the strongest simple baseline in every eligible
+  rolling class.
+- Later: prospective 2026 tracking, a two-season developmental target when a
+  full additional class matures, and historical availability modeling.
+- Not until the separate market-return promotion: trade-grade influence,
+  automated actions, article-text modeling or an online inference service.
 
-The transitional ECR label sunsets when a complete completed-trade tape exists,
-or the approach is abandoned if it cannot beat the simple baselines after the
-college-data experiment.
+The transitional ECR label sunsets when a complete completed-trade tape exists.
+V6.3's production outcome does not waive that requirement because production
+and trade-market profit are different questions.
