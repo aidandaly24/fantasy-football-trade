@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findComparablePackages, resolveTeamStrategy } from './strategy'
+import { findComparablePackages, findTradeFrontier, resolveTeamStrategy } from './strategy'
 import type { Asset, Team } from './types'
 
 function asset(id: string, position: Asset['position'], value: number, overrides: Partial<Asset> = {}): Asset {
@@ -41,6 +41,7 @@ describe('evidence-only strategy inventory', () => {
     expect(first[0].sendValue).toBe(500)
     expect(first[0].receiveValue).toBe(500)
     expect(first[0].marketNetToMe).toBe(0)
+    expect(first[0].frontier).toBe(true)
     expect(first[0]).not.toHaveProperty('acceptanceScore')
     expect(first[0]).not.toHaveProperty('profitScore')
   })
@@ -57,5 +58,49 @@ describe('evidence-only strategy inventory', () => {
 
     expect(packages[0].receive.map((item) => item.id)).toEqual(['target'])
     expect(packages.every((item) => item.send.length <= 3)).toBe(true)
+  })
+
+  it('compares an explicit multi-asset target basket without manufacturing a grade', () => {
+    const mine = team(1, [asset('qb', 'QB', 500), asset('wr', 'WR', 300)], [asset('second', 'PICK', 200)])
+    const theirs = team(2, [asset('target-a', 'RB', 320), asset('target-b', 'WR', 380)])
+    const packages = findComparablePackages([mine, theirs], {
+      myRosterId: 1,
+      counterpartRosterId: 2,
+      rosterPositions,
+      targetAssetIds: ['target-a', 'target-b'],
+      strategy: { mode: 'rebuilding', horizonYears: 3, flipPriority: 0 },
+    })
+
+    expect(packages[0].receive.map((item) => item.id).sort()).toEqual(['target-a', 'target-b'])
+    expect(packages[0]).not.toHaveProperty('grade')
+    expect(packages[0].tradeoffs.some((item) => item.includes('draft capital'))).toBe(true)
+  })
+
+  it('returns a deterministic league-wide Pareto frontier using only visible objectives', () => {
+    const mine = team(1, [asset('veteran', 'QB', 500, { age: 31 }), asset('young-wr', 'WR', 300, { age: 23 })], [asset('first', 'PICK', 450)])
+    const teams = [
+      mine,
+      team(2, [asset('young-target', 'RB', 500, { age: 22 })]),
+      team(3, [asset('old-target', 'RB', 500, { age: 29 })], [asset('their-first', 'PICK', 450)]),
+    ]
+    const options = {
+      myRosterId: 1,
+      rosterPositions,
+      strategy: { mode: 'rebuilding' as const, horizonYears: 3 as const, flipPriority: 0 },
+    }
+
+    const first = findTradeFrontier(teams, options)
+    const second = findTradeFrontier(teams, options)
+    const neutral = findTradeFrontier(teams, {
+      ...options,
+      strategy: { mode: 'neutral', horizonYears: 3, flipPriority: 0 },
+    }, 16)
+
+    expect(first).toEqual(second)
+    expect(first.length).toBeGreaterThan(0)
+    expect(first.every((candidate) => candidate.frontier)).toBe(true)
+    expect(first.every((candidate) => !('acceptanceScore' in candidate))).toBe(true)
+    expect(first.some((candidate) => candidate.targetAsset.id === 'old-target')).toBe(false)
+    expect(neutral.some((candidate) => candidate.targetAsset.id === 'old-target')).toBe(true)
   })
 })

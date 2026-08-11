@@ -151,6 +151,10 @@ export type Asset = {
   age: number | null
   rank: number | null
   sourceValue?: number | null
+  marketSources?: {
+    ktc: number | null
+    fantasycalc: number | null
+  }
   originalRosterId?: number
   ownerRosterId?: number
   year?: string

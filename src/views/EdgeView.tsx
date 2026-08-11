@@ -8,7 +8,7 @@ import { buildIntelSignals } from '../intel'
 import { journalTradeSides, tradePartyNames } from '../journal'
 import type { ManagerProfile } from '../negotiation'
 import type { ResearchPipelineBundle } from '../research'
-import { findComparablePackages, resolveTeamStrategy } from '../strategy'
+import { findComparablePackages, findTradeFrontier, resolveTeamStrategy } from '../strategy'
 import type { ComparablePackage } from '../strategy'
 import type { EdgeStateBundle, IntelFeed, JournalBundle, LeaguePreferences, Team, TradeOfferRecord, TradeOfferStatus, ValueBundle } from '../types'
 import { AssetBadge, formatResearchGate, formatValue, signedPercent } from '../components/domain-ui'
@@ -116,8 +116,13 @@ export function EdgeView({
       counterpartRosterId: selected.owner.rosterId,
       rosterPositions,
       targetAssetId: selected.asset.id,
+      strategy: teamStrategy,
     }) : [],
-    [teams, myRosterId, rosterPositions, selected],
+    [teams, myRosterId, rosterPositions, selected, teamStrategy],
+  )
+  const tradeFrontier = useMemo(
+    () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy }, 8),
+    [teams, myRosterId, rosterPositions, teamStrategy],
   )
 
   useEffect(() => {
@@ -347,6 +352,40 @@ export function EdgeView({
       </section>
       {edgeError && <div className="intel-error">Private research warning: {edgeError}</div>}
 
+      <section className="trade-frontier-board panel">
+        <div className="panel-heading">
+          <div><span className="eyebrow">League-wide Pareto discovery</span><h2>{teamStrategy.mode === 'rebuilding' ? 'Rebuild trade frontier' : 'Trade frontier'}</h2></div>
+          <span className="method-note">No weighted score</span>
+        </div>
+        <div className="package-evidence-banner"><Info size={16} /><span>Each priced league target is paired with the closest one-to-three-asset package from up to your 50 highest-priced assets. These options are not clearly beaten across the visible market, lineup-coverage, and declared-window facts; display order is only a tie-break.</span></div>
+        <div className="trade-frontier-list">
+          {tradeFrontier.length ? tradeFrontier.map((candidate) => (
+            <article key={`frontier-${candidate.key}`}>
+              <span className="frontier-mark">Pareto</span>
+              <div className="frontier-target">
+                <span><AssetBadge position={candidate.targetAsset.position} /><small>Acquire from {candidate.counterpartName}</small></span>
+                <strong>{candidate.targetAsset.name}</strong>
+                <em>{formatValue(candidate.receiveValue)} current composite</em>
+              </div>
+              <div className="frontier-send"><small>You send</small><strong>{candidate.send.map((asset) => asset.name).join(' + ')}</strong><em>{formatValue(candidate.sendValue)}</em></div>
+              <div className="frontier-facts">
+                <span><small>Market net</small><b className={candidate.marketNetToMe >= 0 ? 'positive' : 'negative'}>{candidate.marketNetToMe >= 0 ? '+' : ''}{formatValue(candidate.marketNetToMe)}</b></span>
+                <span><small>Market distance</small><b>{(candidate.marketDistancePercent * 100).toFixed(1)}%</b></span>
+                <span><small>Lineup</small><b>{candidate.lineupDeltaMe === null ? `Guarded · ${candidate.lineupCoveragePercent}%` : `${candidate.lineupDeltaMe >= 0 ? '+' : ''}${candidate.lineupDeltaMe.toFixed(1)} PPG`}</b></span>
+                <span><small>Pick-value net</small><b>{candidate.draftCapitalNetToMe >= 0 ? '+' : ''}{formatValue(candidate.draftCapitalNetToMe)}</b></span>
+              </div>
+              <button type="button" onClick={() => onOpenTrade({
+                teamAId: myRosterId,
+                teamBId: candidate.counterpartRosterId,
+                selectedA: candidate.send.map((asset) => asset.id),
+                selectedB: candidate.receive.map((asset) => asset.id),
+              })}>Open scenarios <ChevronRight size={14} /></button>
+            </article>
+          )) : <div className="intel-empty"><Target size={22} /><strong>No complete frontier is available.</strong><span>Priced assets or outgoing package evidence is missing.</span></div>}
+        </div>
+        <div className="model-caveat"><Info size={17} /><span>“Pareto” means no shown option is better on every displayed objective. It does not mean the other manager will accept, and it does not predict resale profit.</span></div>
+      </section>
+
       <section className="edge-layout">
         <div className="edge-board panel">
           <div className="panel-heading"><div><span className="eyebrow">League-wide evidence board</span><h2>Current asset inventory</h2></div><span className="method-note">Ordered by current composite value only</span></div>
@@ -385,8 +424,8 @@ export function EdgeView({
       </section>
 
       {selected && <section className="package-board panel edge-packages">
-        <div className="panel-heading"><div><span className="eyebrow">Possible trade visualizer</span><h2>Closest current-value packages for {selected.asset.name}</h2></div><span className="method-note">Comparisons, not recommendations</span></div>
-        <div className="package-evidence-banner"><Info size={16} /><span>Ordered only by the absolute gap in today’s composite values. Age, news, manager history, and the shadow return model do not secretly move these packages.</span></div>
+        <div className="panel-heading"><div><span className="eyebrow">Target package frontier</span><h2>Concrete packages for {selected.asset.name}</h2></div><span className="method-note">Visible tradeoffs only</span></div>
+        <div className="package-evidence-banner"><Info size={16} /><span>Pareto options come first among the 60 closest packages built from up to your 50 highest-priced assets. Your declared window can protect draft capital and expose older outgoing players, but no learned age curve, news score, or acceptance probability is hidden inside the order.</span></div>
         {comparablePackages.length ? comparablePackages.map((candidate, index) => {
           const target = candidate.receive[0]
           const horizonAge = target.kind === 'player' && target.age !== null && target.age !== undefined
@@ -394,7 +433,7 @@ export function EdgeView({
             : null
           return (
             <article className="package-row factual-package" key={candidate.key}>
-              <span className="stage-label">Closest #{index + 1}</span>
+              <span className={`stage-label ${candidate.frontier ? 'frontier-stage' : ''}`}>{candidate.frontier ? 'Pareto' : `Compare #${index + 1}`}</span>
               <div><small>You send · {formatValue(candidate.sendValue)}</small><strong>{candidate.send.map((asset) => asset.name).join(' + ')}</strong></div>
               <ArrowLeftRight size={18} />
               <div><small>You receive · {formatValue(candidate.receiveValue)}</small><strong>{candidate.receive.map((asset) => asset.name).join(' + ')}</strong></div>

@@ -179,7 +179,8 @@ describe('trade evaluation', () => {
       rosterPositions: ['QB'],
     })
 
-    expect(result.lineupImpactA).toBe(0)
+    expect(result.lineupImpactA).toBeNull()
+    expect(result.lineupScenarioA?.complete).toBe(false)
     expect(result.rangeA.worst).toBeLessThan(result.rangeA.best)
     expect(result.projectionCoverage).toBe(0)
   })
@@ -203,6 +204,57 @@ describe('trade evaluation', () => {
     expect(result.lineupImpactA).toBe(4)
     expect(result.projectionCoverage).toBe(100)
     expect(result.marketNetA).toBe(0)
+  })
+
+  it('guards every production scenario when the likely lineup is not fully covered', () => {
+    const uncoveredStarter = asset('uncovered-starter', 'QB', 700)
+    const coveredIncoming = asset('covered-incoming', 'QB', 800)
+    coveredIncoming.projectedPpg = 15
+    coveredIncoming.projectedPpgFloor = 9
+    coveredIncoming.projectedPpgCeiling = 21
+
+    const result = evaluateTrade([], [coveredIncoming], {
+      teamA: team(1, [uncoveredStarter]),
+      teamB: team(2, [coveredIncoming]),
+      rosterPositions: ['QB'],
+    })
+
+    expect(result.lineupImpactA).toBeNull()
+    expect(result.lineupScenarioA?.beforeCoverage).toEqual({ covered: 0, required: 1, percent: 0 })
+    expect(result.lineupScenarioA?.afterCoverage.percent).toBe(100)
+  })
+
+  it('keeps production floor, expectation, and ceiling as separate lineup scenarios', () => {
+    const starter = asset('starter', 'QB', 500)
+    Object.assign(starter, { projectedPpg: 10, projectedPpgFloor: 8, projectedPpgCeiling: 13 })
+    const incoming = asset('incoming', 'QB', 600)
+    Object.assign(incoming, { projectedPpg: 12, projectedPpgFloor: 9, projectedPpgCeiling: 17 })
+
+    const result = evaluateTrade([], [incoming], {
+      teamA: team(1, [starter]),
+      teamB: team(2, [incoming]),
+      rosterPositions: ['QB'],
+    })
+
+    expect(result.lineupScenarioA).toMatchObject({
+      floorDelta: 1,
+      expectedDelta: 2,
+      ceilingDelta: 4,
+      complete: true,
+    })
+  })
+
+  it('shows KTC and FantasyCalc package nets without blending away disagreement', () => {
+    const sent = asset('sent', 'WR', 500)
+    sent.marketSources = { ktc: 480, fantasycalc: 520 }
+    const received = asset('received', 'WR', 600)
+    received.marketSources = { ktc: 620, fantasycalc: 570 }
+
+    const result = evaluateTrade([sent], [received], { horizonYears: 3 })
+
+    expect(result.providerNetA).toEqual({ ktc: 140, fantasycalc: 50 })
+    expect(result.packageA.providerCoveragePercent).toBe(100)
+    expect(result.packageB.averageAgeAtHorizon).toBeNull()
   })
 
   it('keeps current price and factual role warnings separate', () => {

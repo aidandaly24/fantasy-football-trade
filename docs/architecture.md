@@ -43,8 +43,8 @@ Offline training does not run in the request path.
 | `src/styles/` | View-owned journal and evidence styles; `src/styles.css` retains shared and older view rules |
 | `src/api.ts` | Browser-side adapters for Sleeper, Tradyr, static artifacts, and private Worker routes |
 | `src/types.ts` | Shared browser/domain data contracts |
-| `src/rankings.ts` | Team construction, league-relative rankings, lineup optimization, and trade comparison |
-| `src/strategy.ts` | Declared roster strategy and deterministic current-value package comparison |
+| `src/rankings.ts` | Team construction, direct rankings, lineup optimization, and source-separated trade scenarios |
+| `src/strategy.ts` | Declared roster strategy, bounded package enumeration, and deterministic Pareto discovery |
 | `src/edge.ts` | Evidence-board opportunity construction and market-tape preparation |
 | `src/intel*.ts` | Headline classification and roster-aware intel signals |
 | `src/journal.ts` | Completed-trade presentation and season-specific identity remapping |
@@ -71,7 +71,9 @@ Offline training does not run in the request path.
 3. `fetchProjections` and model-health readers load checked-in browser-safe
    artifacts.
 4. Pure domain functions build teams, lineups, league-relative metrics, neutral
-   or manually supplied manager context, and trade comparisons.
+   or manually supplied manager context, trade scenarios, and Pareto package
+   frontiers. A frontier is calculated only from inspectable objectives and is
+   not an acceptance or return model.
 5. Identity-aware Worker routes load preferences, the trade journal, alerts,
    evidence snapshots, and research state.
 
