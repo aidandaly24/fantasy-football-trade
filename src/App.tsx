@@ -1,17 +1,15 @@
 import { ArrowLeftRight, BarChart3, BookOpen, ChevronRight, CircleGauge, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
 import { FormEvent, useEffect, useRef, useState } from 'react'
-import { fetchEventModelHealth, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchPendingTransactions, fetchProjections, fetchRookieBoard, fetchSleeperPlayers, fetchUserState, fetchValues, saveLeaguePreferences, saveMarketTape, syncJournal } from './api'
+import { fetchEventModelHealth, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchRookieBoard, fetchSleeperPlayers, fetchUserState, fetchValues, saveLeaguePreferences, saveMarketTape, syncJournal } from './api'
 import { buildEdgeBoard, buildTeamDirections, marketTapeAssets } from './edge'
 import type { TeamDirection } from './edge'
 import { journalTransactionsForCurrentManagers } from './journal'
 import { buildManagerProfiles } from './negotiation'
 import type { ManagerProfile } from './negotiation'
-import { createManualPendingTrade, manualPendingTradeFingerprint, manualTradeAlreadySettled, manualTradeRejectedBySleeper, mergePendingTrades, projectPendingTrades } from './pending-trades'
-import type { PendingTradeProjection } from './pending-trades'
 import { buildTeams, leagueFormat } from './rankings'
 import { resolveTeamStrategy } from './strategy'
 import type { RookieBoardBundle } from './rookies'
-import type { Asset, EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, SleeperTransaction, Team, UserState, ValueBundle } from './types'
+import type { EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, Team, UserState, ValueBundle } from './types'
 import { EdgeView } from './views/EdgeView'
 import { IntelView } from './views/IntelView'
 import { ModelView } from './views/ModelView'
@@ -30,12 +28,7 @@ const QUICK_LEAGUES = [
 type AppData = {
   leagueBundle: LeagueBundle
   valueBundle: ValueBundle
-  settledTeams: Team[]
   teams: Team[]
-  availableTeams: Team[]
-  officialPendingTransactions: SleeperTransaction[]
-  pendingProjection: PendingTradeProjection
-  pendingFetchFailedRounds: number[]
   modelHealth: ModelHealthBundle | null
   eventModelHealth: EventModelHealthBundle | null
   rookieBoard: RookieBoardBundle | null
@@ -146,7 +139,6 @@ function LeagueRibbon({ data, loading, onSelectLeague }: {
         <span>{format.numQbs === 2 ? 'Superflex' : '1QB'}</span>
         <span>{league.total_rosters} teams</span>
         <span>Full PPR{tep ? ` + ${tep} TEP` : ''}</span>
-        {data.pendingProjection.activeTrades.length > 0 && <span>{data.pendingProjection.activeTrades.length} accepted trade{data.pendingProjection.activeTrades.length === 1 ? '' : 's'} projected</span>}
         <span className="ribbon-source">Powered by <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a></span>
       </div>
     </div>
@@ -198,7 +190,6 @@ function App() {
   const [journalSyncing, setJournalSyncing] = useState(false)
   const [userState, setUserState] = useState<UserState | null>(null)
   const [tradeDraft, setTradeDraft] = useState<TradeDraft | null>(null)
-  const [rosterSnapshot, setRosterSnapshot] = useState<'settled' | 'committed'>('committed')
   const initialLoad = useRef(false)
 
   useEffect(() => {
@@ -219,7 +210,7 @@ function App() {
       const leagueBundle = await fetchLeagueBundle(cleanId)
       const format = leagueFormat(leagueBundle)
       const existingPreference = stateOverride?.preferences.find((item) => item.leagueId === cleanId)
-      const [valueBundle, projectionBundle, modelHealth, eventModelHealth, rookieBoard, storedJournal, pendingFetch] = await Promise.all([
+      const [valueBundle, projectionBundle, modelHealth, eventModelHealth, rookieBoard, storedJournal] = await Promise.all([
         fetchValues({
           ...format,
           numTeams: leagueBundle.league.total_rosters,
@@ -229,7 +220,6 @@ function App() {
         fetchEventModelHealth(),
         fetchRookieBoard().catch(() => null),
         fetchJournal(cleanId).catch(() => null),
-        fetchPendingTransactions(leagueBundle.league),
       ])
       const journalFresh = storedJournal?.sync?.finishedAt
         && storedJournal.sync.status === 'complete'
@@ -242,19 +232,8 @@ function App() {
       const playerProjections = new Map(
         projectionBundle?.stale ? [] : Object.entries(projectionBundle?.projections ?? {}),
       )
-      const settledTeams = buildTeams(leagueBundle, valueBundle, sleeperPlayers, playerProjections)
-      const manualPendingTrades = (existingPreference?.settings.pendingTrades ?? [])
-        .filter((trade) => (
-          !manualTradeAlreadySettled(trade, leagueBundle)
-          && !manualTradeRejectedBySleeper(trade, pendingFetch.transactions)
-        ))
-      const pendingProjection = projectPendingTrades(
-        settledTeams,
-        mergePendingTrades(pendingFetch.transactions, manualPendingTrades),
-        leagueBundle.league.roster_positions,
-      )
+      const teams = buildTeams(leagueBundle, valueBundle, sleeperPlayers, playerProjections)
       const transactions = journalTransactionsForCurrentManagers(journal, leagueBundle.league.league_id)
-      const teams = pendingProjection.committedTeams
       const directions = buildTeamDirections({
         teams,
         transactions,
@@ -271,7 +250,7 @@ function App() {
         leagueName: leagueBundle.league.name,
         myRosterId: existingPreference?.myRosterId ?? inferredRosterId,
         watchlist: existingPreference?.watchlist ?? [],
-        settings: { ...(existingPreference?.settings ?? {}), pendingTrades: manualPendingTrades },
+        settings: { ...(existingPreference?.settings ?? {}) },
       }
       const initialRosterId = basePreference.myRosterId ?? teams[0]?.rosterId
       const initialTeam = teams.find((team) => team.rosterId === initialRosterId) ?? teams[0]
@@ -299,12 +278,7 @@ function App() {
       setData({
         leagueBundle,
         valueBundle,
-        settledTeams,
         teams,
-        availableTeams: pendingProjection.availableTeams,
-        officialPendingTransactions: pendingFetch.transactions,
-        pendingProjection,
-        pendingFetchFailedRounds: pendingFetch.failedRounds,
         modelHealth,
         eventModelHealth,
         rookieBoard,
@@ -321,7 +295,6 @@ function App() {
           myRosterId: seedRosterId,
           rosterPositions: leagueBundle.league.roster_positions,
           directions,
-          excludedAssetIds: pendingProjection.lockedAssetIds,
           maxResults: 500,
         })
         void saveMarketTape(cleanId, {
@@ -335,7 +308,6 @@ function App() {
       setInputId(cleanId)
       setSelectedId(teams[0]?.rosterId ?? 1)
       setTradeDraft(null)
-      setRosterSnapshot(pendingProjection.activeTrades.length ? 'committed' : 'settled')
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unknown data error')
     } finally {
@@ -366,22 +338,7 @@ function App() {
       },
     }
     let nextData: AppData = { ...data, preferences: next }
-    const pendingChanged = Boolean(patch.settings && Object.prototype.hasOwnProperty.call(patch.settings, 'pendingTrades'))
-    if (pendingChanged) {
-      const pendingProjection = projectPendingTrades(
-        data.settledTeams,
-        mergePendingTrades(data.officialPendingTransactions, next.settings.pendingTrades ?? []),
-        data.leagueBundle.league.roster_positions,
-      )
-      nextData = {
-        ...nextData,
-        teams: pendingProjection.committedTeams,
-        availableTeams: pendingProjection.availableTeams,
-        pendingProjection,
-      }
-      setRosterSnapshot(pendingProjection.activeTrades.length ? 'committed' : 'settled')
-    }
-    if (pendingChanged || (patch.settings && Object.prototype.hasOwnProperty.call(patch.settings, 'teamDirectionOverrides'))) {
+    if (patch.settings && Object.prototype.hasOwnProperty.call(patch.settings, 'teamDirectionOverrides')) {
       const transactions = journalTransactionsForCurrentManagers(data.journal, data.leagueBundle.league.league_id)
       const teams = nextData.teams
       const directions = buildTeamDirections({
@@ -422,27 +379,6 @@ function App() {
   const openTradeDraft = (draft: Omit<TradeDraft, 'nonce'>) => {
     setTradeDraft({ ...draft, nonce: Date.now() })
     setView('trade')
-  }
-
-  const commitPendingTrade = (input: { teamAId: number; teamBId: number; sideA: Asset[]; sideB: Asset[] }) => {
-    if (!data) return
-    const pending = createManualPendingTrade(input)
-    const existing = data.preferences.settings.pendingTrades ?? []
-    if (existing.some((trade) => manualPendingTradeFingerprint(trade) === manualPendingTradeFingerprint(pending))) return
-    updatePreferences({
-      settings: {
-        pendingTrades: [...existing, pending].slice(-12),
-      },
-    })
-  }
-
-  const cancelPendingTrade = (manualId: string) => {
-    if (!data) return
-    updatePreferences({
-      settings: {
-        pendingTrades: (data.preferences.settings.pendingTrades ?? []).filter((trade) => trade.id !== manualId),
-      },
-    })
   }
 
   const refreshJournal = async () => {
@@ -487,13 +423,7 @@ function App() {
           {error && <div className="inline-error">Sync failed: {error}. Showing the last loaded league.</div>}
           {view === 'rankings' ? (
             <RankingsView
-              teams={rosterSnapshot === 'committed' ? data.teams : data.settledTeams}
-              settledTeams={data.settledTeams}
-              pendingProjection={data.pendingProjection}
-              pendingFetchFailedRounds={data.pendingFetchFailedRounds}
-              rosterSnapshot={rosterSnapshot}
-              setRosterSnapshot={setRosterSnapshot}
-              onCancelPending={cancelPendingTrade}
+              teams={data.teams}
               mode={mode}
               setMode={(nextMode) => {
                 setMode(nextMode)
@@ -505,9 +435,7 @@ function App() {
           ) : view === 'trade' ? (
             <TradeView
               key={`trade-${data.leagueBundle.league.league_id}-${tradeDraft?.nonce ?? 'manual'}`}
-              teams={data.availableTeams}
-              contextTeams={data.teams}
-              pendingTradeCount={data.pendingProjection.activeTrades.length}
+              teams={data.teams}
               rosterPositions={data.leagueBundle.league.roster_positions}
               initialDraft={tradeDraft}
               strategyRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId}
@@ -516,14 +444,13 @@ function App() {
                 data.preferences.settings.teamStrategy,
               )}
               onStrategyChange={(teamStrategy) => updatePreferences({ settings: { teamStrategy } })}
-              onCommitPendingTrade={commitPendingTrade}
             />
           ) : view === 'journal' ? (
             <TradeJournalView journal={data.journal} syncing={journalSyncing} onSync={() => void refreshJournal()} />
           ) : view === 'intel' ? (
             <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
           ) : view === 'strategy' ? (
-            <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} lockedAssetIds={data.pendingProjection.lockedAssetIds} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} marketFormat={{ ...leagueFormat(data.leagueBundle), numTeams: data.leagueBundle.league.total_rosters }} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} journalSyncing={journalSyncing} onSyncJournal={() => void refreshJournal()} onOpenJournal={() => setView('journal')} />
+            <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} marketFormat={{ ...leagueFormat(data.leagueBundle), numTeams: data.leagueBundle.league.total_rosters }} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} journalSyncing={journalSyncing} onSyncJournal={() => void refreshJournal()} onOpenJournal={() => setView('journal')} />
           ) : view === 'rookies' ? (
             <RookieBoardView bundle={data.rookieBoard} />
           ) : (

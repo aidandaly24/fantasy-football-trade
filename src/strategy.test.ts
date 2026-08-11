@@ -104,20 +104,4 @@ describe('evidence-only strategy inventory', () => {
     expect(neutral.some((candidate) => candidate.targetAsset.id === 'old-target')).toBe(true)
   })
 
-  it('excludes accepted-trade assets from targets and outgoing packages', () => {
-    const mine = team(1, [asset('locked-send', 'WR', 500), asset('available-send', 'WR', 500)])
-    const theirs = team(2, [asset('locked-target', 'RB', 500), asset('available-target', 'RB', 500)])
-    const excludedAssetIds = ['locked-send', 'locked-target']
-    const packages = findComparablePackages([mine, theirs], {
-      myRosterId: 1,
-      counterpartRosterId: 2,
-      rosterPositions,
-      targetAssetId: 'available-target',
-      excludedAssetIds,
-    })
-    const frontier = findTradeFrontier([mine, theirs], { myRosterId: 1, rosterPositions, excludedAssetIds }, 16)
-
-    expect(packages.flatMap((item) => item.send).map((item) => item.id)).not.toContain('locked-send')
-    expect(frontier.map((item) => item.targetAsset.id)).not.toContain('locked-target')
-  })
 })

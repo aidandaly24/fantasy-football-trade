@@ -9,6 +9,9 @@ const MIGRATION_ONLY_TABLES = new Set([
   // Retained in migration history for old data; the unvalidated projection
   // snapshot writer and reader have been removed from the live product.
   'edge_opportunity_snapshots',
+  // Retained to avoid deleting prior private rows; the manual offer feature
+  // and every live reader/writer have been removed from the product.
+  'user_trade_offers',
 ])
 
 function filesUnder(directory: string): string[] {

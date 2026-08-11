@@ -218,6 +218,8 @@ export const edgeOpportunitySnapshots = sqliteTable(
   ],
 )
 
+// Legacy storage retained so removing the application feature does not imply a
+// destructive migration. No Worker route reads from or writes to this table.
 export const userTradeOffers = sqliteTable(
   'user_trade_offers',
   {

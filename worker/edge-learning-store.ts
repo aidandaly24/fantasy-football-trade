@@ -292,7 +292,6 @@ type SummaryRow = {
 type ConfigRow = {
   last_auto_refresh_at: string | null; last_auto_refresh_error: string | null
 }
-type OfferCountRow = { labeled_offers: number }
 type ReportRow = { report_json: string }
 
 export async function readEdgeLearningState(
@@ -300,14 +299,12 @@ export async function readEdgeLearningState(
   userId: string,
   leagueId: string,
 ): Promise<Pick<EdgeStateBundle, 'marketTape' | 'calibration' | 'shadowModel' | 'shadowPredictions'>> {
-  const [summary, config, offerCount, reportRow, snapshots] = await Promise.all([
+  const [summary, config, reportRow, snapshots] = await Promise.all([
     db.prepare(`SELECT COUNT(*) AS snapshot_count, COUNT(DISTINCT asset_id) AS asset_count,
 MIN(captured_at) AS first_at, MAX(captured_at) AS last_at
 FROM market_value_snapshots WHERE user_id=? AND league_id=?`).bind(userId, leagueId).first<SummaryRow>(),
     db.prepare(`SELECT last_auto_refresh_at, last_auto_refresh_error FROM market_tape_configs
 WHERE user_id=? AND league_id=?`).bind(userId, leagueId).first<ConfigRow>(),
-    db.prepare(`SELECT COUNT(*) AS labeled_offers FROM user_trade_offers
-WHERE user_id=? AND league_id=? AND status IN ('countered', 'rejected', 'accepted')`).bind(userId, leagueId).first<OfferCountRow>(),
     db.prepare(`SELECT report_json FROM edge_model_runs WHERE user_id=? AND league_id=?
 ORDER BY trained_at DESC LIMIT 1`).bind(userId, leagueId).first<ReportRow>(),
     readLatestSnapshots(db, userId, leagueId),
@@ -324,7 +321,6 @@ ORDER BY trained_at DESC LIMIT 1`).bind(userId, leagueId).first<ReportRow>(),
     lastSnapshotAt: lastAt,
     spanDays: firstAt && lastAt ? Math.max(0, Math.round((Date.parse(lastAt) - Date.parse(firstAt)) / 86_400_000)) : 0,
     labeledExamples: stored.health.trainingRows + stored.health.validationRows,
-    labeledOffers: Number(offerCount?.labeled_offers ?? 0),
     lastAutomaticRefreshAt: config?.last_auto_refresh_at ?? null,
     automaticRefreshError: config?.last_auto_refresh_error ?? null,
   }
@@ -448,7 +444,7 @@ export function emptyLearningState(): Pick<EdgeStateBundle, 'marketTape' | 'cali
   return {
     marketTape: {
       snapshotCount: 0, assetsTracked: 0, firstSnapshotAt: null, lastSnapshotAt: null,
-      spanDays: 0, labeledExamples: 0, labeledOffers: 0, lastAutomaticRefreshAt: null,
+      spanDays: 0, labeledExamples: 0, lastAutomaticRefreshAt: null,
       automaticRefreshError: null,
     },
     calibration: [] as EdgeCalibrationGroup[],

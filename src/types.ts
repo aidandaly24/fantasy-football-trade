@@ -350,30 +350,6 @@ export type UserIdentity = {
   name: string
 }
 
-export type PendingPlayerMove = {
-  playerId: string
-  fromRosterId: number
-  toRosterId: number
-}
-
-export type PendingPickMove = {
-  season: string
-  round: number
-  originalRosterId: number
-  fromRosterId: number
-  toRosterId: number
-}
-
-/** Private fallback for accepted Sleeper trades that are not present in the
- * public transaction endpoint during the league review period. */
-export type ManualPendingTrade = {
-  id: string
-  createdAt: number
-  rosterIds: number[]
-  playerMoves: PendingPlayerMove[]
-  pickMoves: PendingPickMove[]
-}
-
 export type LeaguePreferences = {
   leagueId: string
   leagueName: string
@@ -385,7 +361,6 @@ export type LeaguePreferences = {
     edgeFilter?: 'all' | 'value' | 'flip' | 'points' | 'intel'
     teamDirectionOverrides?: Record<string, 'contender' | 'retooling' | 'rebuilding'>
     teamStrategy?: TeamStrategyProfile
-    pendingTrades?: ManualPendingTrade[]
   }
   updatedAt?: string
 }
@@ -564,24 +539,6 @@ export type AlertInbox = {
   }
 }
 
-export type TradeOfferStatus = 'draft' | 'sent' | 'countered' | 'rejected' | 'accepted' | 'withdrawn'
-
-export type TradeOfferRecord = {
-  offerId: string
-  counterpartRosterId: number
-  targetAssetId: string
-  targetAssetName: string
-  stage: 'opening' | 'target' | 'counter' | 'walk-away'
-  status: TradeOfferStatus
-  sentAssets: Array<{ id: string; name: string; value: number }>
-  receiveAssets: Array<{ id: string; name: string; value: number }>
-  marketDelta: number
-  lineupDelta: number
-  thesis: string
-  createdAt: string
-  updatedAt: string
-}
-
 export type EdgeFeatureVector = {
   lineupDelta: number | null
   age: number | null
@@ -624,7 +581,6 @@ export type MarketTapeSummary = {
   lastSnapshotAt: string | null
   spanDays: number
   labeledExamples: number
-  labeledOffers: number
   lastAutomaticRefreshAt: string | null
   automaticRefreshError: string | null
 }
@@ -716,7 +672,6 @@ export type HistoricalTapeAudit = {
 }
 
 export type EdgeStateBundle = {
-  offers: TradeOfferRecord[]
   marketTape: MarketTapeSummary
   calibration: EdgeCalibrationGroup[]
   shadowModel: EdgeShadowModelHealth

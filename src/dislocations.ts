@@ -60,7 +60,6 @@ export type MarketDislocationOptions = {
   rosterPositions: string[]
   directions: TeamDirection[]
   strategy: ResolvedTeamStrategy
-  excludedAssetIds?: string[]
 }
 
 type RosteredPlayer = { key: string; asset: Asset; owner: Team }
@@ -151,7 +150,6 @@ export function buildMarketDislocations(
 ): MarketDislocation[] {
   const mine = teams.find((team) => team.rosterId === options.myRosterId)
   if (!mine) return []
-  const excluded = new Set(options.excludedAssetIds ?? [])
   const directionByRoster = new Map(options.directions.map((direction) => [direction.rosterId, direction]))
   const players = teams.flatMap((owner) => owner.players
     .filter((asset) => asset.kind === 'player' && SKILL_POSITIONS.has(asset.position) && asset.value > 0)
@@ -168,7 +166,7 @@ export function buildMarketDislocations(
   ))
 
   const candidates = players
-    .filter((player) => player.owner.rosterId !== mine.rosterId && !excluded.has(player.asset.id))
+    .filter((player) => player.owner.rosterId !== mine.rosterId)
     .map((player): MarketDislocation => {
       const positionPlayers = byPosition.get(player.asset.position) ?? []
       const coveredPositionPlayers = positionPlayers.filter((item) => item.asset.projectedPpg !== undefined)
