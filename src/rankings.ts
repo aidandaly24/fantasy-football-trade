@@ -67,6 +67,7 @@ function toAsset(
     age: tradyr?.age ?? sleeper?.age ?? null,
     rank: tradyr?.rank ?? null,
     sourceValue: tradyr?.sources.ktc,
+    marketSources: tradyr ? { ...tradyr.sources } : undefined,
     active: sleeper?.active,
     nflStatus: sleeper?.status,
     injuryStatus: sleeper?.injury_status,
@@ -430,25 +431,155 @@ export function packageValue(assets: Asset[]): number {
   return packageValueAt(assets, 'expected')
 }
 
-function projectedLineupTotal(players: Asset[], rosterPositions: string[]): number {
-  return optimizeLineupBy(players, rosterPositions, projectedLineupPpg)
-    .reduce((sum, player) => sum + projectedLineupPpg(player), 0)
+export type TradePackageFacts = {
+  currentValue: number
+  lowValue: number
+  highValue: number
+  playerCount: number
+  pickCount: number
+  pickValue: number
+  averageAgeNow: number | null
+  averageAgeAtHorizon: number | null
+  ageCoveragePercent: number
+  providerCoveragePercent: number
+  providerTotals: {
+    ktc: number | null
+    fantasycalc: number | null
+  }
 }
 
-function lineupImpact(
+export type LineupProjectionScenario = {
+  expectedDelta: number | null
+  floorDelta: number | null
+  ceilingDelta: number | null
+  complete: boolean
+  beforeCoverage: { covered: number; required: number; percent: number }
+  afterCoverage: { covered: number; required: number; percent: number }
+}
+
+type ProjectionBound = 'floor' | 'expected' | 'ceiling'
+
+function projectionAt(asset: Asset, bound: ProjectionBound): number | undefined {
+  if (asset.kind !== 'player') return undefined
+  if (bound === 'floor') return asset.projectedPpgFloor
+  if (bound === 'ceiling') return asset.projectedPpgCeiling
+  return asset.projectedPpg
+}
+
+function requiredSkillSlots(rosterPositions: string[]): number {
+  return rosterPositions.filter((position) => SKILL_POSITIONS.has(position) || position === 'FLEX' || position === 'SUPER_FLEX').length
+}
+
+function lineupCoverage(players: Asset[], rosterPositions: string[], bound: ProjectionBound) {
+  const required = requiredSkillSlots(rosterPositions)
+  const likelyStarters = optimizeLineup(players, rosterPositions)
+  const covered = likelyStarters.filter((asset) => projectionAt(asset, bound) !== undefined).length
+  return {
+    covered,
+    required,
+    percent: required ? Math.round((covered / required) * 100) : 100,
+    complete: likelyStarters.length === required && covered === required,
+  }
+}
+
+function projectedLineupTotalAt(players: Asset[], rosterPositions: string[], bound: ProjectionBound): number {
+  return optimizeLineupBy(players, rosterPositions, (asset) => projectionAt(asset, bound) ?? 0)
+    .reduce((sum, player) => sum + (projectionAt(player, bound) ?? 0), 0)
+}
+
+function postTradePlayers(
   team: Team,
   outgoing: Asset[],
   incoming: Asset[],
-  rosterPositions: string[],
-): number {
+): Asset[] {
   const outgoingIds = new Set(outgoing.filter((asset) => asset.kind === 'player').map((asset) => asset.id))
   const remaining = team.players.filter((player) => !outgoingIds.has(player.id))
   const existingIds = new Set(remaining.map((player) => player.id))
   const additions = incoming.filter(
     (asset) => asset.kind === 'player' && !existingIds.has(asset.id),
   )
-  return projectedLineupTotal([...remaining, ...additions], rosterPositions)
-    - projectedLineupTotal(team.players, rosterPositions)
+  return [...remaining, ...additions]
+}
+
+function lineupProjectionScenario(
+  team: Team,
+  outgoing: Asset[],
+  incoming: Asset[],
+  rosterPositions: string[],
+): LineupProjectionScenario {
+  const afterPlayers = postTradePlayers(team, outgoing, incoming)
+  const beforeExpected = lineupCoverage(team.players, rosterPositions, 'expected')
+  const afterExpected = lineupCoverage(afterPlayers, rosterPositions, 'expected')
+  const beforeFloor = lineupCoverage(team.players, rosterPositions, 'floor')
+  const afterFloor = lineupCoverage(afterPlayers, rosterPositions, 'floor')
+  const beforeCeiling = lineupCoverage(team.players, rosterPositions, 'ceiling')
+  const afterCeiling = lineupCoverage(afterPlayers, rosterPositions, 'ceiling')
+  const delta = (bound: ProjectionBound, complete: boolean) => complete
+    ? Number((projectedLineupTotalAt(afterPlayers, rosterPositions, bound) - projectedLineupTotalAt(team.players, rosterPositions, bound)).toFixed(1))
+    : null
+
+  return {
+    expectedDelta: delta('expected', beforeExpected.complete && afterExpected.complete),
+    floorDelta: delta('floor', beforeFloor.complete && afterFloor.complete),
+    ceilingDelta: delta('ceiling', beforeCeiling.complete && afterCeiling.complete),
+    complete: beforeExpected.complete && afterExpected.complete,
+    beforeCoverage: {
+      covered: beforeExpected.covered,
+      required: beforeExpected.required,
+      percent: beforeExpected.percent,
+    },
+    afterCoverage: {
+      covered: afterExpected.covered,
+      required: afterExpected.required,
+      percent: afterExpected.percent,
+    },
+  }
+}
+
+function packageProviderTotal(assets: Asset[], provider: keyof NonNullable<Asset['marketSources']>): number | null {
+  let total = 0
+  for (const asset of assets) {
+    if (asset.kind === 'pick') {
+      total += asset.value
+      continue
+    }
+    const value = asset.marketSources?.[provider]
+    if (value === null || value === undefined) return null
+    total += value
+  }
+  return Math.round(total)
+}
+
+function packageFacts(assets: Asset[], horizonYears: number): TradePackageFacts {
+  const players = assets.filter((asset) => asset.kind === 'player')
+  const picks = assets.filter((asset) => asset.kind === 'pick')
+  const knownAges = players.flatMap((asset) => asset.age === null || asset.age === undefined ? [] : [asset.age])
+  const averageAgeNow = knownAges.length
+    ? Number((knownAges.reduce((sum, age) => sum + age, 0) / knownAges.length).toFixed(1))
+    : null
+  const providerCovered = players.filter((asset) => (
+    asset.marketSources?.ktc !== null
+    && asset.marketSources?.ktc !== undefined
+    && asset.marketSources?.fantasycalc !== null
+    && asset.marketSources?.fantasycalc !== undefined
+  )).length
+
+  return {
+    currentValue: packageValueAt(assets, 'expected'),
+    lowValue: packageValueAt(assets, 'low'),
+    highValue: packageValueAt(assets, 'high'),
+    playerCount: players.length,
+    pickCount: picks.length,
+    pickValue: Math.round(picks.reduce((sum, asset) => sum + asset.value, 0)),
+    averageAgeNow,
+    averageAgeAtHorizon: averageAgeNow === null ? null : Number((averageAgeNow + horizonYears).toFixed(1)),
+    ageCoveragePercent: players.length ? Math.round((knownAges.length / players.length) * 100) : 100,
+    providerCoveragePercent: players.length ? Math.round((providerCovered / players.length) * 100) : 100,
+    providerTotals: {
+      ktc: packageProviderTotal(assets, 'ktc'),
+      fantasycalc: packageProviderTotal(assets, 'fantasycalc'),
+    },
+  }
 }
 
 function packageRiskNotes(assets: Asset[]): string[] {
@@ -482,19 +613,24 @@ function packageProjectionNotes(assets: Asset[]): string[] {
 export function evaluateTrade(
   sideA: Asset[],
   sideB: Asset[],
-  context?: { teamA?: Team; teamB?: Team; rosterPositions?: string[] },
+  context?: { teamA?: Team; teamB?: Team; rosterPositions?: string[]; horizonYears?: number },
 ) {
-  const valueA = packageValueAt(sideA, 'expected')
-  const valueB = packageValueAt(sideB, 'expected')
+  const horizonYears = Math.max(1, Math.min(4, context?.horizonYears ?? 2))
+  const packageA = packageFacts(sideA, horizonYears)
+  const packageB = packageFacts(sideB, horizonYears)
+  const valueA = packageA.currentValue
+  const valueB = packageB.currentValue
   const total = valueA + valueB
   const difference = total ? (Math.abs(valueA - valueB) / ((valueA + valueB) / 2)) * 100 : 0
   const marketNetA = valueB - valueA
-  const lineupImpactA = context?.teamA && context.rosterPositions
-    ? lineupImpact(context.teamA, sideA, sideB, context.rosterPositions)
+  const lineupScenarioA = context?.teamA && context.rosterPositions
+    ? lineupProjectionScenario(context.teamA, sideA, sideB, context.rosterPositions)
     : null
-  const lineupImpactB = context?.teamB && context.rosterPositions
-    ? lineupImpact(context.teamB, sideB, sideA, context.rosterPositions)
+  const lineupScenarioB = context?.teamB && context.rosterPositions
+    ? lineupProjectionScenario(context.teamB, sideB, sideA, context.rosterPositions)
     : null
+  const lineupImpactA = lineupScenarioA?.expectedDelta ?? null
+  const lineupImpactB = lineupScenarioB?.expectedDelta ?? null
   const winner = marketNetA === 0 ? null : marketNetA > 0 ? 'A' : 'B'
   const winnerLabel = winner === 'A'
     ? (context?.teamA?.teamName ?? 'Side A')
@@ -506,10 +642,10 @@ export function evaluateTrade(
         ? 'Current market values match'
         : `${winnerLabel} receives ${Math.abs(marketNetA).toLocaleString()} more current market value`
 
-  const sideALow = packageValueAt(sideA, 'low')
-  const sideAHigh = packageValueAt(sideA, 'high')
-  const sideBLow = packageValueAt(sideB, 'low')
-  const sideBHigh = packageValueAt(sideB, 'high')
+  const sideALow = packageA.lowValue
+  const sideAHigh = packageA.highValue
+  const sideBLow = packageB.lowValue
+  const sideBHigh = packageB.highValue
   const playersInDeal = [...sideA, ...sideB].filter((asset) => asset.kind === 'player')
   const projectionCoverage = playersInDeal.length
     ? Math.round((playersInDeal.filter((asset) => asset.projectedPpg !== undefined).length / playersInDeal.length) * 100)
@@ -525,6 +661,19 @@ export function evaluateTrade(
     projectionCoverage,
     lineupImpactA,
     lineupImpactB,
+    lineupScenarioA,
+    lineupScenarioB,
+    packageA,
+    packageB,
+    providerNetA: {
+      ktc: packageA.providerTotals.ktc === null || packageB.providerTotals.ktc === null
+        ? null
+        : packageB.providerTotals.ktc - packageA.providerTotals.ktc,
+      fantasycalc: packageA.providerTotals.fantasycalc === null || packageB.providerTotals.fantasycalc === null
+        ? null
+        : packageB.providerTotals.fantasycalc - packageA.providerTotals.fantasycalc,
+    },
+    pickValueNetA: packageB.pickValue - packageA.pickValue,
     riskNotesA: packageRiskNotes(sideB),
     riskNotesB: packageRiskNotes(sideA),
     projectionNotesA: packageProjectionNotes(sideB),

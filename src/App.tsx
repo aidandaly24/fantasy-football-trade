@@ -390,7 +390,18 @@ function App() {
               setSelectedId={setSelectedId}
             />
           ) : view === 'trade' ? (
-            <TradeView key={`trade-${data.leagueBundle.league.league_id}-${tradeDraft?.nonce ?? 'manual'}`} teams={data.teams} rosterPositions={data.leagueBundle.league.roster_positions} initialDraft={tradeDraft} />
+            <TradeView
+              key={`trade-${data.leagueBundle.league.league_id}-${tradeDraft?.nonce ?? 'manual'}`}
+              teams={data.teams}
+              rosterPositions={data.leagueBundle.league.roster_positions}
+              initialDraft={tradeDraft}
+              strategyRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId}
+              strategy={resolveTeamStrategy(
+                data.teams.find((team) => team.rosterId === (data.preferences.myRosterId ?? data.teams[0].rosterId)) ?? data.teams[0],
+                data.preferences.settings.teamStrategy,
+              )}
+              onStrategyChange={(teamStrategy) => updatePreferences({ settings: { teamStrategy } })}
+            />
           ) : view === 'journal' ? (
             <TradeJournalView journal={data.journal} syncing={journalSyncing} onSync={() => void refreshJournal()} />
           ) : view === 'intel' ? (

@@ -54,6 +54,9 @@ validation status must remain inspectable.
   identity when a provider ID exists.
 - Use deterministic ordering with an explicit final ID/name tie-breaker.
 - Bound combinatorial searches and external response sizes.
+- A Pareto label must name the inspected objectives and candidate boundary. It
+  means non-dominated within that boundary, not optimal, likely accepted, or
+  profitable.
 - Do not duplicate a calculation in JSX merely to format it differently.
 
 `src/App.tsx` is the shared league-loading and view-composition surface. Keep

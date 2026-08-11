@@ -1,9 +1,12 @@
 import { AlertTriangle, ArrowLeftRight, Check, Info, Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { assetRoleLabel, evaluateTrade } from '../rankings'
-import type { Asset, Team } from '../types'
+import type { ResolvedTeamStrategy } from '../strategy'
+import type { Asset, Team, TeamStrategyProfile } from '../types'
 import { AssetBadge, Avatar, formatValue } from '../components/domain-ui'
 import type { TradeDraft } from './types'
+
+type TradeEvaluation = ReturnType<typeof evaluateTrade>
 
 function TradeAssetRow({
   asset,
@@ -125,19 +128,15 @@ function TradeSide({
 function TradeVerdict({
   teamA,
   teamB,
-  sideA,
-  sideB,
-  rosterPositions,
+  result,
+  ready,
 }: {
   teamA: Team
   teamB: Team
-  sideA: Asset[]
-  sideB: Asset[]
-  rosterPositions: string[]
+  result: TradeEvaluation
+  ready: boolean
 }) {
-  const result = evaluateTrade(sideA, sideB, { teamA, teamB, rosterPositions })
   const lead = result.winner === 'A' ? 'a' : result.winner === 'B' ? 'b' : 'even'
-  const ready = sideA.length > 0 && sideB.length > 0
   const compactVerdict = result.verdict
     .replace(teamA.teamName, 'Side A')
     .replace(teamB.teamName, 'Side B')
@@ -189,26 +188,33 @@ function RosterImpact({
   teamB,
   sideA,
   sideB,
-  rosterPositions,
+  result,
+  horizonYears,
 }: {
   teamA: Team
   teamB: Team
   sideA: Asset[]
   sideB: Asset[]
-  rosterPositions: string[]
+  result: TradeEvaluation
+  horizonYears: number
 }) {
-  const value = evaluateTrade(sideA, sideB, { teamA, teamB, rosterPositions })
-  const netA = value.marketNetA
-  const netB = -value.marketNetA
+  const netA = result.marketNetA
+  const netB = -result.marketNetA
   const topA = [...sideA].sort((a, b) => b.value - a.value)[0]
   const topB = [...sideB].sort((a, b) => b.value - a.value)[0]
   const spotsA = sideA.length - sideB.length
 
   const rows = [
     { label: 'Current market value', a: netA, b: netB, suffix: '', decimals: false },
-    { label: 'Projected lineup PPG', a: value.lineupImpactA ?? 0, b: value.lineupImpactB ?? 0, suffix: '', decimals: true },
+    { label: 'Expected lineup PPG', a: result.lineupImpactA, b: result.lineupImpactB, suffix: '', decimals: true },
+    { label: 'Current pick value', a: result.pickValueNetA, b: -result.pickValueNetA, suffix: '', decimals: false },
     { label: 'Roster spots opened', a: spotsA, b: -spotsA, suffix: '', decimals: false },
   ]
+
+  const displayMetric = (value: number | null, decimals: boolean) => {
+    if (value === null) return 'Guarded'
+    return `${value > 0 ? '+' : ''}${decimals ? value.toFixed(1) : formatValue(value)}`
+  }
 
   return (
     <section className="impact-panel panel">
@@ -225,18 +231,23 @@ function RosterImpact({
         <div className="impact-team-name align-right"><span><small>Side B</small><strong>{teamB.teamName}</strong></span><Avatar team={teamB} size="sm" /></div>
         {rows.map((row) => (
           <div className="impact-row" key={row.label}>
-            <b className={row.a > 0 ? 'positive' : row.a < 0 ? 'negative' : ''}>{row.a > 0 ? '+' : ''}{row.decimals ? row.a.toFixed(1) : formatValue(row.a)}{row.suffix}</b>
+            <b className={row.a !== null && row.a > 0 ? 'positive' : row.a !== null && row.a < 0 ? 'negative' : ''}>{displayMetric(row.a, row.decimals)}{row.suffix}</b>
             <span>{row.label}</span>
-            <b className={row.b > 0 ? 'positive' : row.b < 0 ? 'negative' : ''}>{row.b > 0 ? '+' : ''}{row.decimals ? row.b.toFixed(1) : formatValue(row.b)}{row.suffix}</b>
+            <b className={row.b !== null && row.b > 0 ? 'positive' : row.b !== null && row.b < 0 ? 'negative' : ''}>{displayMetric(row.b, row.decimals)}{row.suffix}</b>
           </div>
         ))}
-        {(value.rangeA.worst !== value.rangeA.best || value.rangeB.worst !== value.rangeB.best) && (
+        {(result.rangeA.worst !== result.rangeA.best || result.rangeB.worst !== result.rangeB.best) && (
           <div className="impact-row impact-range-row">
-            <b>{formatValue(value.rangeA.worst)} to {formatValue(value.rangeA.best)}</b>
+            <b>{formatValue(result.rangeA.worst)} to {formatValue(result.rangeA.best)}</b>
             <span>Pick scenario range</span>
-            <b>{formatValue(value.rangeB.worst)} to {formatValue(value.rangeB.best)}</b>
+            <b>{formatValue(result.rangeB.worst)} to {formatValue(result.rangeB.best)}</b>
           </div>
         )}
+        <div className="impact-row impact-range-row">
+          <b>{result.packageB.averageAgeAtHorizon === null ? 'No incoming player age' : result.packageB.averageAgeAtHorizon.toFixed(1)}</b>
+          <span>Incoming age in {horizonYears} years</span>
+          <b>{result.packageA.averageAgeAtHorizon === null ? 'No incoming player age' : result.packageA.averageAgeAtHorizon.toFixed(1)}</b>
+        </div>
         <div className="impact-row">
           <b>{topB?.name ?? '—'}</b>
           <span>Best asset received</span>
@@ -247,8 +258,86 @@ function RosterImpact({
   )
 }
 
-export function TradeView({ teams, rosterPositions, initialDraft }: { teams: Team[]; rosterPositions: string[]; initialDraft?: TradeDraft | null }) {
-  const [teamAId, setTeamAId] = useState(initialDraft?.teamAId ?? teams[0].rosterId)
+function ScenarioPanel({
+  result,
+  teamA,
+  strategy,
+  strategyRosterId,
+}: {
+  result: TradeEvaluation
+  teamA: Team
+  strategy: ResolvedTeamStrategy
+  strategyRosterId: number
+}) {
+  const signed = (value: number | null, suffix = '', decimals = false) => value === null
+    ? 'Unavailable'
+    : `${value > 0 ? '+' : ''}${decimals ? value.toFixed(1) : formatValue(value)}${suffix}`
+  const production = result.lineupScenarioA
+  const sourceCoverage = Math.min(result.packageA.providerCoveragePercent, result.packageB.providerCoveragePercent)
+  const objectiveApplies = teamA.rosterId === strategyRosterId
+
+  return (
+    <section className="scenario-panel panel">
+      <div className="panel-heading">
+        <div><span className="eyebrow">Honest scenario simulator</span><h2>Four lenses, no blended grade</h2></div>
+        <span className="method-note">{objectiveApplies ? `${strategy.mode} · ${strategy.horizonYears}-year horizon` : 'Factual comparison only'}</span>
+      </div>
+      <div className="scenario-grid">
+        <article>
+          <small>Provider disagreement</small>
+          <strong>{sourceCoverage}% dual-source coverage</strong>
+          <span>KTC player lens <b>{signed(result.providerNetA.ktc)}</b></span>
+          <span>FantasyCalc player lens <b>{signed(result.providerNetA.fantasycalc)}</b></span>
+        </article>
+        <article>
+          <small>Production range</small>
+          <strong>{production?.complete ? 'Likely lineup covered' : 'Lineup result guarded'}</strong>
+          <span>Floor <b>{signed(production?.floorDelta ?? null, ' PPG', true)}</b></span>
+          <span>Expected <b>{signed(production?.expectedDelta ?? null, ' PPG', true)}</b></span>
+          <span>Ceiling <b>{signed(production?.ceilingDelta ?? null, ' PPG', true)}</b></span>
+          {production && <em>{production.beforeCoverage.covered}/{production.beforeCoverage.required} slots before · {production.afterCoverage.covered}/{production.afterCoverage.required} after</em>}
+        </article>
+        <article>
+          <small>Pick-position scenarios</small>
+          <strong>{signed(result.marketNetA)} current net</strong>
+          <span>Downside <b>{signed(result.rangeA.worst)}</b></span>
+          <span>Upside <b>{signed(result.rangeA.best)}</b></span>
+          <em>Ranges come only from unresolved pick slots.</em>
+        </article>
+        <article>
+          <small>Declared horizon facts</small>
+          <strong>{strategy.horizonYears} years forward</strong>
+          <span>Outgoing player age <b>{result.packageA.averageAgeAtHorizon?.toFixed(1) ?? 'Unavailable'}</b></span>
+          <span>Incoming player age <b>{result.packageB.averageAgeAtHorizon?.toFixed(1) ?? 'Unavailable'}</b></span>
+          <span>Draft-capital net <b>{signed(result.pickValueNetA)}</b></span>
+        </article>
+      </div>
+      <div className="model-note scenario-note">
+        <Info size={16} />
+        <span>{objectiveApplies
+          ? `Side A is your saved team, so the ${strategy.mode} objective is shown as explicit horizon facts. No age-decay or resale curve is invented.`
+          : `Your saved strategy belongs to another roster. This deal keeps the ${strategy.horizonYears}-year age facts visible but does not label either side as your rebuild.`}</span>
+      </div>
+    </section>
+  )
+}
+
+export function TradeView({
+  teams,
+  rosterPositions,
+  initialDraft,
+  strategy,
+  strategyRosterId,
+  onStrategyChange,
+}: {
+  teams: Team[]
+  rosterPositions: string[]
+  initialDraft?: TradeDraft | null
+  strategy: ResolvedTeamStrategy
+  strategyRosterId: number
+  onStrategyChange: (strategy: TeamStrategyProfile) => void
+}) {
+  const [teamAId, setTeamAId] = useState(initialDraft?.teamAId ?? strategyRosterId)
   const [teamBId, setTeamBId] = useState(initialDraft?.teamBId ?? teams[1]?.rosterId ?? teams[0].rosterId)
   const [selectedA, setSelectedA] = useState<string[]>(initialDraft?.selectedA ?? [])
   const [selectedB, setSelectedB] = useState<string[]>(initialDraft?.selectedB ?? [])
@@ -258,6 +347,13 @@ export function TradeView({ teams, rosterPositions, initialDraft }: { teams: Tea
   const teamB = teams.find((team) => team.rosterId === teamBId) ?? teams[1] ?? teams[0]
   const assetsA = [...teamA.players, ...teamA.picks].filter((asset) => selectedA.includes(asset.id))
   const assetsB = [...teamB.players, ...teamB.picks].filter((asset) => selectedB.includes(asset.id))
+  const result = evaluateTrade(assetsA, assetsB, {
+    teamA,
+    teamB,
+    rosterPositions,
+    horizonYears: strategy.horizonYears,
+  })
+  const ready = assetsA.length > 0 && assetsB.length > 0
 
   const toggle = (ids: string[], setIds: (value: string[]) => void, id: string) => {
     setIds(ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id])
@@ -269,9 +365,24 @@ export function TradeView({ teams, rosterPositions, initialDraft }: { teams: Tea
         <div>
           <span className="eyebrow accent-eyebrow">Trade laboratory</span>
           <h1>Compare the evidence.<br />Make your own call.</h1>
-          <p>Current provider prices and covered production forecasts stay separate. RosterLab no longer manufactures a grade, winner, acceptance chance, or future resale value.</p>
+          <p>Build any multi-asset package. Current prices, source disagreement, pick ranges, covered production, and your declared horizon stay separate—without a manufactured grade or resale promise.</p>
         </div>
-        <div className="live-value-chip"><span /> Daily market values</div>
+        <div className="trade-scenario-controls">
+          <div className="live-value-chip"><span /> Daily market values</div>
+          <label><small>My objective</small><select value={strategy.mode === 'neutral' ? 'auto' : strategy.mode} onChange={(event) => {
+            const mode = event.target.value as TeamStrategyProfile['mode']
+            onStrategyChange({
+              mode,
+              horizonYears: mode === 'rebuilding' ? 3 : mode === 'retooling' ? 2 : mode === 'contender' ? 1 : strategy.horizonYears,
+              flipPriority: 0,
+            })
+          }}><option value="auto">Unspecified</option><option value="rebuilding">Rebuild</option><option value="retooling">Retool</option><option value="contender">Contend</option></select></label>
+          <label><small>Scenario horizon</small><select value={strategy.horizonYears} onChange={(event) => onStrategyChange({
+            mode: strategy.mode === 'neutral' ? 'auto' : strategy.mode,
+            horizonYears: Number(event.target.value) as TeamStrategyProfile['horizonYears'],
+            flipPriority: 0,
+          })}><option value={1}>1 year</option><option value={2}>2 years</option><option value={3}>3 years</option><option value={4}>4+ years</option></select></label>
+        </div>
       </section>
 
       <section className="trade-builder">
@@ -285,7 +396,7 @@ export function TradeView({ teams, rosterPositions, initialDraft }: { teams: Tea
           onTeamChange={(id) => { setTeamAId(id); setSelectedA([]) }}
           onToggle={(id) => toggle(selectedA, setSelectedA, id)}
         />
-        <TradeVerdict teamA={teamA} teamB={teamB} sideA={assetsA} sideB={assetsB} rosterPositions={rosterPositions} />
+        <TradeVerdict teamA={teamA} teamB={teamB} result={result} ready={ready} />
         <TradeSide
           side="B"
           team={teamB}
@@ -298,7 +409,8 @@ export function TradeView({ teams, rosterPositions, initialDraft }: { teams: Tea
         />
       </section>
 
-      <RosterImpact teamA={teamA} teamB={teamB} sideA={assetsA} sideB={assetsB} rosterPositions={rosterPositions} />
+      <RosterImpact teamA={teamA} teamB={teamB} sideA={assetsA} sideB={assetsB} result={result} horizonYears={strategy.horizonYears} />
+      {ready && <ScenarioPanel result={result} teamA={teamA} strategy={strategy} strategyRosterId={strategyRosterId} />}
     </main>
   )
 }

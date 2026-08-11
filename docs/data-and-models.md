@@ -76,6 +76,35 @@ play-participant data, DynastyProcess/FantasyPros historical ECR snapshots, and
 bounded FantasyCalc source research. Each report records provider, retrieval
 date, and available source hashes.
 
+## Trade scenarios and Pareto discovery
+
+The Trade Lab evaluates an explicit package through separate factual lenses:
+
+- the literal sum of current Tradyr composites;
+- KTC and FantasyCalc player-value package lenses when every player has both
+  provider values, with any picks held at their current composite;
+- the provider-derived early-to-late range for unresolved picks;
+- floor, expected, and ceiling lineup deltas from the enabled production
+  artifact;
+- current draft-capital flow, roster-space change, and player age at the
+  user's declared horizon.
+
+Production scenarios use a strict likely-lineup coverage guard. The current
+market-selected lineup before and after the deal must fill every required skill
+slot with an enabled projection. Otherwise the corresponding result is null and
+the UI displays the observed slot coverage. Market value is never converted
+into fallback fantasy points.
+
+Discovery does not collapse those lenses into a score. For a selected target
+basket, the application enumerates one-to-three-asset outgoing combinations,
+using up to the roster's 50 highest-priced assets, keeps the 60 closest
+current-value packages, and marks the non-dominated Pareto set. League-wide
+discovery pairs each priced target with its closest package from the same
+bounded outgoing pool and returns the non-dominated set across the visible
+current-value, lineup-coverage, and declared-window objectives. Deterministic
+display ordering is a tie-break only. Neither frontier estimates acceptance or
+resale return.
+
 ## Data lifecycle
 
 ```mermaid
