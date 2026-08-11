@@ -129,6 +129,32 @@
 .offer-book select { padding: 8px 10px; color: var(--ink); background: #efede6; border: 1px solid var(--line); border-radius: 8px; font-size: 8px; }
 .edge-toolbar > span { margin-left: auto; color: var(--ink-soft); font-size: 8px; }
 
+.market-dislocation-board { overflow: hidden; }
+.dislocation-method { padding: 10px 17px; display: flex; align-items: flex-start; gap: 8px; color: #5e665a; background: #eff1e8; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 8px; line-height: 1.5; }
+.dislocation-method svg { flex: 0 0 auto; color: #6c7937; }
+.dislocation-toolbar { padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 15px; border-bottom: 1px solid var(--line); }
+.dislocation-toolbar .intel-tabs { flex-wrap: wrap; }
+.dislocation-toolbar .intel-tabs button { display: inline-flex; align-items: center; gap: 5px; }
+.dislocation-toolbar .intel-tabs b { color: inherit; font-family: 'DM Mono', monospace; font-size: 6px; }
+.dislocation-toolbar > span { max-width: 390px; color: var(--ink-soft); font-size: 7px; line-height: 1.4; text-align: right; }
+.dislocation-list { display: grid; }
+.dislocation-list > article { min-height: 148px; padding: 14px 15px; display: grid; grid-template-columns: minmax(220px, .9fr) minmax(520px, 2.4fr) 112px; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); }
+.dislocation-list > article:last-child { border-bottom: 0; }
+.dislocation-player { min-width: 0; display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 8px; }
+.dislocation-player > span { min-width: 0; display: grid; gap: 4px; }
+.dislocation-player strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.dislocation-player small { color: var(--ink-soft); font-size: 7px; }
+.dislocation-tags { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+.dislocation-tags i { padding: 4px 5px; color: #59602d; background: #e7efc9; border-radius: 5px; font-size: 6px; font-style: normal; font-weight: 800; text-transform: uppercase; }
+.dislocation-tags i.frontier { color: #36503d; background: #dceee6; }
+.dislocation-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.dislocation-facts section { min-height: 89px; padding: 9px; display: flex; flex-direction: column; gap: 5px; background: #efede6; border-radius: 8px; }
+.dislocation-facts small { color: var(--ink-soft); font-size: 6.5px; font-weight: 800; text-transform: uppercase; }
+.dislocation-facts strong { font-size: 8px; line-height: 1.35; }
+.dislocation-facts span { color: var(--ink-soft); font-size: 6.5px; line-height: 1.45; }
+.dislocation-list > article > button { min-height: 36px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: #f3f4ee; background: var(--dark); border: 0; border-radius: 8px; font-size: 7px; font-weight: 900; }
+.market-dislocation-board > .model-caveat { border-top: 1px solid var(--line); }
+
 .edge-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.62fr) minmax(320px, 0.78fr);
@@ -291,6 +317,9 @@
   .edge-packages .package-actions { grid-column: 2 / 5; display: flex; justify-content: flex-end; }
   .trade-frontier-list > article { grid-template-columns: 58px minmax(0, .8fr) minmax(0, 1fr) 112px; }
   .frontier-facts { grid-column: 2 / 5; }
+  .dislocation-list > article { grid-template-columns: minmax(200px, .7fr) minmax(0, 2fr); }
+  .dislocation-list > article > button { grid-column: 2; justify-self: end; }
+  .dislocation-facts { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 860px) {
@@ -304,6 +333,10 @@
   .direction-tape { grid-template-columns: 1fr; }
   .edge-toolbar { align-items: flex-start; flex-direction: column; }
   .edge-toolbar > span { margin-left: 0; }
+  .dislocation-toolbar { align-items: flex-start; flex-direction: column; }
+  .dislocation-toolbar > span { max-width: none; text-align: left; }
+  .dislocation-list > article { grid-template-columns: 1fr; }
+  .dislocation-list > article > button { grid-column: auto; justify-self: end; }
   .edge-row { grid-template-columns: 26px minmax(0, 1fr) 70px 52px 16px; }
   .edge-row .edge-categories,
   .edge-row > span:nth-of-type(4) { display: none; }
@@ -350,4 +383,6 @@
   .frontier-facts { grid-template-columns: 1fr 1fr; }
   .trade-frontier-list > article > button { width: 100%; }
   .frontier-mark { justify-self: start; }
+  .dislocation-facts { grid-template-columns: 1fr; }
+  .dislocation-list > article > button { width: 100%; }
 }

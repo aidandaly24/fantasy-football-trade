@@ -106,6 +106,37 @@ current-value, lineup-coverage, and declared-window objectives. Deterministic
 display ordering is a tie-break only. Neither frontier estimates acceptance or
 resale return.
 
+## Current-state market dislocations
+
+The Evidence view includes a player-only research desk that keeps three kinds
+of current evidence separate:
+
+- **Market-source disagreement:** the symmetric percentage spread between the
+  current KTC and FantasyCalc values supplied through Tradyr. It shows which
+  source is higher but does not decide which source is correct.
+- **Production divergence:** the enabled production model's percentile minus
+  the current composite-market percentile within the same position and the
+  same rostered, covered population. The UI retains each rank and population. This is
+  modeled production evidence, not a market-return forecast.
+- **Owner pressure:** whether the player appears in the owner's current-value
+  likely lineup, same-position roster count, exact dedicated slots, strict
+  production-covered lineup deltas, and completed-trade activity/current-value
+  flow from the existing manager context. Flex eligibility is explicitly separate, and none
+  of these facts estimates willingness to accept.
+
+The desk provides separate source-gap, production-ahead, and owner-pressure
+lenses. Its supported frontier compares only the visible measured objectives:
+source spread, within-position percentile gap, covered lineup effects, likely
+lineup status, positional depth, recent completed-trade count, and—when the
+user declares a rebuilding or retooling objective—age at the declared horizon.
+Missing source or lineup evidence is not imputed. The population is current
+priced skill-position players on opponent rosters; deterministic ordering is a
+display tie-break, not a composite edge score.
+
+This surface adds no new provider, storage, scheduled job, or model promotion.
+It turns already available current facts into research leads that can be opened
+in the existing package simulator.
+
 ## Data lifecycle
 
 ```mermaid

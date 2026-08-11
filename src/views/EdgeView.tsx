@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchEdgeState, fetchIntel, fetchResearchState, saveMarketTape, saveTradeOffer } from '../api'
 import { buildEdgeBoard, marketTapeAssets } from '../edge'
 import type { EdgeCategory, TeamDirection, TeamDirectionOverride } from '../edge'
+import { buildMarketDislocations } from '../dislocations'
+import type { MarketDislocation } from '../dislocations'
 import { emptyShadowHealth } from '../edge-learning'
 import { buildIntelSignals } from '../intel'
 import { journalTradeSides, tradePartyNames } from '../journal'
@@ -12,6 +14,7 @@ import { findComparablePackages, findTradeFrontier, resolveTeamStrategy } from '
 import type { ComparablePackage } from '../strategy'
 import type { EdgeStateBundle, IntelFeed, JournalBundle, LeaguePreferences, Team, TradeOfferRecord, TradeOfferStatus, ValueBundle } from '../types'
 import { AssetBadge, formatResearchGate, formatValue, signedPercent } from '../components/domain-ui'
+import { DislocationBoard } from './DislocationBoard'
 import type { TradeDraft } from './types'
 
 function emptyEdgeState(): EdgeStateBundle {
@@ -124,6 +127,10 @@ export function EdgeView({
     () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy }, 8),
     [teams, myRosterId, rosterPositions, teamStrategy],
   )
+  const dislocations = useMemo(
+    () => buildMarketDislocations(teams, { myRosterId, rosterPositions, directions, strategy: teamStrategy }),
+    [teams, myRosterId, rosterPositions, directions, teamStrategy],
+  )
 
   useEffect(() => {
     if (selected && selected.key !== selectedKey && !opportunities.some((opportunity) => opportunity.key === selectedKey)) {
@@ -159,6 +166,11 @@ export function EdgeView({
     void saveTradeOffer(preferences.leagueId, { ...offer, status, updatedAt: new Date().toISOString() })
       .then(setEdgeState)
       .catch((error) => setEdgeError(error instanceof Error ? error.message : 'Offer status could not be saved'))
+  }
+
+  const inspectDislocation = (candidate: MarketDislocation) => {
+    setSelectedKey(candidate.key)
+    window.requestAnimationFrame(() => document.getElementById('target-package-frontier')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
 
   const logComparablePackage = (candidate: ComparablePackage) => {
@@ -352,6 +364,8 @@ export function EdgeView({
       </section>
       {edgeError && <div className="intel-error">Private research warning: {edgeError}</div>}
 
+      <DislocationBoard candidates={dislocations} onInspect={inspectDislocation} />
+
       <section className="trade-frontier-board panel">
         <div className="panel-heading">
           <div><span className="eyebrow">League-wide Pareto discovery</span><h2>{teamStrategy.mode === 'rebuilding' ? 'Rebuild trade frontier' : 'Trade frontier'}</h2></div>
@@ -423,7 +437,7 @@ export function EdgeView({
         </aside>}
       </section>
 
-      {selected && <section className="package-board panel edge-packages">
+      {selected && <section className="package-board panel edge-packages" id="target-package-frontier">
         <div className="panel-heading"><div><span className="eyebrow">Target package frontier</span><h2>Concrete packages for {selected.asset.name}</h2></div><span className="method-note">Visible tradeoffs only</span></div>
         <div className="package-evidence-banner"><Info size={16} /><span>Pareto options come first among the 60 closest packages built from up to your 50 highest-priced assets. Your declared window can protect draft capital and expose older outgoing players, but no learned age curve, news score, or acceptance probability is hidden inside the order.</span></div>
         {comparablePackages.length ? comparablePackages.map((candidate, index) => {
