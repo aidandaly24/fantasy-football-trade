@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeftRight, Check, Info, Search, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, Check, Clock3, Info, LockKeyhole, Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { assetRoleLabel, evaluateTrade } from '../rankings'
 import type { ResolvedTeamStrategy } from '../strategy'
@@ -326,18 +326,24 @@ function ScenarioPanel({
 
 export function TradeView({
   teams,
+  contextTeams,
+  pendingTradeCount,
   rosterPositions,
   initialDraft,
   strategy,
   strategyRosterId,
   onStrategyChange,
+  onCommitPendingTrade,
 }: {
   teams: Team[]
+  contextTeams: Team[]
+  pendingTradeCount: number
   rosterPositions: string[]
   initialDraft?: TradeDraft | null
   strategy: ResolvedTeamStrategy
   strategyRosterId: number
   onStrategyChange: (strategy: TeamStrategyProfile) => void
+  onCommitPendingTrade: (input: { teamAId: number; teamBId: number; sideA: Asset[]; sideB: Asset[] }) => void
 }) {
   const [teamAId, setTeamAId] = useState(initialDraft?.teamAId ?? strategyRosterId)
   const [teamBId, setTeamBId] = useState(initialDraft?.teamBId ?? teams[1]?.rosterId ?? teams[0].rosterId)
@@ -345,13 +351,16 @@ export function TradeView({
   const [selectedB, setSelectedB] = useState<string[]>(initialDraft?.selectedB ?? [])
   const [searchA, setSearchA] = useState('')
   const [searchB, setSearchB] = useState('')
+  const [commitNotice, setCommitNotice] = useState('')
   const teamA = teams.find((team) => team.rosterId === teamAId) ?? teams[0]
   const teamB = teams.find((team) => team.rosterId === teamBId) ?? teams[1] ?? teams[0]
+  const contextTeamA = contextTeams.find((team) => team.rosterId === teamAId) ?? teamA
+  const contextTeamB = contextTeams.find((team) => team.rosterId === teamBId) ?? teamB
   const assetsA = [...teamA.players, ...teamA.picks].filter((asset) => selectedA.includes(asset.id))
   const assetsB = [...teamB.players, ...teamB.picks].filter((asset) => selectedB.includes(asset.id))
   const result = evaluateTrade(assetsA, assetsB, {
-    teamA,
-    teamB,
+    teamA: contextTeamA,
+    teamB: contextTeamB,
     rosterPositions,
     horizonYears: strategy.horizonYears,
   })
@@ -368,6 +377,7 @@ export function TradeView({
           <span className="eyebrow accent-eyebrow">Trade laboratory</span>
           <h1>Compare the evidence.<br />Make your own call.</h1>
           <p>Build any multi-asset package. Current prices, source disagreement, pick ranges, covered production, and your declared horizon stay separate—without a manufactured grade or resale promise.</p>
+          {pendingTradeCount > 0 && <div className="trade-pending-chip"><LockKeyhole size={14} /> {pendingTradeCount} accepted deal{pendingTradeCount === 1 ? '' : 's'} projected; locked assets are hidden.</div>}
         </div>
         <div className="trade-scenario-controls">
           <div className="live-value-chip"><span /> Daily market values</div>
@@ -398,7 +408,7 @@ export function TradeView({
           onTeamChange={(id) => { setTeamAId(id); setSelectedA([]) }}
           onToggle={(id) => toggle(selectedA, setSelectedA, id)}
         />
-        <TradeVerdict teamA={teamA} teamB={teamB} result={result} ready={ready} />
+        <TradeVerdict teamA={contextTeamA} teamB={contextTeamB} result={result} ready={ready} />
         <TradeSide
           side="B"
           team={teamB}
@@ -411,8 +421,21 @@ export function TradeView({
         />
       </section>
 
-      <RosterImpact teamA={teamA} teamB={teamB} sideA={assetsA} sideB={assetsB} result={result} horizonYears={strategy.horizonYears} />
-      {ready && <ScenarioPanel result={result} teamA={teamA} strategy={strategy} strategyRosterId={strategyRosterId} />}
+      <section className="pending-commit-panel panel">
+        <span><Clock3 size={19} /></span>
+        <div>
+          <strong>Accepted on Sleeper but still in review?</strong>
+          <small>Mark this exact package as committed. RosterLab will project both rosters, lock every asset, and reconcile it after Sleeper settles.</small>
+          {commitNotice && <em>{commitNotice}</em>}
+        </div>
+        <button type="button" disabled={!ready} onClick={() => {
+          onCommitPendingTrade({ teamAId, teamBId, sideA: assetsA, sideB: assetsB })
+          setCommitNotice('Added to the committed roster. It can be removed from League facts if vetoed.')
+        }}><LockKeyhole size={15} /> Mark accepted / processing</button>
+      </section>
+
+      <RosterImpact teamA={contextTeamA} teamB={contextTeamB} sideA={assetsA} sideB={assetsB} result={result} horizonYears={strategy.horizonYears} />
+      {ready && <ScenarioPanel result={result} teamA={contextTeamA} strategy={strategy} strategyRosterId={strategyRosterId} />}
     </main>
   )
 }

@@ -41,6 +41,7 @@ function emptyEdgeState(): EdgeStateBundle {
 
 export function EdgeView({
   teams,
+  lockedAssetIds,
   profiles,
   directions,
   myRosterId,
@@ -56,6 +57,7 @@ export function EdgeView({
   onOpenJournal,
 }: {
   teams: Team[]
+  lockedAssetIds: string[]
   profiles: ManagerProfile[]
   directions: TeamDirection[]
   myRosterId: number
@@ -103,8 +105,8 @@ export function EdgeView({
     [feed, myRosterId, teams, valueBundle.players],
   )
   const allOpportunities = useMemo(
-    () => buildEdgeBoard(teams, { myRosterId, rosterPositions, directions, intelSignals: signals, maxResults: 500 }),
-    [teams, myRosterId, rosterPositions, directions, signals],
+    () => buildEdgeBoard(teams, { myRosterId, rosterPositions, directions, intelSignals: signals, excludedAssetIds: lockedAssetIds, maxResults: 500 }),
+    [teams, myRosterId, rosterPositions, directions, signals, lockedAssetIds],
   )
   const opportunities = allOpportunities.slice(0, 24)
   const filtered = opportunities.filter((opportunity) => filter === 'all' || opportunity.categories.includes(filter))
@@ -120,16 +122,17 @@ export function EdgeView({
       rosterPositions,
       targetAssetId: selected.asset.id,
       strategy: teamStrategy,
+      excludedAssetIds: lockedAssetIds,
     }) : [],
-    [teams, myRosterId, rosterPositions, selected, teamStrategy],
+    [teams, myRosterId, rosterPositions, selected, teamStrategy, lockedAssetIds],
   )
   const tradeFrontier = useMemo(
-    () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy }, 8),
-    [teams, myRosterId, rosterPositions, teamStrategy],
+    () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy, excludedAssetIds: lockedAssetIds }, 8),
+    [teams, myRosterId, rosterPositions, teamStrategy, lockedAssetIds],
   )
   const dislocations = useMemo(
-    () => buildMarketDislocations(teams, { myRosterId, rosterPositions, directions, strategy: teamStrategy }),
-    [teams, myRosterId, rosterPositions, directions, teamStrategy],
+    () => buildMarketDislocations(teams, { myRosterId, rosterPositions, directions, strategy: teamStrategy, excludedAssetIds: lockedAssetIds }),
+    [teams, myRosterId, rosterPositions, directions, teamStrategy, lockedAssetIds],
   )
 
   useEffect(() => {

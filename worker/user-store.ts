@@ -16,6 +16,14 @@ export type AuthenticatedUser = {
   name: string
 }
 
+type StoredPendingTrade = {
+  id: string
+  createdAt: number
+  rosterIds: number[]
+  playerMoves: Array<{ playerId: string; fromRosterId: number; toRosterId: number }>
+  pickMoves: Array<{ season: string; round: number; originalRosterId: number; fromRosterId: number; toRosterId: number }>
+}
+
 export type StoredLeaguePreference = {
   leagueId: string
   leagueName: string
@@ -31,6 +39,7 @@ export type StoredLeaguePreference = {
       horizonYears: 1 | 2 | 3 | 4
       flipPriority: number
     }
+    pendingTrades?: StoredPendingTrade[]
   }
   updatedAt: string
 }
@@ -114,6 +123,49 @@ function preferenceFromRow(row: PreferenceRow): StoredLeaguePreference {
   }
 }
 
+function validRosterId(value: unknown): value is number {
+  return Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 100
+}
+
+function normalizePendingTrades(value: unknown): StoredPendingTrade[] {
+  if (!Array.isArray(value)) return []
+  return value.slice(0, 12).flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return []
+    const raw = item as Record<string, unknown>
+    const id = typeof raw.id === 'string' ? raw.id : ''
+    const createdAt = Number(raw.createdAt)
+    const rosterIds = Array.isArray(raw.rosterIds)
+      ? [...new Set(raw.rosterIds.map(Number).filter(validRosterId))].slice(0, 4)
+      : []
+    if (!/^manual-[\w:-]{1,120}$/.test(id) || !Number.isFinite(createdAt) || createdAt <= 0 || rosterIds.length < 2) return []
+    const playerMoves = (Array.isArray(raw.playerMoves) ? raw.playerMoves : []).slice(0, 32).flatMap((move) => {
+      if (!move || typeof move !== 'object' || Array.isArray(move)) return []
+      const record = move as Record<string, unknown>
+      const playerId = typeof record.playerId === 'string' ? record.playerId : ''
+      const fromRosterId = Number(record.fromRosterId)
+      const toRosterId = Number(record.toRosterId)
+      if (!/^[\w-]{1,64}$/.test(playerId) || !validRosterId(fromRosterId) || !validRosterId(toRosterId) || fromRosterId === toRosterId) return []
+      if (!rosterIds.includes(fromRosterId) || !rosterIds.includes(toRosterId)) return []
+      return [{ playerId, fromRosterId, toRosterId }]
+    })
+    const pickMoves = (Array.isArray(raw.pickMoves) ? raw.pickMoves : []).slice(0, 32).flatMap((move) => {
+      if (!move || typeof move !== 'object' || Array.isArray(move)) return []
+      const record = move as Record<string, unknown>
+      const season = typeof record.season === 'string' ? record.season : ''
+      const round = Number(record.round)
+      const originalRosterId = Number(record.originalRosterId)
+      const fromRosterId = Number(record.fromRosterId)
+      const toRosterId = Number(record.toRosterId)
+      if (!/^20\d{2}$/.test(season) || !Number.isInteger(round) || round < 1 || round > 10) return []
+      if (![originalRosterId, fromRosterId, toRosterId].every(validRosterId) || fromRosterId === toRosterId) return []
+      if (!rosterIds.includes(fromRosterId) || !rosterIds.includes(toRosterId)) return []
+      return [{ season, round, originalRosterId, fromRosterId, toRosterId }]
+    })
+    if (!playerMoves.length && !pickMoves.length) return []
+    return [{ id, createdAt, rosterIds, playerMoves, pickMoves }]
+  })
+}
+
 export function normalizePreferenceInput(input: unknown): Omit<StoredLeaguePreference, 'updatedAt'> {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid preferences')
   const value = input as Record<string, unknown>
@@ -169,6 +221,8 @@ export function normalizePreferenceInput(input: unknown): Omit<StoredLeaguePrefe
       }
     }
   }
+  const pendingTrades = normalizePendingTrades(rawSettings.pendingTrades)
+  if (pendingTrades.length) settings.pendingTrades = pendingTrades
   return { leagueId, leagueName, myRosterId, watchlist, settings }
 }
 

@@ -14,6 +14,7 @@ export type League = {
     draft_rounds: number
     taxi_slots?: number
     reserve_slots?: number
+    leg?: number
   }
 }
 
@@ -349,6 +350,30 @@ export type UserIdentity = {
   name: string
 }
 
+export type PendingPlayerMove = {
+  playerId: string
+  fromRosterId: number
+  toRosterId: number
+}
+
+export type PendingPickMove = {
+  season: string
+  round: number
+  originalRosterId: number
+  fromRosterId: number
+  toRosterId: number
+}
+
+/** Private fallback for accepted Sleeper trades that are not present in the
+ * public transaction endpoint during the league review period. */
+export type ManualPendingTrade = {
+  id: string
+  createdAt: number
+  rosterIds: number[]
+  playerMoves: PendingPlayerMove[]
+  pickMoves: PendingPickMove[]
+}
+
 export type LeaguePreferences = {
   leagueId: string
   leagueName: string
@@ -360,6 +385,7 @@ export type LeaguePreferences = {
     edgeFilter?: 'all' | 'value' | 'flip' | 'points' | 'intel'
     teamDirectionOverrides?: Record<string, 'contender' | 'retooling' | 'rebuilding'>
     teamStrategy?: TeamStrategyProfile
+    pendingTrades?: ManualPendingTrade[]
   }
   updatedAt?: string
 }

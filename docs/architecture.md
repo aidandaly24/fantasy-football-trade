@@ -44,6 +44,7 @@ Offline training does not run in the request path.
 | `src/api.ts` | Browser-side adapters for Sleeper, Tradyr, static artifacts, and private Worker routes |
 | `src/types.ts` | Shared browser/domain data contracts |
 | `src/rankings.ts` | Team construction, direct rankings, lineup optimization, and source-separated trade scenarios |
+| `src/pending-trades.ts` | Pure accepted-trade projection, locked inventory, pick movement, reconciliation, and rollback |
 | `src/strategy.ts` | Declared roster strategy, bounded package enumeration, and deterministic Pareto discovery |
 | `src/edge.ts` | Evidence-board opportunity construction and market-tape preparation |
 | `src/dislocations.ts` | Current source disagreement, position-relative production divergence, owner-pressure facts, and their evidence-only Pareto frontier |
@@ -69,6 +70,8 @@ Offline training does not run in the request path.
 
 1. `fetchLeagueBundle` reads the league, rosters, managers, traded picks, and
    current draft from Sleeper.
+   A bounded neighboring-round probe also reads accepted `pending`
+   transactions when Sleeper publishes them.
 2. `fetchValues` reads attributed player and pick composites from Tradyr.
 3. `fetchProjections` and model-health readers load checked-in browser-safe
    artifacts.
@@ -78,6 +81,21 @@ Offline training does not run in the request path.
    inspectable objectives and is not an acceptance or return model.
 5. Identity-aware Worker routes load preferences, the trade journal, alerts,
    evidence snapshots, and research state.
+
+Accepted trades have three deliberately separate client representations:
+
+- **settled** is the current Sleeper roster and traded-pick ledger;
+- **committed** applies every accepted pending player and pick leg to settled
+  state and drives the default pro-forma rankings and context;
+- **available** removes every asset in an accepted trade from committed state
+  and is the only inventory offered to Trade Lab and discovery.
+
+Sleeper can omit accepted trades during a league review window. In that case a
+user can mark the exact Trade Lab package as accepted. The private commitment
+is stored inside the existing league-preference JSON, reconciles away when the
+settled roster and pick ledger reflect every leg, and can be explicitly removed
+after a veto or cancellation. This fallback does not scrape chat, infer a deal,
+or mutate Sleeper.
 
 The primary views are league facts, Trade Lab, Journal, News, Evidence, Rookie
 board, and Model. View-local presentation should consume typed domain results
@@ -110,6 +128,8 @@ contains the imported RSS and Sleeper trend collection behavior.
 D1 contains several bounded capability groups:
 
 - user league preferences and strategy overrides;
+- bounded private accepted-trade commitments used only when Sleeper's public
+  transaction feed omits the review-period transaction;
 - linked league seasons, season-specific owner identities, completed trades,
   trade-value snapshots, and outcome checkpoints;
 - canonical intel events and per-user alert state;
@@ -182,3 +202,5 @@ direction.
 7. Offline models cannot silently promote themselves into trade logic.
 8. New infrastructure requires an observed need and an explicit removal or
    ownership story.
+9. Settled rosters are never mutated by pending projections; removing a
+   pending transaction must deterministically restore settled ownership.
