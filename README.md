@@ -45,6 +45,7 @@ npm run build
 - [Architecture](docs/architecture.md)
 - [Code quality](docs/code-quality.md)
 - [Data and models](docs/data-and-models.md)
+- [Target discovery and trade research](docs/target-discovery-system.md)
 - [Development and pull-request workflow](docs/development-workflow.md)
 
 All project changes use task-specific branches and GitHub pull requests. Do not
