@@ -5,6 +5,7 @@ import {
   type EdgeLearningReport,
   type MarketSnapshotRecord,
 } from '../src/edge-learning'
+import { isSupportedLeagueId } from '../src/league-context'
 import type {
   EdgeCalibrationGroup,
   EdgeShadowModelHealth,
@@ -140,12 +141,34 @@ export function normalizeMarketTapeInput(input: unknown): MarketTapeRequest {
   const numQbs = boundedNumber(format.numQbs, 'quarterback format', 1, 2)
   if (numQbs !== 1 && numQbs !== 2) throw new Error('Invalid quarterback format')
   if (typeof format.tep !== 'boolean') throw new Error('Invalid tight end premium format')
+  const context = object(value.leagueContext)
+  const leagueId = boundedText(context.leagueId, 'league context ID', 24)
+  if (!isSupportedLeagueId(leagueId)) throw new Error('Unsupported league context')
+  const contextKey = boundedText(context.contextKey, 'league context key', 300)
+  const tePremiumPerReception = boundedNumber(context.tePremiumPerReception, 'TE premium', 0, 5)
+  const startingSlots = Math.round(boundedNumber(context.startingSlots, 'starting slots', 1, 30))
+  const skillStartingSlots = Math.round(boundedNumber(context.skillStartingSlots, 'skill starting slots', 1, 30))
+  if (!contextKey.startsWith(`${leagueId}:`)) throw new Error('League context fingerprint does not match its league')
+  if ((tePremiumPerReception > 0) !== format.tep) throw new Error('League context does not match the provider TEP bucket')
+  if (skillStartingSlots > startingSlots) throw new Error('Skill starting slots exceed total starting slots')
   return {
     assets: value.assets.map(normalizeTapeAsset),
     format: {
       numQbs,
       tep: format.tep,
       numTeams: Math.round(boundedNumber(format.numTeams, 'team count', 4, 32)),
+    },
+    leagueContext: {
+      leagueId,
+      contextKey,
+      receptionPpr: boundedNumber(context.receptionPpr, 'reception PPR', 0, 5),
+      tePremiumPerReception,
+      startingSlots,
+      skillStartingSlots,
+      benchSlots: Math.round(boundedNumber(context.benchSlots, 'bench slots', 0, 40)),
+      taxiSlots: Math.round(boundedNumber(context.taxiSlots, 'taxi slots', 0, 20)),
+      reserveSlots: Math.round(boundedNumber(context.reserveSlots, 'reserve slots', 0, 20)),
+      rookieDraftRounds: Math.round(boundedNumber(context.rookieDraftRounds, 'rookie draft rounds', 1, 12)),
     },
     sourceVersion: boundedText(value.sourceVersion, 'source version', 120),
   }
@@ -163,6 +186,7 @@ async function saveNormalizedTape(
   sourceVersion: string,
   source: string,
   now: Date,
+  leagueContext?: MarketTapeRequest['leagueContext'],
 ): Promise<void> {
   const capturedAt = now.toISOString()
   const snapshotDate = capturedAt.slice(0, 10)
@@ -182,7 +206,20 @@ ON CONFLICT(user_id, league_id, snapshot_date, asset_id) DO UPDATE SET
   captured_at=excluded.captured_at`).bind(
     userId, leagueId, snapshotDate, asset.assetId, asset.assetName, asset.kind, asset.position,
     asset.ownerRosterId, asset.currentValue, asset.currentValue, asset.confidence, asset.eventType,
-    asset.newsDirection, JSON.stringify(asset.features), JSON.stringify(asset.metadata), source,
+    asset.newsDirection, JSON.stringify(asset.features), JSON.stringify({
+      ...asset.metadata,
+      ...(leagueContext ? {
+        leagueContextKey: leagueContext.contextKey,
+        receptionPpr: leagueContext.receptionPpr,
+        tePremiumPerReception: leagueContext.tePremiumPerReception,
+        startingSlots: leagueContext.startingSlots,
+        skillStartingSlots: leagueContext.skillStartingSlots,
+        benchSlots: leagueContext.benchSlots,
+        taxiSlots: leagueContext.taxiSlots,
+        reserveSlots: leagueContext.reserveSlots,
+        rookieDraftRounds: leagueContext.rookieDraftRounds,
+      } : {}),
+    }), source,
     sourceVersion, capturedAt,
   )))
 }
@@ -194,7 +231,8 @@ export async function saveMarketTape(
   request: MarketTapeRequest,
   now = new Date(),
 ): Promise<void> {
-  await saveNormalizedTape(db, userId, leagueId, request.assets, request.sourceVersion, 'client', now)
+  if (request.leagueContext.leagueId !== leagueId) throw new Error('League context does not match the requested league')
+  await saveNormalizedTape(db, userId, leagueId, request.assets, request.sourceVersion, 'client', now, request.leagueContext)
   const capturedAt = now.toISOString()
   await db.prepare(`INSERT INTO market_tape_configs (
   user_id, league_id, num_qbs, tep, num_teams, source_version, seeded_at, last_client_refresh_at

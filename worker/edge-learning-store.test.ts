@@ -18,11 +18,25 @@ const rawAsset = {
   metadata: {},
 }
 
+const leagueContext = {
+  leagueId: '1336087922847289344',
+  contextKey: '1336087922847289344:12t:2qb:ppr1:tep0.75:start9:bench10:taxi2:ir0:draft3',
+  receptionPpr: 1,
+  tePremiumPerReception: 0.75,
+  startingSlots: 9,
+  skillStartingSlots: 9,
+  benchSlots: 10,
+  taxiSlots: 2,
+  reserveSlots: 0,
+  rookieDraftRounds: 3,
+}
+
 describe('market tape storage boundary', () => {
   it('normalizes a bounded full-league tape payload', () => {
     const normalized = normalizeMarketTapeInput({
       assets: [rawAsset],
       format: { numQbs: 2, tep: true, numTeams: 12 },
+      leagueContext,
       sourceVersion: 'tradyr-2026-08-10',
     })
     expect(normalized).toMatchObject({ format: { numQbs: 2, tep: true, numTeams: 12 } })
@@ -32,9 +46,34 @@ describe('market tape storage boundary', () => {
   it('rejects client-supplied evidence outside the audited range', () => {
     expect(() => normalizeMarketTapeInput({
       assets: [{ ...rawAsset, features: { ...rawAsset.features, lineupDelta: 51 } }],
-      format: { numQbs: 2, tep: false, numTeams: 12 },
+      format: { numQbs: 2, tep: true, numTeams: 12 },
+      leagueContext,
       sourceVersion: 'test',
     })).toThrow('Invalid feature lineupDelta')
+  })
+
+  it('rejects arbitrary league contexts outside the fixed switcher', () => {
+    expect(() => normalizeMarketTapeInput({
+      assets: [rawAsset],
+      format: { numQbs: 2, tep: true, numTeams: 12 },
+      leagueContext: { ...leagueContext, leagueId: '999999999999999999' },
+      sourceVersion: 'test',
+    })).toThrow('Unsupported league context')
+  })
+
+  it('rejects a context fingerprint or TEP bucket that contradicts the payload', () => {
+    expect(() => normalizeMarketTapeInput({
+      assets: [rawAsset],
+      format: { numQbs: 2, tep: true, numTeams: 12 },
+      leagueContext: { ...leagueContext, contextKey: 'different-league:tep0.75' },
+      sourceVersion: 'test',
+    })).toThrow('fingerprint')
+    expect(() => normalizeMarketTapeInput({
+      assets: [rawAsset],
+      format: { numQbs: 2, tep: false, numTeams: 12 },
+      leagueContext,
+      sourceVersion: 'test',
+    })).toThrow('provider TEP bucket')
   })
 
   it('resolves automatic player and projected-pick updates without sending league identity upstream', () => {

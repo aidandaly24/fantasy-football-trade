@@ -1,4 +1,5 @@
 import { AlertTriangle, Check, Info } from 'lucide-react'
+import type { LeagueContext } from '../league-context'
 import type { Asset, ModelHealthBundle } from '../types'
 import { AssetBadge, signedPercent } from '../components/domain-ui'
 
@@ -22,7 +23,7 @@ const sliceLabels: Record<string, string> = {
   gamesObserved14plus: '14+ games observed',
 }
 
-export function ModelView({ health }: { health: ModelHealthBundle | null }) {
+export function ModelView({ health, leagueContext }: { health: ModelHealthBundle | null; leagueContext: LeagueContext }) {
   if (!health) {
     return (
       <main className="page-shell model-page">
@@ -57,6 +58,8 @@ export function ModelView({ health }: { health: ModelHealthBundle | null }) {
           <span><strong>{health.enabled ? 'Production enabled' : 'Production blocked'}</strong><small>{health.model}</small></span>
         </div>
       </section>
+
+      <div className="league-context-note panel"><span><strong>Active output layer · {leagueContext.label}</strong> · {leagueContext.labels.projection}</span><small>The promotion metrics below audit the generic-PPR base model. The deterministic TE bonus is kept outside training so the same validated forecast can serve both fixed leagues without pretending there are two separately validated models.</small></div>
 
       <section className="model-metric-grid" aria-label="Held-out model results">
         <article className="model-metric panel"><span>MAE improvement</span><strong>{signedPercent(health.metrics.maeImprovement)}</strong><small>against {baselineLabels[health.metrics.baselineName] ?? health.metrics.baselineName}</small></article>

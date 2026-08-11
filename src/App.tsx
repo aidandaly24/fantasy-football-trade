@@ -1,14 +1,16 @@
-import { ArrowLeftRight, BarChart3, BookOpen, ChevronRight, CircleGauge, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
-import { FormEvent, useEffect, useRef, useState } from 'react'
+import { ArrowLeftRight, BarChart3, BookOpen, CircleGauge, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { fetchEventModelHealth, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchPendingTransactions, fetchProjections, fetchRookieBoard, fetchSleeperPlayers, fetchUserState, fetchValues, saveLeaguePreferences, saveMarketTape, syncJournal } from './api'
 import { buildEdgeBoard, buildTeamDirections, marketTapeAssets } from './edge'
 import type { TeamDirection } from './edge'
 import { journalTransactionsForCurrentManagers } from './journal'
+import { isSupportedLeagueId, leagueContext, marketTapeLeagueContext, projectionForLeague, SUPPORTED_LEAGUES } from './league-context'
+import type { LeagueContext, SupportedLeagueId } from './league-context'
 import { buildManagerProfiles } from './negotiation'
 import type { ManagerProfile } from './negotiation'
 import { createManualPendingTrade, manualPendingTradeFingerprint, manualTradeAlreadySettled, manualTradeRejectedBySleeper, mergePendingTrades, projectPendingTrades } from './pending-trades'
 import type { PendingTradeProjection } from './pending-trades'
-import { buildTeams, leagueFormat } from './rankings'
+import { buildTeams } from './rankings'
 import { resolveTeamStrategy } from './strategy'
 import type { RookieBoardBundle } from './rookies'
 import type { Asset, EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, SleeperTransaction, Team, UserIdentity, UserState, ValueBundle } from './types'
@@ -21,14 +23,11 @@ import { TradeJournalView } from './views/TradeJournalView'
 import { TradeView } from './views/TradeView'
 import type { TradeDraft } from './views/types'
 
-const DEFAULT_LEAGUE_ID = '1336087922847289344'
-const QUICK_LEAGUES = [
-  { id: DEFAULT_LEAGUE_ID, label: 'Default' },
-  { id: '1312112570039037952', label: 'Other' },
-] as const
+const DEFAULT_LEAGUE_ID: SupportedLeagueId = SUPPORTED_LEAGUES[0].id
 
 type AppData = {
   leagueBundle: LeagueBundle
+  leagueContext: LeagueContext
   valueBundle: ValueBundle
   settledTeams: Team[]
   teams: Team[]
@@ -51,23 +50,9 @@ type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' 
 function AppHeader({
   view,
   setView,
-  leagueName,
-  leagueId,
-  inputId,
-  setInputId,
-  onSubmit,
-  loading,
-  savedLeagues,
 }: {
   view: View
   setView: (view: View) => void
-  leagueName: string
-  leagueId: string
-  inputId: string
-  setInputId: (id: string) => void
-  onSubmit: (event: FormEvent) => void
-  loading: boolean
-  savedLeagues: LeaguePreferences[]
 }) {
   return (
     <>
@@ -99,18 +84,7 @@ function AppHeader({
             <CircleGauge size={17} /> Model
           </button>
         </nav>
-        <form className="league-switcher" onSubmit={onSubmit}>
-          <label>
-            <small>{leagueName || 'Sleeper league'}</small>
-            <input list="saved-sleeper-leagues" value={inputId} onChange={(event) => setInputId(event.target.value)} aria-label="Sleeper league ID" />
-            <datalist id="saved-sleeper-leagues">
-              {savedLeagues.map((preference) => <option key={preference.leagueId} value={preference.leagueId}>{preference.leagueName}</option>)}
-            </datalist>
-          </label>
-          <button type="submit" disabled={loading} aria-label={inputId === leagueId ? 'Refresh league' : 'Sync league'}>
-            <RefreshCw size={17} className={loading ? 'spin' : ''} />
-          </button>
-        </form>
+        <span className="private-app-scope">Two private leagues</span>
       </header>
     </>
   )
@@ -119,23 +93,22 @@ function AppHeader({
 function LeagueRibbon({ data, loading, onSelectLeague }: {
   data: AppData
   loading: boolean
-  onSelectLeague: (leagueId: string) => void
+  onSelectLeague: (leagueId: SupportedLeagueId) => void
 }) {
   const { league } = data.leagueBundle
-  const format = leagueFormat(data.leagueBundle)
-  const tep = league.scoring_settings.bonus_rec_te ?? 0
+  const context = data.leagueContext
   return (
     <div className="league-ribbon">
       <div className="ribbon-inner">
         <span className="ribbon-title"><span className="status-dot" /> {league.name}</span>
         <div className="league-quick-switch" role="group" aria-label="Quick league switcher">
-          {QUICK_LEAGUES.map((preset) => (
+          {SUPPORTED_LEAGUES.map((preset) => (
             <button
               key={preset.id}
               type="button"
               className={league.league_id === preset.id ? 'active' : ''}
               aria-pressed={league.league_id === preset.id}
-              title={`${preset.label} league (${preset.id})`}
+              title={league.league_id === preset.id ? `Refresh ${preset.label}` : `Switch to ${preset.label}`}
               disabled={loading}
               onClick={() => onSelectLeague(preset.id)}
             >
@@ -144,9 +117,10 @@ function LeagueRibbon({ data, loading, onSelectLeague }: {
           ))}
         </div>
         <span>{league.season} Dynasty</span>
-        <span>{format.numQbs === 2 ? 'Superflex' : '1QB'}</span>
+        <span>{context.marketFormat.numQbs === 2 ? 'Superflex' : '1QB'}</span>
         <span>{league.total_rosters} teams</span>
-        <span>Full PPR{tep ? ` + ${tep} TEP` : ''}</span>
+        <span>{context.scoring.receptionPpr}-PPR + {context.scoring.tePremiumPerReception} TEP</span>
+        <span>{context.roster.skillStartingSlots} skill starters · {context.roster.benchSlots} bench</span>
         {data.pendingProjection.activeTrades.length > 0 && <span>{data.pendingProjection.activeTrades.length} accepted trade{data.pendingProjection.activeTrades.length === 1 ? '' : 's'} projected</span>}
         {data.user && <span title={data.user.email}>Private for {data.user.name}</span>}
         <span className="ribbon-source">Powered by <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a></span>
@@ -166,23 +140,19 @@ function LoadingState() {
   )
 }
 
-function ErrorState({ message, inputId, setInputId, onSubmit }: {
+function ErrorState({ message, onRetry, loading }: {
   message: string
-  inputId: string
-  setInputId: (id: string) => void
-  onSubmit: (event: FormEvent) => void
+  onRetry: () => void
+  loading: boolean
 }) {
   return (
     <main className="error-state">
       <div className="error-card panel">
         <span className="error-icon">!</span>
-        <span className="eyebrow">Couldn’t load that league</span>
-        <h1>Check the public Sleeper league ID.</h1>
+        <span className="eyebrow">Couldn’t load the selected league</span>
+        <h1>The fixed league configuration could not sync.</h1>
         <p>{message}</p>
-        <form onSubmit={onSubmit}>
-          <input value={inputId} onChange={(event) => setInputId(event.target.value)} aria-label="Sleeper league ID" />
-          <button type="submit">Try again <ChevronRight size={17} /></button>
-        </form>
+        <button type="button" onClick={onRetry} disabled={loading}>Try again <RefreshCw size={17} className={loading ? 'spin' : ''} /></button>
       </div>
     </main>
   )
@@ -191,8 +161,7 @@ function ErrorState({ message, inputId, setInputId, onSubmit }: {
 function App() {
   const [view, setView] = useState<View>('rankings')
   const [mode, setMode] = useState<RankingMode>('overall')
-  const [leagueId, setLeagueId] = useState(DEFAULT_LEAGUE_ID)
-  const [inputId, setInputId] = useState(DEFAULT_LEAGUE_ID)
+  const [leagueId, setLeagueId] = useState<SupportedLeagueId>(DEFAULT_LEAGUE_ID)
   const [data, setData] = useState<AppData | null>(null)
   const [selectedId, setSelectedId] = useState(1)
   const [loading, setLoading] = useState(true)
@@ -207,30 +176,22 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'auto' })
   }, [view, leagueId])
 
-  const loadLeague = async (id: string, stateOverride: UserState | null = userState) => {
-    const cleanId = id.trim()
-    if (!/^\d+$/.test(cleanId)) {
-      setError('Sleeper league IDs contain numbers only.')
-      setLoading(false)
-      return
-    }
-
+  const loadLeague = async (id: SupportedLeagueId, stateOverride: UserState | null = userState) => {
     setLoading(true)
     setError(null)
     try {
-      const leagueBundle = await fetchLeagueBundle(cleanId)
-      const format = leagueFormat(leagueBundle)
-      const existingPreference = stateOverride?.preferences.find((item) => item.leagueId === cleanId)
+      const leagueBundle = await fetchLeagueBundle(id)
+      const context = leagueContext(leagueBundle)
+      const existingPreference = stateOverride?.preferences.find((item) => item.leagueId === id)
       const [valueBundle, projectionBundle, modelHealth, eventModelHealth, rookieBoard, storedJournal, pendingFetch] = await Promise.all([
         fetchValues({
-          ...format,
-          numTeams: leagueBundle.league.total_rosters,
+          ...context.marketFormat,
         }),
         fetchProjections(),
         fetchModelHealth(),
         fetchEventModelHealth(),
         fetchRookieBoard().catch(() => null),
-        fetchJournal(cleanId).catch(() => null),
+        fetchJournal(id).catch(() => null),
         fetchPendingTransactions(leagueBundle.league),
       ])
       const journalFresh = storedJournal?.sync?.finishedAt
@@ -238,12 +199,11 @@ function App() {
         && Date.now() - Date.parse(storedJournal.sync.finishedAt) < 15 * 60 * 1000
       const journal = journalFresh
         ? storedJournal
-        : await syncJournal(cleanId).catch(() => storedJournal ?? { trades: [], identities: [], snapshots: [], outcomes: [], sync: null })
+        : await syncJournal(id).catch(() => storedJournal ?? { trades: [], identities: [], snapshots: [], outcomes: [], sync: null })
       const rosterIds = new Set(leagueBundle.rosters.flatMap((roster) => roster.players ?? []))
       const sleeperPlayers = await fetchSleeperPlayers([...rosterIds])
-      const playerProjections = new Map(
-        projectionBundle?.stale ? [] : Object.entries(projectionBundle?.projections ?? {}),
-      )
+      const playerProjections = new Map(projectionBundle?.stale ? [] : Object.entries(projectionBundle?.projections ?? {})
+        .map(([playerId, projection]) => [playerId, projectionForLeague(projection, context)] as const))
       const settledTeams = buildTeams(leagueBundle, valueBundle, sleeperPlayers, playerProjections)
       const manualPendingTrades = (existingPreference?.settings.pendingTrades ?? [])
         .filter((trade) => (
@@ -269,7 +229,7 @@ function App() {
         ? teams.find((team) => team.ownerName.toLowerCase() === authenticatedHandle || team.ownerName.toLowerCase().startsWith(authenticatedHandle))?.rosterId ?? null
         : null
       const basePreference: LeaguePreferences = {
-        leagueId: cleanId,
+        leagueId: id,
         leagueName: leagueBundle.league.name,
         myRosterId: existingPreference?.myRosterId ?? inferredRosterId,
         watchlist: existingPreference?.watchlist ?? [],
@@ -293,13 +253,14 @@ function App() {
           user,
           preferences: [
             preferences,
-            ...(stateOverride?.preferences ?? []).filter((item) => item.leagueId !== cleanId),
+            ...(stateOverride?.preferences ?? []).filter((item) => item.leagueId !== id),
           ],
         }
         setUserState(nextState)
       }
       setData({
         leagueBundle,
+        leagueContext: context,
         valueBundle,
         settledTeams,
         teams,
@@ -327,15 +288,15 @@ function App() {
           excludedAssetIds: pendingProjection.lockedAssetIds,
           maxResults: 500,
         })
-        void saveMarketTape(cleanId, {
+        void saveMarketTape(id, {
           assets: marketTapeAssets(teams, seedOpportunities, seedStrategy),
-          format: { ...format, numTeams: leagueBundle.league.total_rosters },
+          format: context.marketFormat,
+          leagueContext: marketTapeLeagueContext(context),
           sourceVersion: valueBundle.meta.generatedAt,
         }).catch(() => undefined)
       }
       setMode(preferences.settings.rankingMode ?? 'overall')
-      setLeagueId(cleanId)
-      setInputId(cleanId)
+      setLeagueId(id)
       setSelectedId(teams[0]?.rosterId ?? 1)
       setTradeDraft(null)
       setRosterSnapshot(pendingProjection.activeTrades.length ? 'committed' : 'settled')
@@ -352,8 +313,8 @@ function App() {
     void (async () => {
       const state = await fetchUserState()
       setUserState(state)
-      const savedLeague = state?.preferences[0]?.leagueId ?? DEFAULT_LEAGUE_ID
-      setInputId(savedLeague)
+      const savedLeagueId = state?.preferences.find((item) => isSupportedLeagueId(item.leagueId))?.leagueId
+      const savedLeague = isSupportedLeagueId(savedLeagueId) ? savedLeagueId : DEFAULT_LEAGUE_ID
       await loadLeague(savedLeague, state)
     })()
   }, [])
@@ -412,14 +373,8 @@ function App() {
     }).catch(() => setError('Your private preferences could not be saved'))
   }
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault()
-    void loadLeague(inputId)
-  }
-
-  const selectLeague = (nextLeagueId: string) => {
-    setInputId(nextLeagueId)
-    if (nextLeagueId !== leagueId) void loadLeague(nextLeagueId)
+  const selectLeague = (nextLeagueId: SupportedLeagueId) => {
+    void loadLeague(nextLeagueId)
   }
 
   const openTradeDraft = (draft: Omit<TradeDraft, 'nonce'>) => {
@@ -472,19 +427,12 @@ function App() {
       <AppHeader
         view={view}
         setView={setView}
-        leagueName={data?.leagueBundle.league.name ?? ''}
-        leagueId={leagueId}
-        inputId={inputId}
-        setInputId={setInputId}
-        onSubmit={handleSubmit}
-        loading={loading}
-        savedLeagues={userState?.preferences ?? []}
       />
       {data && <LeagueRibbon data={data} loading={loading} onSelectLeague={selectLeague} />}
       {loading && !data ? (
         <LoadingState />
       ) : error && !data ? (
-        <ErrorState message={error} inputId={inputId} setInputId={setInputId} onSubmit={handleSubmit} />
+        <ErrorState message={error} onRetry={() => void loadLeague(leagueId)} loading={loading} />
       ) : data ? (
         <>
           {error && <div className="inline-error">Sync failed: {error}. Showing the last loaded league.</div>}
@@ -504,6 +452,7 @@ function App() {
               }}
               selectedId={selectedId}
               setSelectedId={setSelectedId}
+              leagueContext={data.leagueContext}
             />
           ) : view === 'trade' ? (
             <TradeView
@@ -512,6 +461,7 @@ function App() {
               contextTeams={data.teams}
               pendingTradeCount={data.pendingProjection.activeTrades.length}
               rosterPositions={data.leagueBundle.league.roster_positions}
+              leagueContext={data.leagueContext}
               initialDraft={tradeDraft}
               strategyRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId}
               strategy={resolveTeamStrategy(
@@ -522,15 +472,15 @@ function App() {
               onCommitPendingTrade={commitPendingTrade}
             />
           ) : view === 'journal' ? (
-            <TradeJournalView journal={data.journal} syncing={journalSyncing} onSync={() => void refreshJournal()} />
+            <TradeJournalView journal={data.journal} syncing={journalSyncing} onSync={() => void refreshJournal()} leagueContext={data.leagueContext} />
           ) : view === 'intel' ? (
             <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
           ) : view === 'strategy' ? (
-            <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} lockedAssetIds={data.pendingProjection.lockedAssetIds} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} marketFormat={{ ...leagueFormat(data.leagueBundle), numTeams: data.leagueBundle.league.total_rosters }} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} journalSyncing={journalSyncing} onSyncJournal={() => void refreshJournal()} onOpenJournal={() => setView('journal')} />
+            <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} lockedAssetIds={data.pendingProjection.lockedAssetIds} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} leagueContext={data.leagueContext} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} journalSyncing={journalSyncing} onSyncJournal={() => void refreshJournal()} onOpenJournal={() => setView('journal')} />
           ) : view === 'rookies' ? (
-            <RookieBoardView bundle={data.rookieBoard} />
+            <RookieBoardView bundle={data.rookieBoard} leagueContext={data.leagueContext} />
           ) : (
-            <ModelView health={data.modelHealth} />
+            <ModelView health={data.modelHealth} leagueContext={data.leagueContext} />
           )}
           <footer>
             <span>RosterLab <b>·</b> League-relative analysis</span>

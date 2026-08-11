@@ -161,61 +161,17 @@ a {
   background: var(--acid);
 }
 
-.league-switcher {
+.private-app-scope {
   justify-self: end;
-  height: 44px;
-  max-width: 300px;
-  display: flex;
-  align-items: stretch;
-  color: white;
+  padding: 9px 12px;
+  color: #b7bdb1;
   background: #222620;
   border: 1px solid #3b4037;
-  border-radius: 13px;
-  overflow: hidden;
-}
-
-.league-switcher label {
-  min-width: 0;
-  padding: 5px 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.league-switcher small {
-  color: #9da398;
+  border-radius: 10px;
   font-size: 9px;
   font-weight: 800;
-  line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-}
-
-.league-switcher input {
-  min-width: 0;
-  width: 190px;
-  padding: 2px 0 0;
-  color: #f5f5ee;
-  background: transparent;
-  border: 0;
-  outline: none;
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-}
-
-.league-switcher button {
-  width: 42px;
-  display: grid;
-  place-items: center;
-  color: var(--ink);
-  background: var(--acid);
-  border: 0;
-}
-
-.league-switcher button:disabled {
-  color: #777c73;
-  background: #30352d;
-  cursor: default;
 }
 
 .league-ribbon {
@@ -1571,6 +1527,28 @@ a {
   color: var(--acid);
 }
 
+.league-context-note {
+  margin-bottom: 24px;
+  padding: 15px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  color: #3d443a;
+  border-left: 4px solid var(--acid-dark);
+}
+
+.league-context-note span,
+.league-context-note small {
+  line-height: 1.5;
+}
+
+.league-context-note small {
+  max-width: 720px;
+  color: #687064;
+  text-align: right;
+}
+
 .impact-panel {
   margin-top: 18px;
   overflow: hidden;
@@ -2919,16 +2897,8 @@ footer a {
     grid-template-columns: 1fr;
   }
 
-  .league-switcher {
-    width: 46px;
-  }
-
-  .league-switcher label {
+  .private-app-scope {
     display: none;
-  }
-
-  .league-switcher button {
-    width: 46px;
   }
 
   .trade-builder {
@@ -3005,8 +2975,18 @@ footer a {
     padding: 0 11px;
   }
 
-  .league-switcher {
+  .private-app-scope {
     display: none;
+  }
+
+  .league-context-note {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .league-context-note small {
+    text-align: left;
   }
 
   .ribbon-inner {
