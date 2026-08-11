@@ -126,10 +126,18 @@ Artifacts and reports:
 - `ml/reports/rookie-model-latest.json`
 - `ml/reports/rookie-model-latest.md`
 - `ml/reports/rookie-complexity-ledger.md`
+- `worker/generated/rookie-board.json`
 
-The production board is not currently consumed by the site. Its 180/365-day
-market-return head remains shadow-only because the target is expert-consensus
-movement rather than a complete price tape from actual transactions.
+The pipeline derives the Worker-only artifact from the same in-memory report;
+it is not hand-edited. The authenticated `GET /api/rookies` route returns only
+the versioned production board, aggregate validation, evidence fields used by
+the UI, and active blockers. Raw rows, provider payloads, model binaries, and
+shadow market-return forecasts are excluded. The Rookie board remains advisory
+and does not alter `Asset.value`, trade scoring, packages, or future-pick values.
+
+The 180/365-day market-return head remains shadow-only because the target is
+expert-consensus movement rather than a complete price tape from actual
+transactions.
 
 ## Historical market and return research
 

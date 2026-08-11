@@ -8,6 +8,7 @@ import { intelResponse } from './routes/intel'
 import { journalResponse } from './routes/journal'
 import { preferencesResponse } from './routes/preferences'
 import { researchResponse } from './routes/research'
+import { rookieResponse } from './routes/rookies'
 
 const routes: Record<string, (request: Request, env: Env) => Promise<Response>> = {
   '/api/alerts': alertsResponse,
@@ -16,6 +17,7 @@ const routes: Record<string, (request: Request, env: Env) => Promise<Response>> 
   '/api/journal': journalResponse,
   '/api/preferences': preferencesResponse,
   '/api/research': researchResponse,
+  '/api/rookies': rookieResponse,
 }
 
 const worker = {

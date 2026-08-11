@@ -83,6 +83,7 @@ ARTIFACTS = ROOT / "ml" / "artifacts"
 REPORTS = ROOT / "ml" / "reports"
 REPORT_JSON = REPORTS / "rookie-model-latest.json"
 REPORT_MARKDOWN = REPORTS / "rookie-model-latest.md"
+ROOKIE_BOARD_JSON = ROOT / "worker" / "generated" / "rookie-board.json"
 MODEL_PATH = ARTIFACTS / "rookie-return-models.pkl"
 
 POSITIONS = ("QB", "RB", "WR", "TE")
@@ -848,6 +849,105 @@ def clean_json(value: Any) -> Any:
     return value
 
 
+def build_browser_rookie_bundle(report: dict[str, Any]) -> dict[str, Any]:
+    """Derive the private browser contract without exposing research internals."""
+    backtest = report["productionBacktest"]
+    target = report["targets"]["draftProduction"]
+    board = [
+        {
+            "id": (
+                f"sleeper:{player['sleeperId']}"
+                if player.get("sleeperId")
+                else f"fantasypros:{player['fpId']}"
+                if player.get("fpId")
+                else f"prospect:{player['position'].lower()}:{normalize_name(player['name'])}"
+            ),
+            "sleeperId": player.get("sleeperId"),
+            "name": player["name"],
+            "position": player["position"],
+            "nflTeam": player.get("team"),
+            "college": player.get("college"),
+            "draftBoardRank": player["draftBoardRank"],
+            "rookieMarketRank": player["rookieMarketRank"],
+            "lateCandidate": player["lateCandidate"],
+            "inValidatedSleeperBasket": player["inValidatedSleeperBasket"],
+            "expectedRookieProductionPercentile": player["expectedRookieProductionPercentile"],
+            "marketOnlyExpectedProductionPercentile": player["marketOnlyExpectedProductionPercentile"],
+            "evidenceAdjustment": player["evidenceAdjustment"],
+            "modelDisagreement": player["modelDisagreement"],
+            "historicalResidualBand80": {
+                "lower": player["historicalResidualBand80"]["lower"],
+                "upper": player["historicalResidualBand80"]["upper"],
+                "meaning": player["historicalResidualBand80"]["meaning"],
+            },
+            "evidence": {
+                "nflDraftOverall": player["evidence"].get("nflDraftOverall"),
+                "collegeSeasonsObserved": player["evidence"]["collegeSeasonsObserved"],
+                "finalCollegeScrimmageShare": player["evidence"].get("finalCollegeScrimmageShare"),
+                "maxCollegeScrimmageShare": player["evidence"].get("maxCollegeScrimmageShare"),
+                "finalCollegeTargetShare": player["evidence"].get("finalCollegeTargetShare"),
+                "forty": player["evidence"].get("forty"),
+                "collegeDataPresent": player["evidence"]["collegeDataPresent"],
+                "combineDataPresent": player["evidence"]["combineDataPresent"],
+            },
+        }
+        for player in report["currentDraftBoard"]
+    ]
+    class_results = [
+        {
+            "rookieYear": fold["rookie_year"],
+            "modelBasketMeanPercentile": fold["model_basket_mean_percentile"],
+            "strongestSimpleBaseline": fold["strongest_simple_baseline"],
+            "strongestSimpleBaselineMeanPercentile": fold["strongest_simple_baseline_mean_percentile"],
+            "lift": fold["lift_over_strongest_simple_baseline"],
+        }
+        for fold in backtest["folds"]
+    ]
+    return clean_json({
+        "version": report["version"],
+        "generatedAt": report["generatedAt"],
+        "mode": report["mode"],
+        "draftEvidenceEnabled": report["draftEvidenceEnabled"],
+        "tradeReturnForecastEnabled": False,
+        "target": {
+            "meaning": target["meaning"],
+            "status": target["status"],
+        },
+        "decisionBoundary": report["decisionBoundary"],
+        "trainingEvidence": {
+            "examples": report["tape"]["rows"],
+            "classes": report["tape"]["classes"],
+            "historicalCollegeCoverage": report["tape"]["historicalCollegeCoverageAmongPriced"],
+            "currentCollegeCoverage": report["tape"]["currentCollegeCoverage"],
+        },
+        "validation": {
+            "eligibleClasses": backtest["fold_count"],
+            "classWins": backtest["fold_wins"],
+            "meanBasketLift": backtest["mean_lift"],
+            "minimumClassLift": backtest["minimum_class_lift"],
+            "signTestPValue": backtest["exact_one_sided_sign_p_value"],
+            "fullModelMae": backtest["model_mae"],
+            "fullModelSpearman": backtest["model_spearman"],
+            "marketOnlyMae": backtest["market_only_model_mae"],
+            "marketOnlySpearman": backtest["market_only_model_spearman"],
+            "meanLiftOverLearnedCapitalModel": backtest["mean_lift_over_learned_capital_model"],
+            "learnedCapitalModelClassWins": backtest["learned_capital_model_class_wins"],
+            "classResults": class_results,
+        },
+        "board": board,
+        "promotionBlockers": report["promotionBlockers"],
+    })
+
+
+def write_report_outputs(report: dict[str, Any]) -> None:
+    ROOKIE_BOARD_JSON.parent.mkdir(parents=True, exist_ok=True)
+    REPORT_JSON.write_text(json.dumps(report, indent=2) + "\n")
+    REPORT_MARKDOWN.write_text(render_markdown(report))
+    ROOKIE_BOARD_JSON.write_text(
+        json.dumps(build_browser_rookie_bundle(report), indent=2) + "\n"
+    )
+
+
 def build_report(
     *,
     tape: pd.DataFrame,
@@ -1265,8 +1365,7 @@ def build_and_train(*, refresh: bool, offline: bool) -> dict[str, Any]:
         draft_board=draft_board,
         production_feature_importance=production_artifact["featureImportance"],
     )
-    REPORT_JSON.write_text(json.dumps(report, indent=2) + "\n")
-    REPORT_MARKDOWN.write_text(render_markdown(report))
+    write_report_outputs(report)
     return report
 
 
