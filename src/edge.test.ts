@@ -50,4 +50,18 @@ describe('league-wide edge engine', () => {
     expect(board.find((item) => item.asset.id === 'rb-news')?.categories).toContain('intel')
     expect(board.some((item) => item.owner.rosterId === 3)).toBe(true)
   })
+
+  it('never surfaces assets locked inside an accepted trade', () => {
+    const mine = team(1, [asset('mine', 'QB', 500)])
+    const theirs = team(2, [asset('locked', 'RB', 700), asset('available', 'WR', 400)])
+    const directions = buildTeamDirections({ teams: [mine, theirs], transactions: [], picks })
+    const board = buildEdgeBoard([mine, theirs], {
+      myRosterId: 1,
+      rosterPositions: ['QB', 'RB', 'WR', 'TE'],
+      directions,
+      excludedAssetIds: ['locked'],
+    })
+
+    expect(board.map((item) => item.asset.id)).toEqual(['available'])
+  })
 })

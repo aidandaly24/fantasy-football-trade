@@ -32,12 +32,14 @@ export type ComparablePackageOptions = {
   targetAssetId?: string
   targetAssetIds?: string[]
   strategy?: ResolvedTeamStrategy
+  excludedAssetIds?: string[]
 }
 
 export type TradeFrontierOptions = {
   myRosterId: number
   rosterPositions: string[]
   strategy?: ResolvedTeamStrategy
+  excludedAssetIds?: string[]
 }
 
 export type TradeFrontierCandidate = ComparablePackage & {
@@ -205,12 +207,13 @@ export function findComparablePackages(
     ? options.targetAssetIds
     : options.targetAssetId ? [options.targetAssetId] : []
   const requested = new Set(requestedIds)
-  const receive = [...theirs.players, ...theirs.picks].filter((asset) => requested.has(asset.id))
+  const excluded = new Set(options.excludedAssetIds ?? [])
+  const receive = [...theirs.players, ...theirs.picks].filter((asset) => requested.has(asset.id) && !excluded.has(asset.id))
   if (!receive.length || receive.length !== requested.size || receive.some((asset) => asset.value <= 0)) return []
 
   const strategy = options.strategy ?? resolveTeamStrategy(mine)
   const receiveValue = packageValue(receive)
-  const shortlist = enumeratePackages([...mine.players, ...mine.picks])
+  const shortlist = enumeratePackages([...mine.players, ...mine.picks].filter((asset) => !excluded.has(asset.id)))
     .sort((a, b) => (
       Math.abs(a.value - receiveValue) - Math.abs(b.value - receiveValue)
       || a.send.length - b.send.length
@@ -250,13 +253,14 @@ export function findTradeFrontier(
   const mine = teams.find((team) => team.rosterId === options.myRosterId)
   if (!mine) return []
   const strategy = options.strategy ?? resolveTeamStrategy(mine)
-  const outgoing = enumeratePackages([...mine.players, ...mine.picks])
+  const excluded = new Set(options.excludedAssetIds ?? [])
+  const outgoing = enumeratePackages([...mine.players, ...mine.picks].filter((asset) => !excluded.has(asset.id)))
   if (!outgoing.length) return []
 
   const candidates = teams
     .filter((team) => team.rosterId !== mine.rosterId)
     .flatMap((team) => [...team.players, ...team.picks]
-      .filter((target) => target.value > 0)
+      .filter((target) => target.value > 0 && !excluded.has(target.id))
       .map((target): TradeFrontierCandidate => {
         const closest = outgoing.reduce((best, candidate) => {
           const candidateGap = Math.abs(candidate.value - target.value)

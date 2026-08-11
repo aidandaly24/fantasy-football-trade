@@ -111,4 +111,34 @@ describe('private user state', () => {
     expect(input.watchlist).toEqual(['11625'])
     expect(input.settings).toEqual({ rankingMode: 'overall', edgeFilter: 'intel', teamDirectionOverrides: { '3': 'rebuilding' } })
   })
+
+  it('keeps only bounded valid private pending-trade commitments', () => {
+    const input = normalizePreferenceInput({
+      leagueId: '1336087922847289344',
+      leagueName: 'BC League',
+      settings: {
+        pendingTrades: [
+          {
+            id: 'manual-123-1-2-player',
+            createdAt: 123,
+            rosterIds: [1, 2],
+            playerMoves: [
+              { playerId: '11625', fromRosterId: 1, toRosterId: 2 },
+              { playerId: '<script>', fromRosterId: 2, toRosterId: 1 },
+            ],
+            pickMoves: [{ season: '2027', round: 1, originalRosterId: 1, fromRosterId: 1, toRosterId: 2 }],
+          },
+          { id: 'bad', createdAt: 0, rosterIds: [1], playerMoves: [], pickMoves: [] },
+        ],
+      },
+    })
+
+    expect(input.settings.pendingTrades).toEqual([{
+      id: 'manual-123-1-2-player',
+      createdAt: 123,
+      rosterIds: [1, 2],
+      playerMoves: [{ playerId: '11625', fromRosterId: 1, toRosterId: 2 }],
+      pickMoves: [{ season: '2027', round: 1, originalRosterId: 1, fromRosterId: 1, toRosterId: 2 }],
+    }])
+  })
 })

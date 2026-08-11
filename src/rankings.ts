@@ -329,6 +329,14 @@ export function scoreTeams(teams: Team[]): Team[] {
   })
 }
 
+/** Recomputes lineup selection and direct team metrics after a roster overlay. */
+export function rebuildTeamMetrics(teams: Team[], rosterPositions: string[]): Team[] {
+  return scoreTeams(teams.map((team) => ({
+    ...team,
+    optimizedStarters: optimizeLineupBy(team.players, rosterPositions, projectedLineupPpg),
+  })))
+}
+
 export function rosterProfile(team: Team, teams: Team[]): { label: string; description: string } {
   const rank = (field: keyof Pick<TeamMetrics, 'overall' | 'lineup' | 'depth' | 'future' | 'picks'>) =>
     [...teams].sort((a, b) => b.metrics[field] - a.metrics[field]).findIndex((item) => item.rosterId === team.rosterId) + 1
@@ -406,7 +414,7 @@ export function buildTeams(
     picks: ownedPicks.get(team.rosterId) ?? [],
   }))
 
-  return scoreTeams(teams)
+  return rebuildTeamMetrics(teams, leagueBundle.league.roster_positions)
 }
 
 type PackageValueBound = 'expected' | 'low' | 'high'

@@ -16,6 +16,7 @@ import type {
   SleeperDraft,
   SleeperPlayer,
   SleeperRoster,
+  SleeperTransaction,
   TradyrPlayer,
   TradedPick,
   TradeOfferRecord,
@@ -57,6 +58,38 @@ export async function fetchLeagueBundle(leagueId: string): Promise<LeagueBundle>
   ])
 
   return { league, rosters, users, tradedPicks, draft }
+}
+
+export type PendingTransactionFetch = {
+  transactions: SleeperTransaction[]
+  rounds: number[]
+  failedRounds: number[]
+}
+
+/** Sleeper assigns transactions to a weekly "round" even before the season.
+ * Probe only the offseason bucket and the league's neighboring active legs. */
+export async function fetchPendingTransactions(league: League): Promise<PendingTransactionFetch> {
+  const leg = Number(league.settings.leg ?? 1)
+  const rounds = [...new Set([0, 1, leg - 1, leg, leg + 1]
+    .filter((round) => Number.isInteger(round) && round >= 0 && round <= 18))]
+    .sort((a, b) => a - b)
+  const results = await Promise.all(rounds.map(async (round) => {
+    try {
+      const transactions = await fetchJson<SleeperTransaction[]>(`${SLEEPER_BASE}/league/${league.league_id}/transactions/${round}`)
+      return { round, transactions, failed: false }
+    } catch {
+      return { round, transactions: [] as SleeperTransaction[], failed: true }
+    }
+  }))
+  const transactions = new Map<string, SleeperTransaction>()
+  results.forEach((result) => result.transactions.forEach((transaction) => {
+    transactions.set(transaction.transaction_id, transaction)
+  }))
+  return {
+    transactions: [...transactions.values()],
+    rounds,
+    failedRounds: results.filter((result) => result.failed).map((result) => result.round),
+  }
 }
 
 type TradyrResponse<T> = { data: T; meta: ApiMeta }
