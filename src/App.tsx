@@ -11,7 +11,7 @@ import type { PendingTradeProjection } from './pending-trades'
 import { buildTeams, leagueFormat } from './rankings'
 import { resolveTeamStrategy } from './strategy'
 import type { RookieBoardBundle } from './rookies'
-import type { Asset, EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, SleeperTransaction, Team, UserIdentity, UserState, ValueBundle } from './types'
+import type { Asset, EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, SleeperTransaction, Team, UserState, ValueBundle } from './types'
 import { EdgeView } from './views/EdgeView'
 import { IntelView } from './views/IntelView'
 import { ModelView } from './views/ModelView'
@@ -23,8 +23,8 @@ import type { TradeDraft } from './views/types'
 
 const DEFAULT_LEAGUE_ID = '1336087922847289344'
 const QUICK_LEAGUES = [
-  { id: DEFAULT_LEAGUE_ID, label: 'Default' },
-  { id: '1312112570039037952', label: 'Other' },
+  { id: DEFAULT_LEAGUE_ID, label: 'BC League' },
+  { id: '1312112570039037952', label: 'Emperor Phil’s' },
 ] as const
 
 type AppData = {
@@ -43,7 +43,6 @@ type AppData = {
   directions: TeamDirection[]
   journal: JournalBundle
   preferences: LeaguePreferences
-  user: UserIdentity | null
 }
 
 type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model'
@@ -148,7 +147,6 @@ function LeagueRibbon({ data, loading, onSelectLeague }: {
         <span>{league.total_rosters} teams</span>
         <span>Full PPR{tep ? ` + ${tep} TEP` : ''}</span>
         {data.pendingProjection.activeTrades.length > 0 && <span>{data.pendingProjection.activeTrades.length} accepted trade{data.pendingProjection.activeTrades.length === 1 ? '' : 's'} projected</span>}
-        {data.user && <span title={data.user.email}>Private for {data.user.name}</span>}
         <span className="ribbon-source">Powered by <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a></span>
       </div>
     </div>
@@ -314,7 +312,6 @@ function App() {
         directions,
         journal,
         preferences,
-        user,
       })
       const seedRosterId = preferences.myRosterId ?? teams[0]?.rosterId
       if (seedRosterId) {
@@ -403,7 +400,7 @@ function App() {
     setData(nextData)
     void saveLeaguePreferences(next).then((saved) => {
       setData((current) => current && current.leagueBundle.league.league_id === next.leagueId
-        ? { ...current, preferences: saved.preferences, user: saved.user }
+        ? { ...current, preferences: saved.preferences }
         : current)
       setUserState((current) => ({
         user: saved.user,
