@@ -121,3 +121,31 @@ checks; it is not a player grade or a promised return. The market-return head
 remains hard-blocked from trade grades while its label is expert-consensus
 movement rather than a complete historical tape of prices inferred from
 completed trades.
+
+## Future rookie-class evidence tape (V6.4)
+
+V6.4 is a separate, tape-first research phase for evaluating prospects one
+season before their possible NFL draft. It creates the candidate population
+from pinned historical cfbfastR roster files, then joins only college production
+available through the prior season. Players who stay in school or never reach
+the NFL remain in the tape. Retrospective NFL identity and draft fields are
+labels for auditing only and cannot enter the feature columns.
+
+```sh
+npm run ml:future-rookies
+```
+
+Use `npm run ml:future-rookies:offline` to reproduce the build from the pinned
+private cache. The normalized tape and source manifest stay under gitignored
+`data/`; the reviewable aggregate audit is retained in:
+
+- `ml/reports/future-rookie-evidence-v6.4.json`
+- `ml/reports/future-rookie-evidence-v6.4.md`
+
+This phase must recover at least 85% of known entrants in each completed
+2020-2025 class, retain entrants and non-entrants, report position-level
+missingness, and contain no production after each class's declared cutoff. A
+passing V6.4 report still does not enable training, pick values, trade scoring,
+or UI output. Those require a separately reviewed V6.5 experiment. The 2027
+current-class build is explicitly blocked until a version-pinned 2026 roster
+snapshot is available.
