@@ -58,8 +58,10 @@ validation status must remain inspectable.
   means non-dominated within that boundary, not optimal, likely accepted, or
   profitable.
 - A market dislocation is a visible disagreement or roster fact, not an "edge
-  score." Keep provider spread, production percentile, lineup coverage, owner
-  depth/activity, and declared-horizon age individually inspectable.
+  score." Compare providers by rank percentile inside the same covered pool,
+  never by raw cross-scale percentage spread. Keep provider ranks, production
+  percentile, lineup coverage, owner depth/activity, and declared-horizon age
+  individually inspectable.
 - Do not duplicate a calculation in JSX merely to format it differently.
 
 `src/App.tsx` is the shared league-loading and view-composition surface. Keep

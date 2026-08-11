@@ -257,6 +257,19 @@ describe('trade evaluation', () => {
     expect(result.packageB.averageAgeAtHorizon).toBeNull()
   })
 
+  it('does not mix composite pick values into provider player scales', () => {
+    const sentPick = asset('2027 first', 'PICK', 500)
+    sentPick.kind = 'pick'
+    const received = asset('received', 'WR', 600)
+    received.marketSources = { ktc: 6200, fantasycalc: 5700 }
+
+    const result = evaluateTrade([sentPick], [received], { horizonYears: 3 })
+
+    expect(result.packageA.providerTotalsApplicable).toBe(false)
+    expect(result.packageA.providerTotals).toEqual({ ktc: null, fantasycalc: null })
+    expect(result.providerNetA).toEqual({ ktc: null, fantasycalc: null })
+  })
+
   it('keeps current price and factual role warnings separate', () => {
     const lateFirst = asset('1.12', 'PICK', 360)
     lateFirst.kind = 'pick'

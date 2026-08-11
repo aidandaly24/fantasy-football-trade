@@ -6,7 +6,7 @@ import { AssetBadge, formatValue } from '../components/domain-ui'
 
 const LENSES: Array<{ id: DislocationLens; label: string; description: string }> = [
   { id: 'frontier', label: 'Supported frontier', description: 'Non-dominated across the visible, measured facts.' },
-  { id: 'market', label: 'Source gaps', description: 'Largest current KTC/FantasyCalc percentage disagreements.' },
+  { id: 'market', label: 'Source gaps', description: 'Largest KTC/FantasyCalc rank-percentile disagreements in the same player pool.' },
   { id: 'production', label: 'Production ahead', description: 'Largest positive production-percentile gap versus market within position.' },
   { id: 'pressure', label: 'Owner pressure', description: 'Bench depth and completed-trade activity, without an acceptance claim.' },
 ]
@@ -47,7 +47,7 @@ export function DislocationBoard({
         <div><span className="eyebrow">Current-state dislocation desk</span><h2>Where the evidence disagrees</h2></div>
         <span className="method-note">No composite edge score</span>
       </div>
-      <div className="dislocation-method"><Info size={16} /><span>Player-only scan across current league rosters. Production gaps compare market and modeled-production percentiles within the same position and covered population; owner pressure uses current roster construction and completed Sleeper trades. A row is a research lead, not a predicted profit or acceptance.</span></div>
+      <div className="dislocation-method"><Info size={16} /><span>Player-only scan across current league rosters. Source gaps compare each provider’s rank percentile inside the same dual-covered league player pool; raw KTC and FantasyCalc values stay on their original scales. Production gaps compare market and modeled-production percentiles within the same position and covered population; owner pressure uses current roster construction and completed Sleeper trades. A row is a research lead, not a predicted profit or acceptance.</span></div>
       <div className="dislocation-toolbar">
         <div className="intel-tabs" role="group" aria-label="Dislocation lens">
           {LENSES.map((item) => <button type="button" className={lens === item.id ? 'active' : ''} key={item.id} onClick={() => setLens(item.id)}>{item.label} <b>{counts[item.id]}</b></button>)}
@@ -67,11 +67,11 @@ export function DislocationBoard({
             </header>
             <div className="dislocation-facts">
               <section>
-                <small>Current source disagreement</small>
-                <strong>{candidate.market.spreadPercent === null
+                <small>Source-relative rank gap</small>
+                <strong>{candidate.market.percentileGap === null
                   ? 'Source pair unavailable'
-                  : `${(candidate.market.spreadPercent * 100).toFixed(1)}% spread${candidate.market.higherSource === 'equal' ? '' : ` · ${candidate.market.higherSource} higher`}`}</strong>
-                <span>{candidate.market.ktc === null ? 'KTC —' : `KTC ${formatValue(candidate.market.ktc)}`} · {candidate.market.fantasycalc === null ? 'FC —' : `FC ${formatValue(candidate.market.fantasycalc)}`}</span>
+                  : `${candidate.market.percentileGap.toFixed(1)} percentile points${candidate.market.higherRankSource === 'equal' ? '' : ` · ${candidate.market.higherRankSource} ranks higher`}`}</strong>
+                <span>{candidate.market.ktc === null ? 'KTC —' : `KTC ${formatValue(candidate.market.ktc)} · rank ${candidate.market.ktcRank}/${candidate.market.population}`} · {candidate.market.fantasycalc === null ? 'FC —' : `FC ${formatValue(candidate.market.fantasycalc)} · rank ${candidate.market.fantasycalcRank}/${candidate.market.population}`}</span>
               </section>
               <section>
                 <small>Production versus market</small>

@@ -64,18 +64,50 @@ function completeTeam(id: number, prefix: string, extra: Asset[] = []): Team {
 }
 
 describe('market dislocation evidence', () => {
-  it('calculates the exact current KTC/FantasyCalc spread', () => {
-    const mine = completeTeam(1, 'mine')
-    const target = asset('target', 'RB', 500, { marketSources: { ktc: 600, fantasycalc: 400 }, projectedPpg: 13 })
-    const result = buildMarketDislocations([mine, completeTeam(2, 'them', [target])], {
+  it('compares KTC and FantasyCalc as ranks inside one dual-source population', () => {
+    const mine = team(1, [
+      asset('top', 'WR', 900, { marketSources: { ktc: 1000, fantasycalc: 1000 } }),
+      asset('middle', 'WR', 600, { marketSources: { ktc: 800, fantasycalc: 500 } }),
+    ])
+    const target = asset('target', 'WR', 500, { marketSources: { ktc: 900, fantasycalc: 400 }, projectedPpg: 13 })
+    const bottom = asset('bottom', 'WR', 200, { marketSources: { ktc: 100, fantasycalc: 300 } })
+    const result = buildMarketDislocations([mine, team(2, [target, bottom])], {
       myRosterId: 1,
       rosterPositions,
       directions: [direction(2)],
       strategy,
     }).find((candidate) => candidate.asset.id === 'target')
 
-    expect(result?.market).toMatchObject({ ktc: 600, fantasycalc: 400, spread: 200, spreadPercent: 0.4, higherSource: 'KTC' })
+    expect(result?.market).toMatchObject({
+      ktc: 900,
+      fantasycalc: 400,
+      ktcRank: 2,
+      fantasycalcRank: 3,
+      population: 4,
+      percentileGap: 33.3,
+      higherRankSource: 'KTC',
+    })
     expect(result?.categories).toContain('market-gap')
+  })
+
+  it('does not treat provider scale shape as player disagreement', () => {
+    const mine = team(1, [
+      asset('top', 'WR', 900, { marketSources: { ktc: 5000, fantasycalc: 500 } }),
+      asset('second', 'WR', 800, { marketSources: { ktc: 4000, fantasycalc: 400 } }),
+      asset('third', 'WR', 700, { marketSources: { ktc: 3000, fantasycalc: 300 } }),
+    ])
+    const alignedLow = asset('aligned-low', 'WR', 100, { marketSources: { ktc: 1000, fantasycalc: 100 } })
+    const reordered = asset('reordered', 'WR', 400, { marketSources: { ktc: 2000, fantasycalc: 450 } })
+    const candidates = buildMarketDislocations([mine, team(2, [alignedLow, reordered])], {
+      myRosterId: 1,
+      rosterPositions,
+      directions: [direction(2)],
+      strategy,
+    })
+
+    expect(candidates.find((candidate) => candidate.asset.id === 'aligned-low')?.market.percentileGap).toBe(0)
+    expect(candidates.find((candidate) => candidate.asset.id === 'aligned-low')?.categories).not.toContain('market-gap')
+    expect(selectMarketDislocations(candidates, 'market')[0].asset.id).toBe('reordered')
   })
 
   it('compares production and market percentiles within the same position', () => {
