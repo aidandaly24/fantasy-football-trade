@@ -252,6 +252,44 @@ a {
   color: white;
 }
 
+.league-quick-switch {
+  flex: 0 0 auto;
+  margin: 0 6px;
+  padding: 2px;
+  display: flex;
+  gap: 2px;
+  background: #262a24;
+  border: 1px solid #363b33;
+  border-radius: 8px;
+}
+
+.league-quick-switch button {
+  padding: 4px 8px;
+  color: #aeb3aa;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.league-quick-switch button:hover:not(:disabled) {
+  color: white;
+}
+
+.league-quick-switch button.active {
+  color: var(--ink);
+  background: var(--acid);
+}
+
+.league-quick-switch button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .status-dot,
 .live-value-chip span {
   width: 7px;

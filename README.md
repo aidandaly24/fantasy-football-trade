@@ -2,7 +2,7 @@
 
 RosterLab is a private dynasty fantasy football research desk for Sleeper leagues. It imports league data, builds league-relative power rankings, resolves current draft-pick ownership, evaluates proposed trades, and inventories the entire league by current market value with covered production and linked news evidence shown separately.
 
-The default league is `1336087922847289344`, but any public Sleeper NFL league ID can be entered in the header.
+The league ribbon has one-click controls for the default league (`1336087922847289344`) and the secondary league (`1312112570039037952`). Any public Sleeper NFL league ID can still be entered in the header.
 
 ## Data sources
 

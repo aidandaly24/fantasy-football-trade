@@ -22,6 +22,10 @@ import { TradeView } from './views/TradeView'
 import type { TradeDraft } from './views/types'
 
 const DEFAULT_LEAGUE_ID = '1336087922847289344'
+const QUICK_LEAGUES = [
+  { id: DEFAULT_LEAGUE_ID, label: 'Default' },
+  { id: '1312112570039037952', label: 'Other' },
+] as const
 
 type AppData = {
   leagueBundle: LeagueBundle
@@ -112,7 +116,11 @@ function AppHeader({
   )
 }
 
-function LeagueRibbon({ data }: { data: AppData }) {
+function LeagueRibbon({ data, loading, onSelectLeague }: {
+  data: AppData
+  loading: boolean
+  onSelectLeague: (leagueId: string) => void
+}) {
   const { league } = data.leagueBundle
   const format = leagueFormat(data.leagueBundle)
   const tep = league.scoring_settings.bonus_rec_te ?? 0
@@ -120,6 +128,21 @@ function LeagueRibbon({ data }: { data: AppData }) {
     <div className="league-ribbon">
       <div className="ribbon-inner">
         <span className="ribbon-title"><span className="status-dot" /> {league.name}</span>
+        <div className="league-quick-switch" role="group" aria-label="Quick league switcher">
+          {QUICK_LEAGUES.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={league.league_id === preset.id ? 'active' : ''}
+              aria-pressed={league.league_id === preset.id}
+              title={`${preset.label} league (${preset.id})`}
+              disabled={loading}
+              onClick={() => onSelectLeague(preset.id)}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
         <span>{league.season} Dynasty</span>
         <span>{format.numQbs === 2 ? 'Superflex' : '1QB'}</span>
         <span>{league.total_rosters} teams</span>
@@ -394,6 +417,11 @@ function App() {
     void loadLeague(inputId)
   }
 
+  const selectLeague = (nextLeagueId: string) => {
+    setInputId(nextLeagueId)
+    if (nextLeagueId !== leagueId) void loadLeague(nextLeagueId)
+  }
+
   const openTradeDraft = (draft: Omit<TradeDraft, 'nonce'>) => {
     setTradeDraft({ ...draft, nonce: Date.now() })
     setView('trade')
@@ -452,7 +480,7 @@ function App() {
         loading={loading}
         savedLeagues={userState?.preferences ?? []}
       />
-      {data && <LeagueRibbon data={data} />}
+      {data && <LeagueRibbon data={data} loading={loading} onSelectLeague={selectLeague} />}
       {loading && !data ? (
         <LoadingState />
       ) : error && !data ? (
