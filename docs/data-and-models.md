@@ -45,6 +45,19 @@ Store the provider's generation/version timestamp with observations. A current
 composite captured during a historical backfill is retrospective and cannot be
 called the original trade price.
 
+### Future picks today
+
+Sleeper determines factual pick identity and ownership: the pick remains tied
+to its original roster ID even after its current owner changes. An exact slot is
+used only when the current draft supplies a slot-to-roster mapping.
+
+For an unresolved future pick, the application currently uses the matching
+Tradyr middle-tier average as its neutral expected value and retains the
+provider-derived early-to-late range. Manager-direction labels are manual
+context or a neutral placeholder and do not alter that value. This is not a
+pick-slot forecast; a class-strength or original-owner forecast must remain
+blocked until its own historical model passes validation.
+
 ### News and trends
 
 The Worker reads configured NFL RSS sources and Sleeper trend endpoints. It

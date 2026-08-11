@@ -64,8 +64,8 @@ Offline training does not run in the request path.
 2. `fetchValues` reads attributed player and pick composites from Tradyr.
 3. `fetchProjections` and model-health readers load checked-in browser-safe
    artifacts.
-4. Pure domain functions build teams, lineups, league-relative metrics,
-   manager direction, and trade comparisons.
+4. Pure domain functions build teams, lineups, league-relative metrics, neutral
+   or manually supplied manager context, and trade comparisons.
 5. Identity-aware Worker routes load preferences, the trade journal, alerts,
    evidence snapshots, and research state.
 
