@@ -1,5 +1,6 @@
 import { ChevronRight, Sparkles, Target, TrendingUp, Trophy } from 'lucide-react'
 import { useMemo } from 'react'
+import type { LeagueContext } from '../league-context'
 import { rosterProfile } from '../rankings'
 import type { RankingMode, Team } from '../types'
 import { AssetBadge, Avatar, formatValue, MetricBar } from '../components/domain-ui'
@@ -11,7 +12,7 @@ const modeCopy: Record<RankingMode, { label: string; description: string }> = {
   },
   contender: {
     label: 'Covered lineup',
-    description: 'Generic-PPR points per team week for the best legal lineup among players covered by the validated production model. League-specific bonuses are not modeled.',
+    description: 'League-adjusted points per team week for the best legal lineup among players covered by the validated production model.',
   },
   future: {
     label: 'Draft capital',
@@ -142,12 +143,14 @@ export function RankingsView({
   setMode,
   selectedId,
   setSelectedId,
+  leagueContext,
 }: {
   teams: Team[]
   mode: RankingMode
   setMode: (mode: RankingMode) => void
   selectedId: number
   setSelectedId: (id: number) => void
+  leagueContext: LeagueContext
 }) {
   const sorted = useMemo(
     () => [...teams].sort((a, b) => b.metrics[mode] - a.metrics[mode]),
@@ -164,7 +167,7 @@ export function RankingsView({
         <div>
           <span className="eyebrow accent-eyebrow">League intelligence</span>
           <h1>Compare the league.<br />Without a mystery score.</h1>
-          <p>{modeCopy[mode].description}</p>
+          <p>{mode === 'contender' ? `${modeCopy[mode].description} ${leagueContext.labels.projection}.` : modeCopy[mode].description}</p>
         </div>
         <div className="mode-switch" role="group" aria-label="Ranking model">
           {(Object.keys(modeCopy) as RankingMode[]).map((item) => (
@@ -180,6 +183,7 @@ export function RankingsView({
         </div>
       </section>
 
+      <div className="league-context-note panel"><span><strong>{leagueContext.label}</strong> · {leagueContext.labels.format}</span><small>{leagueContext.labels.roster}</small></div>
       <section className="leader-strip" aria-label="League leaders">
         <div className="leader-card">
           <span className="leader-icon"><Trophy size={19} /></span>

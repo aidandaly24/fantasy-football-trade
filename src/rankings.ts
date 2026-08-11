@@ -689,12 +689,3 @@ export function evaluateTrade(
     rangeB: { worst: sideALow - sideBHigh, best: sideAHigh - sideBLow },
   }
 }
-
-export function leagueFormat(bundle: LeagueBundle): { numQbs: 1 | 2; tep: boolean } {
-  const superflex = bundle.league.roster_positions.includes('SUPER_FLEX')
-  const qbs = bundle.league.roster_positions.filter((slot) => slot === 'QB').length
-  return {
-    numQbs: superflex || qbs > 1 ? 2 : 1,
-    tep: (bundle.league.scoring_settings.bonus_rec_te ?? 0) > 0,
-  }
-}

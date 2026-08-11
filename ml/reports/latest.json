@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-10T14:16:22.592062Z",
+  "generatedAt": "2026-08-11T23:47:15.453767Z",
   "model": "season-transition-hgb-v1.2",
   "target": "next-season PPR points per NFL team game",
   "gate": {
@@ -82,7 +82,7 @@
   },
   "refreshPipeline": {
     "enabled": true,
-    "predictionDigest": "c397a6019f7d2cdfd636467d54f1efe31535a7081baf5c5dfb6393c8090949f9",
+    "predictionDigest": "cae10cb43a5ff78625e0e9ee722d40917ae0f81428f9e1fdfeb586fc24af8171",
     "checks": [
       {
         "id": "snapshotFreshness",
@@ -95,7 +95,7 @@
         "id": "projectionCoverage",
         "label": "Current projection coverage",
         "passed": true,
-        "actual": 239,
+        "actual": 237,
         "requirement": ">= 200 current players"
       },
       {
@@ -324,7 +324,7 @@
     }
   },
   "eventModel": {
-    "generatedAt": "2026-08-10T14:16:22.123367Z",
+    "generatedAt": "2026-08-11T23:47:14.953923Z",
     "enabled": false,
     "target": "PPR points per NFL team week over the next four weeks",
     "trainingSeason": 2022,
@@ -524,7 +524,7 @@
     "trainingRows": 2273,
     "validationRows": 575,
     "testRows": 545,
-    "currentPlayers": 239,
+    "currentPlayers": 237,
     "dataAsOf": "2026-08-10T13:43:43.343498Z",
     "sourceSeason": 2025,
     "staleAfter": "2026-08-18T13:43:43.343498Z",

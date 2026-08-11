@@ -1,5 +1,6 @@
 import { AlertTriangle, Check, ChevronRight, Info, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
+import type { LeagueContext } from '../league-context'
 import { AssetBadge } from '../components/domain-ui'
 import {
   rookiePlayerKey,
@@ -23,7 +24,7 @@ function optionalPercent(value: number | null): string {
   return value === null ? 'Unavailable' : percent(value)
 }
 
-export function RookieBoardView({ bundle }: { bundle: RookieBoardBundle | null }) {
+export function RookieBoardView({ bundle, leagueContext }: { bundle: RookieBoardBundle | null; leagueContext: LeagueContext }) {
   const [basketOnly, setBasketOnly] = useState(true)
   const [position, setPosition] = useState<RookiePosition | 'ALL'>('ALL')
   const [sort, setSort] = useState<RookieBoardSort>('board')
@@ -68,6 +69,8 @@ export function RookieBoardView({ bundle }: { bundle: RookieBoardBundle | null }
           <div className="rookie-status warning"><AlertTriangle size={20} /><span><strong>Market-return forecast disabled</strong><small>No resale-profit or trade-grade claims</small></span></div>
         </div>
       </section>
+
+      <div className="league-context-note panel"><span><strong>{leagueContext.label} rookie lens</strong> · {leagueContext.roster.rookieDraftRounds}-round draft, {leagueContext.roster.taxiSlots} taxi spots</span><small>The rookie model stays a position-relative generic-PPR production forecast. It is not falsely rescaled to exact TEP; current acquisition prices use the broad {leagueContext.labels.market}.</small></div>
 
       <section className="rookie-metric-grid" aria-label="Rookie model evidence summary">
         <article className="rookie-metric panel"><span>Validated sleeper basket</span><strong>{basketCount}</strong><small>highest forecasts after market rank 24</small></article>

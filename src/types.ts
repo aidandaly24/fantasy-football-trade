@@ -235,6 +235,11 @@ export type PlayerProjection = {
   floorPpg: number
   ceilingPpg: number
   confidence: number
+  /** Observed receptions per team week in the source season. */
+  receptionsPerTeamWeek?: number
+  /** Transparent post-model adjustment for the active league's TE premium. */
+  leagueAdjustmentPpg?: number
+  leagueAdjusted?: boolean
   drivers?: string[]
   restOfSeasonPpg?: number
   restOfSeasonWeek?: number
@@ -561,7 +566,29 @@ export type MarketTapeAssetInput = {
     round?: number
     slot?: number
     projectedTier?: PickTier | 'known'
+    leagueContextKey?: string
+    receptionPpr?: number
+    tePremiumPerReception?: number
+    startingSlots?: number
+    skillStartingSlots?: number
+    benchSlots?: number
+    taxiSlots?: number
+    reserveSlots?: number
+    rookieDraftRounds?: number
   }
+}
+
+export type MarketTapeLeagueContext = {
+  leagueId: string
+  contextKey: string
+  receptionPpr: number
+  tePremiumPerReception: number
+  startingSlots: number
+  skillStartingSlots: number
+  benchSlots: number
+  taxiSlots: number
+  reserveSlots: number
+  rookieDraftRounds: number
 }
 
 export type MarketTapeRequest = {
@@ -571,6 +598,7 @@ export type MarketTapeRequest = {
     tep: boolean
     numTeams: number
   }
+  leagueContext: MarketTapeLeagueContext
   sourceVersion: string
 }
 

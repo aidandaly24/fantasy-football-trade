@@ -1,5 +1,6 @@
 import { AlertTriangle, ArrowLeftRight, Check, Info, Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import type { LeagueContext } from '../league-context'
 import { assetRoleLabel, evaluateTrade } from '../rankings'
 import type { ResolvedTeamStrategy } from '../strategy'
 import type { Asset, Team, TeamStrategyProfile } from '../types'
@@ -130,11 +131,13 @@ function TradeVerdict({
   teamB,
   result,
   ready,
+  leagueContext,
 }: {
   teamA: Team
   teamB: Team
   result: TradeEvaluation
   ready: boolean
+  leagueContext: LeagueContext
 }) {
   const lead = result.winner === 'A' ? 'a' : result.winner === 'B' ? 'b' : 'even'
   const compactVerdict = result.verdict
@@ -177,7 +180,7 @@ function TradeVerdict({
       )}
       <div className="model-note">
         <Info size={16} />
-        <span>ML production is expected generic PPR per team week, so missed games count. League-specific bonuses are not modeled. Uncovered players remain uncovered; market value is never converted into fake fantasy points.</span>
+        <span>The held-out ML target is generic PPR per team week. For {leagueContext.label}, TE projections add the exact +{leagueContext.scoring.tePremiumPerReception} reception bonus where observed reception-rate evidence exists. Uncovered players remain uncovered; market value is never converted into fantasy points.</span>
       </div>
     </section>
   )
@@ -327,6 +330,7 @@ function ScenarioPanel({
 export function TradeView({
   teams,
   rosterPositions,
+  leagueContext,
   initialDraft,
   strategy,
   strategyRosterId,
@@ -334,6 +338,7 @@ export function TradeView({
 }: {
   teams: Team[]
   rosterPositions: string[]
+  leagueContext: LeagueContext
   initialDraft?: TradeDraft | null
   strategy: ResolvedTeamStrategy
   strategyRosterId: number
@@ -387,6 +392,8 @@ export function TradeView({
         </div>
       </section>
 
+      <div className="league-context-note panel"><span><strong>{leagueContext.label}</strong> · {leagueContext.labels.format}</span><small>Lineup legality uses {leagueContext.roster.skillStartingSlots} skill starters. Market prices use the broader {leagueContext.labels.market}, so 0.5 and 0.75 TEP are not presented as exact provider distinctions.</small></div>
+
       <section className="trade-builder">
         <TradeSide
           side="A"
@@ -398,7 +405,7 @@ export function TradeView({
           onTeamChange={(id) => { setTeamAId(id); setSelectedA([]) }}
           onToggle={(id) => toggle(selectedA, setSelectedA, id)}
         />
-        <TradeVerdict teamA={teamA} teamB={teamB} result={result} ready={ready} />
+        <TradeVerdict teamA={teamA} teamB={teamB} result={result} ready={ready} leagueContext={leagueContext} />
         <TradeSide
           side="B"
           team={teamB}

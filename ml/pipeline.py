@@ -696,6 +696,7 @@ def current_feature_rows(players: list[dict[str, Any]]) -> tuple[pd.DataFrame, d
             "position": position,
             "sourceSeason": season,
             "gamesObserved": int(safe_number(season_totals.get("gp") or stats.get("gamesPlayed"))),
+            "receptionsPerTeamWeek": round(float(features["receptions_pg"]), 3),
         }
     frame = pd.DataFrame(rows)
     if frame.empty:

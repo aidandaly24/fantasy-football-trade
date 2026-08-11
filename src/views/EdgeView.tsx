@@ -1,6 +1,8 @@
 import { AlertTriangle, ArrowLeftRight, BookOpen, Check, ChevronRight, Clock3, Info, LockKeyhole, Radar, RefreshCw, Target } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchEdgeState, fetchIntel, fetchResearchState, saveMarketTape } from '../api'
+import { marketTapeLeagueContext } from '../league-context'
+import type { LeagueContext } from '../league-context'
 import { buildEdgeBoard, marketTapeAssets } from '../edge'
 import type { EdgeCategory, TeamDirection, TeamDirectionOverride } from '../edge'
 import { buildMarketDislocations } from '../dislocations'
@@ -46,7 +48,7 @@ export function EdgeView({
   valueBundle,
   journal,
   preferences,
-  marketFormat,
+  leagueContext,
   onUpdatePreferences,
   onOpenTrade,
   journalSyncing,
@@ -61,7 +63,7 @@ export function EdgeView({
   valueBundle: ValueBundle
   journal: JournalBundle
   preferences: LeaguePreferences
-  marketFormat: { numQbs: 1 | 2; tep: boolean; numTeams: number }
+  leagueContext: LeagueContext
   onUpdatePreferences: (patch: Partial<LeaguePreferences>) => void
   onOpenTrade: (draft: Omit<TradeDraft, 'nonce'>) => void
   journalSyncing: boolean
@@ -140,18 +142,19 @@ export function EdgeView({
     () => marketTapeAssets(teams, allOpportunities, teamStrategy),
     [teams, allOpportunities, teamStrategy],
   )
-  const marketDigest = `${new Date().toISOString().slice(0, 10)}:${valueBundle.meta.generatedAt}:${tapeAssets.length}:${tapeAssets.reduce((sum, asset) => sum + asset.currentValue, 0)}`
+  const marketDigest = `${leagueContext.contextKey}:${new Date().toISOString().slice(0, 10)}:${valueBundle.meta.generatedAt}:${tapeAssets.length}:${tapeAssets.reduce((sum, asset) => sum + asset.currentValue, 0)}`
   useEffect(() => {
     if (!intelLoaded || !tapeAssets.length || tapeDigest.current === marketDigest) return
     tapeDigest.current = marketDigest
     void saveMarketTape(preferences.leagueId, {
       assets: tapeAssets,
-      format: marketFormat,
+      format: leagueContext.marketFormat,
+      leagueContext: marketTapeLeagueContext(leagueContext),
       sourceVersion: valueBundle.meta.generatedAt,
     }).then(setEdgeState).catch((error) => {
       setEdgeError(error instanceof Error ? error.message : 'Could not update the private market tape')
     })
-  }, [intelLoaded, marketDigest, marketFormat, preferences.leagueId, tapeAssets, valueBundle.meta.generatedAt])
+  }, [intelLoaded, leagueContext, marketDigest, preferences.leagueId, tapeAssets, valueBundle.meta.generatedAt])
 
   const setDirectionOverride = (rosterId: number, value: 'auto' | TeamDirectionOverride) => {
     const overrides = { ...(preferences.settings.teamDirectionOverrides ?? {}) }
@@ -199,6 +202,8 @@ export function EdgeView({
         </div>
         <div className="private-status"><LockKeyhole size={18} /><span><strong>Private research book</strong><small>Signals, overrides, market observations, and completed-trade outcomes are isolated to your account and league.</small></span></div>
       </section>
+
+      <div className="league-context-note panel"><span><strong>{leagueContext.label} evidence book</strong> · {leagueContext.labels.format}</span><small>Snapshots and outcomes stay isolated under this league and context fingerprint. Prices use the broad {leagueContext.labels.market}; exact TEP affects covered lineup evidence, not provider prices.</small></div>
 
       <section className="edge-stats" aria-label="Edge desk status">
         <article className="panel"><small>Rostered assets</small><strong>{allOpportunities.length}</strong><span>{opportunities.filter((item) => item.intel).length} linked news watches</span></article>

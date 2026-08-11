@@ -26,6 +26,7 @@ class PipelineTests(unittest.TestCase):
         )
 
         self.assertEqual(row["prior_ppg"], 5.0)
+        self.assertEqual(row["receptions_pg"], 1.0)
         self.assertEqual(row["touches_pg"], 6.0)
         self.assertEqual(row["pos_RB"], 1.0)
         self.assertEqual(row["pos_QB"], 0.0)

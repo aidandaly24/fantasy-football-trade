@@ -2,7 +2,7 @@
 
 RosterLab is a private dynasty fantasy football research desk for Sleeper leagues. It imports league data, builds league-relative power rankings, resolves current draft-pick ownership, evaluates proposed trades, and inventories the entire league by current market value with covered production and linked news evidence shown separately.
 
-The league ribbon has one-click controls for BC League (`1336087922847289344`) and Emperor Phil’s league (`1312112570039037952`). Any public Sleeper NFL league ID can still be entered in the header.
+The league ribbon has one-click controls for BC League (`1336087922847289344`) and Emperor Phil (`1312112570039037952`). There is intentionally no free-form league ID input; adding another league requires an explicit code and evidence review.
 
 ## Data sources
 
@@ -44,6 +44,7 @@ npm run build
 - [Architecture](docs/architecture.md)
 - [Code quality](docs/code-quality.md)
 - [Data and models](docs/data-and-models.md)
+- [Fixed league context](docs/league-context.md)
 - [Development and pull-request workflow](docs/development-workflow.md)
 
 All project changes use task-specific branches and GitHub pull requests. Do not
@@ -52,7 +53,7 @@ push directly to `main`, and do not merge without explicit approval.
 ## Ranking and trade quantities
 
 - **Current market** is the direct sum of current player and pick composites.
-- **Covered lineup** is generic-PPR points per team week for the best legal lineup among players covered by the enabled production model.
+- **Covered lineup** starts with generic-PPR points per team week from the enabled production model, applies the active league's exact TE reception bonus where observed reception-rate evidence exists, and optimizes the league's actual starting slots.
 - **Draft capital** is the direct sum of current provider values for owned picks.
 
 These are direct quantities, not 0–100 ratings. Future picks without a known slot use the provider's neutral middle-tier average with its available early-to-late range; manager labels do not reprice them. Trade package values are literal sums without hidden compression or elite bonuses. A likely-lineup production result is withheld unless every required market-selected starter slot has an enabled projection.

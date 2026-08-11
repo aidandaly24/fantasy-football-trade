@@ -47,6 +47,14 @@ describe('edge learning pipeline', () => {
     expect(labels[0]).toMatchObject({ assetId: 'x', actualReturn: 0.2, ruleReturn: 0.1 })
   })
 
+  it('does not create labels across different league-setting fingerprints', () => {
+    const before = snapshot('x', '2026-01-01T00:00:00Z', 100)
+    before.metadata.leagueContextKey = 'league:tep0.5'
+    const after = snapshot('x', '2026-01-31T00:00:00Z', 120)
+    after.metadata.leagueContextKey = 'league:tep0.75'
+    expect(labelMarketSnapshots([before, after])).toHaveLength(0)
+  })
+
   it('shrinks small calibration cohorts toward the original rule', () => {
     const examples = Array.from({ length: 5 }, (_, index): EdgeTrainingExample => ({
       assetId: `x${index}`,

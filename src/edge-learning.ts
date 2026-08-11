@@ -107,9 +107,10 @@ export function labelMarketSnapshots(
   const grouped = new Map<string, MarketSnapshotRecord[]>()
   snapshots.forEach((snapshot) => {
     if (!Number.isFinite(snapshot.currentValue) || snapshot.currentValue <= 0) return
-    const rows = grouped.get(snapshot.assetId) ?? []
+    const groupKey = `${snapshot.metadata.leagueContextKey ?? 'legacy'}:${snapshot.assetId}`
+    const rows = grouped.get(groupKey) ?? []
     rows.push(snapshot)
-    grouped.set(snapshot.assetId, rows)
+    grouped.set(groupKey, rows)
   })
 
   const examples: EdgeTrainingExample[] = []

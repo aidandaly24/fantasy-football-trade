@@ -2,6 +2,7 @@ import { AlertTriangle, BookOpen, Info, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { timeAgo } from '../intel'
 import { tradePartyNames } from '../journal'
+import type { LeagueContext } from '../league-context'
 import type { JournalBundle, JournalTrade } from '../types'
 import { AssetBadge, formatValue } from '../components/domain-ui'
 
@@ -9,10 +10,12 @@ export function TradeJournalView({
   journal,
   syncing,
   onSync,
+  leagueContext,
 }: {
   journal: JournalBundle
   syncing: boolean
   onSync: () => void
+  leagueContext: LeagueContext
 }) {
   const seasons = [...new Set(journal.trades.map((trade) => trade.season))]
   const [season, setSeason] = useState('all')
@@ -71,7 +74,7 @@ export function TradeJournalView({
   return (
     <main className="page-shell journal-page">
       <section className="journal-hero">
-        <div><span className="eyebrow accent-eyebrow">Automated trade journal · V4.6</span><h1>Every completed deal.<br />No selective memory.</h1><p>Sleeper facts, season-correct manager identity, immutable value snapshots, and automatic 7/30/90/180-day checkpoints.</p></div>
+        <div><span className="eyebrow accent-eyebrow">Automated trade journal · V4.6</span><h1>Every completed deal.<br />No selective memory.</h1><p>{leagueContext.label}: Sleeper facts, season-correct manager identity, immutable value snapshots, and automatic 7/30/90/180-day checkpoints.</p></div>
         <button type="button" className="journal-sync" onClick={onSync} disabled={syncing}><RefreshCw size={17} className={syncing ? 'spin' : ''} /> {syncing ? 'Syncing every season…' : 'Sync journal'}</button>
       </section>
       <section className="journal-stats">
@@ -86,7 +89,7 @@ export function TradeJournalView({
         <span>{visibleTrades.length} ledger entries · newest first</span>
       </section>
       <section className="journal-list">{visibleTrades.length ? visibleTrades.map(tradeCard) : <div className="panel journal-empty"><BookOpen size={22} /><strong>No completed trades stored yet.</strong><span>Run the journal sync to build the API ledger.</span></div>}</section>
-      <div className="model-caveat panel"><Info size={17} /><span>Old trades are labeled retrospective because Sleeper does not provide historic calculator values. Only snapshots captured after RosterLab started tracking a deal can support honest 7/30/90/180-day outcome grading.</span></div>
+      <div className="model-caveat panel"><Info size={17} /><span>Old trades are labeled retrospective because Sleeper does not provide historic calculator values. Only snapshots captured after RosterLab started tracking a deal can support honest 7/30/90/180-day outcome grading. Those prices use the {leagueContext.labels.market}, not an invented exact +{leagueContext.scoring.tePremiumPerReception} TEP history.</span></div>
     </main>
   )
 }
