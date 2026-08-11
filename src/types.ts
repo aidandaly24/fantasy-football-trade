@@ -534,24 +534,6 @@ export type AlertInbox = {
   }
 }
 
-export type EdgeOpportunitySnapshot = {
-  snapshotKey: string
-  assetId: string
-  assetName: string
-  ownerRosterId: number
-  capturedAt: string
-  currentValue: number
-  projection30: number
-  projection90: number
-  projection180: number
-  edgeScore: number
-  lineupDelta: number
-  confidence: number
-  categories: Array<'value' | 'flip' | 'points' | 'intel'>
-  catalyst: string
-  status: 'tracking' | 'acted' | 'expired' | string
-}
-
 export type TradeOfferStatus = 'draft' | 'sent' | 'countered' | 'rejected' | 'accepted' | 'withdrawn'
 
 export type TradeOfferRecord = {
@@ -571,23 +553,9 @@ export type TradeOfferRecord = {
 }
 
 export type EdgeFeatureVector = {
-  ruleGain30: number
-  ruleGain90: number
-  edgeScore: number
-  lineupDelta: number
-  catalystScore: number
-  sellerFit: number
-  liquidityScore: number
-  timingScore: number
-  uncertaintyPenalty: number
-  confidence: number
-  age: number
-  contenderProbability: number
-  rebuildingProbability: number
-  profitScore?: number
-  resaleScore?: number
-  decayRisk?: number
-  horizonYears?: number
+  lineupDelta: number | null
+  age: number | null
+  horizonYears: 1 | 2 | 3 | 4
 }
 
 export type MarketTapeAssetInput = {
@@ -597,7 +565,6 @@ export type MarketTapeAssetInput = {
   position: Asset['position']
   ownerRosterId: number
   currentValue: number
-  projection30: number
   confidence: number
   eventType: string
   newsDirection: 'up' | 'down' | 'watch' | 'none'
@@ -719,7 +686,6 @@ export type HistoricalTapeAudit = {
 }
 
 export type EdgeStateBundle = {
-  opportunities: EdgeOpportunitySnapshot[]
   offers: TradeOfferRecord[]
   marketTape: MarketTapeSummary
   calibration: EdgeCalibrationGroup[]

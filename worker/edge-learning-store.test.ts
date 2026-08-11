@@ -9,15 +9,11 @@ const rawAsset = {
   position: 'WR',
   ownerRosterId: 3,
   currentValue: 500,
-  projection30: 525,
   confidence: 74,
   eventType: 'role_change',
   newsDirection: 'up',
   features: {
-    ruleGain30: 0.05, ruleGain90: 0.1, edgeScore: 75, lineupDelta: 2.1,
-    catalystScore: 80, sellerFit: 60, liquidityScore: 72, timingScore: 85,
-    uncertaintyPenalty: 25, confidence: 74, age: 23,
-    contenderProbability: 0.2, rebuildingProbability: 0.7,
+    lineupDelta: 2.1, age: 23, horizonYears: 3,
   },
   metadata: {},
 }
@@ -33,12 +29,12 @@ describe('market tape storage boundary', () => {
     expect(normalized.assets[0]).toMatchObject({ assetId: '11625', currentValue: 500 })
   })
 
-  it('rejects client-supplied scores outside the audited range', () => {
+  it('rejects client-supplied evidence outside the audited range', () => {
     expect(() => normalizeMarketTapeInput({
-      assets: [{ ...rawAsset, features: { ...rawAsset.features, edgeScore: 101 } }],
+      assets: [{ ...rawAsset, features: { ...rawAsset.features, lineupDelta: 51 } }],
       format: { numQbs: 2, tep: false, numTeams: 12 },
       sourceVersion: 'test',
-    })).toThrow('Invalid feature edgeScore')
+    })).toThrow('Invalid feature lineupDelta')
   })
 
   it('resolves automatic player and projected-pick updates without sending league identity upstream', () => {
@@ -67,4 +63,3 @@ describe('market tape storage boundary', () => {
     expect(resolveCatalogValue(pick, catalog)).toBe(500)
   })
 })
-

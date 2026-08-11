@@ -37,16 +37,22 @@ Offline training does not run in the request path.
 
 | Path | Responsibility |
 |---|---|
-| `src/App.tsx` | Application state, view composition, navigation, and UI orchestration |
+| `src/App.tsx` | League loading, shared preferences, navigation, and view composition |
+| `src/views/` | Stateful UI for each product tab; one focused module per view |
+| `src/components/` | Small presentation helpers shared across views |
+| `src/styles/` | View-owned journal and evidence styles; `src/styles.css` retains shared and older view rules |
 | `src/api.ts` | Browser-side adapters for Sleeper, Tradyr, static artifacts, and private Worker routes |
 | `src/types.ts` | Shared browser/domain data contracts |
 | `src/rankings.ts` | Team construction, league-relative rankings, lineup optimization, and trade comparison |
-| `src/strategy.ts` | Deterministic target and comparable-package research |
+| `src/strategy.ts` | Declared roster strategy and deterministic current-value package comparison |
 | `src/edge.ts` | Evidence-board opportunity construction and market-tape preparation |
 | `src/intel*.ts` | Headline classification and roster-aware intel signals |
 | `src/journal.ts` | Completed-trade presentation and season-specific identity remapping |
 | `src/research.ts` | Browser representation of historical research state and gates |
-| `worker/index.ts` | Cloudflare Worker routing, scheduled refresh orchestration, and live RSS/trend collection |
+| `worker/index.ts` | Route dispatch, static asset fallback, and scheduled refresh orchestration |
+| `worker/routes/` | Authenticated capability handlers |
+| `worker/http.ts` | Shared HTTP boundary helpers |
+| `worker/intel-feed.ts` | RSS and Sleeper trend collection adapter |
 | `worker/*-store.ts` | D1 schemas, normalization, persistence, refreshes, and read models by capability |
 | `db/schema.ts` | Drizzle schema used to generate checked-in migrations |
 | `drizzle/` | Ordered D1 migrations shipped with the Sites build |
@@ -64,8 +70,8 @@ Offline training does not run in the request path.
 2. `fetchValues` reads attributed player and pick composites from Tradyr.
 3. `fetchProjections` and model-health readers load checked-in browser-safe
    artifacts.
-4. Pure domain functions build teams, lineups, league-relative metrics,
-   manager direction, and trade comparisons.
+4. Pure domain functions build teams, lineups, league-relative metrics, neutral
+   or manually supplied manager context, and trade comparisons.
 5. Identity-aware Worker routes load preferences, the trade journal, alerts,
    evidence snapshots, and research state.
 
@@ -82,12 +88,17 @@ reimplementing ranking or valuation rules in JSX.
 | `/api/alerts` | `GET`, `POST` | D1 | Requires identity; materializes private watchlist alerts |
 | `/api/edge` | `GET`, `POST` | D1 | Requires identity; stores snapshots, offers, and market tape |
 | `/api/research` | `GET`, `POST` | D1 | Requires identity; syncs and reads historical evidence |
-| `/api/intel` | `GET` | None | Does not currently call `authenticatedUser`; it must contain no user-private data |
+| `/api/intel` | `GET` | None | Requires identity; generic feed is cached privately for five minutes |
 
 Write routes reject cross-origin requests. Private JSON responses use
 `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`.
 Authentication is supplied through hosted `oai-authenticated-user-*` headers;
 application code must not invent or trust browser-submitted identities.
+
+`worker/index.ts` contains only route dispatch, asset fallback, and scheduled
+orchestration. `worker/routes/` owns capability handlers, `worker/http.ts` owns
+shared response and request-boundary helpers, and `worker/intel-feed.ts`
+contains the imported RSS and Sleeper trend collection behavior.
 
 ## Persistence
 
@@ -97,7 +108,7 @@ D1 contains several bounded capability groups:
 - linked league seasons, season-specific owner identities, completed trades,
   trade-value snapshots, and outcome checkpoints;
 - canonical intel events and per-user alert state;
-- evidence-board snapshots and manually tracked offers;
+- manually tracked offer drafts and responses;
 - dated market values, learning reports, and historical-source audits;
 - historical league/player/news research tape and its coverage runs.
 
@@ -110,6 +121,13 @@ under `db/` and `drizzle/`, plus defensive `CREATE TABLE IF NOT EXISTS`
 statements in Worker stores. Until those are consolidated, every schema change
 must update and test both representations. Divergence is a known risk, not a
 feature.
+
+`db/schema-parity.test.ts` now fails if those representations diverge. The two
+declared migration-only tables are `season_users`, superseded by season-scoped
+identity in `season_rosters`, and `edge_opportunity_snapshots`, whose
+unvalidated projection writer and reader were removed. Runtime table creation
+can be removed only after clean and existing D1 migration rehearsals both
+succeed.
 
 ## Scheduled work
 

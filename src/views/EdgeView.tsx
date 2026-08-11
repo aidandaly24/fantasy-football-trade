@@ -1,0 +1,436 @@
+import { AlertTriangle, ArrowLeftRight, BookOpen, Check, ChevronRight, Clock3, Handshake, Info, LockKeyhole, Radar, RefreshCw, Target } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { fetchEdgeState, fetchIntel, fetchResearchState, saveMarketTape, saveTradeOffer } from '../api'
+import { buildEdgeBoard, marketTapeAssets } from '../edge'
+import type { EdgeCategory, TeamDirection, TeamDirectionOverride } from '../edge'
+import { emptyShadowHealth } from '../edge-learning'
+import { buildIntelSignals } from '../intel'
+import { journalTradeSides, tradePartyNames } from '../journal'
+import type { ManagerProfile } from '../negotiation'
+import type { ResearchPipelineBundle } from '../research'
+import { findComparablePackages, resolveTeamStrategy } from '../strategy'
+import type { ComparablePackage } from '../strategy'
+import type { EdgeStateBundle, IntelFeed, JournalBundle, LeaguePreferences, Team, TradeOfferRecord, TradeOfferStatus, ValueBundle } from '../types'
+import { AssetBadge, formatResearchGate, formatValue, signedPercent } from '../components/domain-ui'
+import type { TradeDraft } from './types'
+
+function emptyEdgeState(): EdgeStateBundle {
+  return {
+    offers: [],
+    marketTape: {
+      snapshotCount: 0, assetsTracked: 0, firstSnapshotAt: null, lastSnapshotAt: null,
+      spanDays: 0, labeledExamples: 0, labeledOffers: 0, lastAutomaticRefreshAt: null,
+      automaticRefreshError: null,
+    },
+    calibration: [],
+    shadowModel: emptyShadowHealth(),
+    shadowPredictions: [],
+    historicalTape: {
+      provider: 'tradyr', status: 'not-started', formatKey: 'tradyr-default-history',
+      queuedAt: null, updatedAt: null, completedAt: null, targetAssets: 0, attemptedAssets: 0,
+      coveredAssets: 0, missingAssets: 0, failedAssets: 0, observationCount: 0, labelCount: 0,
+      coverageRate: 0, medianObservations: 0, medianSpanDays: 0, medianGapDays: 0,
+      scaleCompatibleRate: 0, sourceRelativeReady: false, liveScaleReady: false, featureReady: false, gates: [],
+      notes: ['The audit starts automatically after this league seeds its private market tape.'],
+    },
+  }
+}
+
+export function EdgeView({
+  teams,
+  profiles,
+  directions,
+  myRosterId,
+  rosterPositions,
+  valueBundle,
+  journal,
+  preferences,
+  marketFormat,
+  onUpdatePreferences,
+  onOpenTrade,
+  journalSyncing,
+  onSyncJournal,
+  onOpenJournal,
+}: {
+  teams: Team[]
+  profiles: ManagerProfile[]
+  directions: TeamDirection[]
+  myRosterId: number
+  rosterPositions: string[]
+  valueBundle: ValueBundle
+  journal: JournalBundle
+  preferences: LeaguePreferences
+  marketFormat: { numQbs: 1 | 2; tep: boolean; numTeams: number }
+  onUpdatePreferences: (patch: Partial<LeaguePreferences>) => void
+  onOpenTrade: (draft: Omit<TradeDraft, 'nonce'>) => void
+  journalSyncing: boolean
+  onSyncJournal: () => void
+  onOpenJournal: () => void
+}) {
+  const [feed, setFeed] = useState<IntelFeed | null>(null)
+  const [intelLoaded, setIntelLoaded] = useState(false)
+  const [edgeState, setEdgeState] = useState<EdgeStateBundle>(emptyEdgeState)
+  const [research, setResearch] = useState<ResearchPipelineBundle | null>(null)
+  const [edgeError, setEdgeError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'all' | EdgeCategory>(preferences.settings.edgeFilter === 'flip' ? 'all' : preferences.settings.edgeFilter ?? 'all')
+  const [selectedKey, setSelectedKey] = useState('')
+  const tapeDigest = useRef('')
+  const myTeam = teams.find((team) => team.rosterId === myRosterId) ?? teams[0]
+  const teamStrategy = useMemo(
+    () => resolveTeamStrategy(myTeam, preferences.settings.teamStrategy),
+    [myTeam, preferences.settings.teamStrategy],
+  )
+
+  useEffect(() => {
+    let active = true
+    void fetchIntel().then((result) => { if (active) setFeed(result) }).catch((error) => {
+      if (active) setEdgeError(error instanceof Error ? error.message : 'Intel unavailable')
+    }).finally(() => { if (active) setIntelLoaded(true) })
+    void fetchEdgeState(preferences.leagueId).then((result) => { if (active) setEdgeState(result) }).catch((error) => {
+      if (active) setEdgeError(error instanceof Error ? error.message : 'Private edge history unavailable')
+    })
+    void fetchResearchState(preferences.leagueId).then((result) => { if (active) setResearch(result) }).catch((error) => {
+      if (active) setEdgeError(error instanceof Error ? error.message : 'Historical research pipeline unavailable')
+    })
+    return () => { active = false }
+  }, [preferences.leagueId])
+
+  const signals = useMemo(
+    () => feed ? buildIntelSignals(feed, valueBundle.players, teams, myRosterId) : [],
+    [feed, myRosterId, teams, valueBundle.players],
+  )
+  const allOpportunities = useMemo(
+    () => buildEdgeBoard(teams, { myRosterId, rosterPositions, directions, intelSignals: signals, maxResults: 500 }),
+    [teams, myRosterId, rosterPositions, directions, signals],
+  )
+  const opportunities = allOpportunities.slice(0, 24)
+  const filtered = opportunities.filter((opportunity) => filter === 'all' || opportunity.categories.includes(filter))
+  const selected = opportunities.find((opportunity) => opportunity.key === selectedKey) ?? filtered[0] ?? opportunities[0]
+  const selectedProfile = profiles.find((profile) => profile.rosterId === selected?.owner.rosterId)
+  const selectedValue = selected?.asset.kind === 'player'
+    ? valueBundle.players.find((player) => player.sleeperId === selected.asset.id)
+    : null
+  const comparablePackages = useMemo(
+    () => selected ? findComparablePackages(teams, {
+      myRosterId,
+      counterpartRosterId: selected.owner.rosterId,
+      rosterPositions,
+      targetAssetId: selected.asset.id,
+    }) : [],
+    [teams, myRosterId, rosterPositions, selected],
+  )
+
+  useEffect(() => {
+    if (selected && selected.key !== selectedKey && !opportunities.some((opportunity) => opportunity.key === selectedKey)) {
+      setSelectedKey(selected.key)
+    }
+  }, [selected, selectedKey, opportunities])
+
+  const tapeAssets = useMemo(
+    () => marketTapeAssets(teams, allOpportunities, teamStrategy),
+    [teams, allOpportunities, teamStrategy],
+  )
+  const marketDigest = `${new Date().toISOString().slice(0, 10)}:${valueBundle.meta.generatedAt}:${tapeAssets.length}:${tapeAssets.reduce((sum, asset) => sum + asset.currentValue, 0)}`
+  useEffect(() => {
+    if (!intelLoaded || !tapeAssets.length || tapeDigest.current === marketDigest) return
+    tapeDigest.current = marketDigest
+    void saveMarketTape(preferences.leagueId, {
+      assets: tapeAssets,
+      format: marketFormat,
+      sourceVersion: valueBundle.meta.generatedAt,
+    }).then(setEdgeState).catch((error) => {
+      setEdgeError(error instanceof Error ? error.message : 'Could not update the private market tape')
+    })
+  }, [intelLoaded, marketDigest, marketFormat, preferences.leagueId, tapeAssets, valueBundle.meta.generatedAt])
+
+  const setDirectionOverride = (rosterId: number, value: 'auto' | TeamDirectionOverride) => {
+    const overrides = { ...(preferences.settings.teamDirectionOverrides ?? {}) }
+    if (value === 'auto') delete overrides[String(rosterId)]
+    else overrides[String(rosterId)] = value
+    onUpdatePreferences({ settings: { teamDirectionOverrides: overrides } })
+  }
+
+  const updateOffer = (offer: TradeOfferRecord, status: TradeOfferStatus) => {
+    void saveTradeOffer(preferences.leagueId, { ...offer, status, updatedAt: new Date().toISOString() })
+      .then(setEdgeState)
+      .catch((error) => setEdgeError(error instanceof Error ? error.message : 'Offer status could not be saved'))
+  }
+
+  const logComparablePackage = (candidate: ComparablePackage) => {
+    if (!selected) return
+    const now = new Date().toISOString()
+    const targetId = selected.asset.id.replace(/[^\w-]/g, '').slice(0, 20) || 'asset'
+    const offer: TradeOfferRecord = {
+      offerId: `draft-${Date.now().toString(36)}-${selected.owner.rosterId}-${targetId}`,
+      counterpartRosterId: selected.owner.rosterId,
+      targetAssetId: selected.asset.id,
+      targetAssetName: selected.asset.name,
+      stage: 'target',
+      status: 'draft',
+      sentAssets: candidate.send.map((asset) => ({ id: asset.id, name: asset.name, value: Math.round(asset.value) })),
+      receiveAssets: candidate.receive.map((asset) => ({ id: asset.id, name: asset.name, value: Math.round(asset.value) })),
+      marketDelta: Math.round(candidate.marketNetToMe),
+      lineupDelta: Number((candidate.lineupDeltaMe ?? 0).toFixed(2)),
+      thesis: `Current-market comparison only: send ${formatValue(candidate.sendValue)} and receive ${formatValue(candidate.receiveValue)}. Declared ${teamStrategy.mode} window: ${teamStrategy.horizonYears} years. No acceptance or resale prediction.`,
+      createdAt: now,
+      updatedAt: now,
+    }
+    void saveTradeOffer(preferences.leagueId, offer)
+      .then(setEdgeState)
+      .catch((error) => setEdgeError(error instanceof Error ? error.message : 'Draft could not be saved'))
+  }
+
+  const completedTradeChecks = journal.outcomes.filter((outcome) => outcome.status === 'complete').length
+  const playerNames = useMemo(
+    () => new Map(valueBundle.players.flatMap((player) => player.sleeperId ? [[player.sleeperId, player.name] as const] : [])),
+    [valueBundle.players],
+  )
+  const recentTrades = journal.trades.slice(0, 6)
+  const activeOffers = edgeState.offers.filter((offer) => !['rejected', 'withdrawn', 'accepted'].includes(offer.status)).length
+  const shadowGatesPassed = edgeState.shadowModel.gates.filter((gate) => gate.passed).length
+  const shadowStatus = edgeState.shadowModel.status === 'passed-shadow'
+    ? 'Passed shadow gates'
+    : edgeState.shadowModel.status === 'shadow'
+      ? 'Shadow evaluation'
+      : 'Collecting labels'
+  const historicalStatus = edgeState.historicalTape.status === 'passed'
+    ? 'History cleared every gate'
+    : edgeState.historicalTape.status === 'blocked'
+      ? 'History isolated by audit'
+      : edgeState.historicalTape.status === 'running'
+        ? `Auditing ${edgeState.historicalTape.attemptedAssets}/${edgeState.historicalTape.targetAssets}`
+        : edgeState.historicalTape.status === 'queued'
+          ? 'Historical audit queued'
+          : edgeState.historicalTape.status === 'failed'
+            ? 'Historical audit needs retry'
+            : 'Waiting for market seed'
+
+  return (
+    <main className="page-shell edge-page">
+      <section className="edge-hero">
+        <div>
+          <span className="eyebrow accent-eyebrow">Private trade discovery</span>
+          <h1>Find targets.<br />Compare real packages.</h1>
+          <p>Your declared window is {teamStrategy.horizonYears} years and your objective is {teamStrategy.mode}. Select any league asset to compare concrete packages using current prices and covered production—without inventing a profit or acceptance score.</p>
+        </div>
+        <div className="private-status"><LockKeyhole size={18} /><span><strong>Private research book</strong><small>Signals, overrides, offers, and outcomes are isolated to your account and league.</small></span></div>
+      </section>
+
+      <section className="edge-stats" aria-label="Edge desk status">
+        <article className="panel"><small>Rostered assets</small><strong>{allOpportunities.length}</strong><span>{opportunities.filter((item) => item.intel).length} linked news watches</span></article>
+        <article className="panel"><small>Market tape</small><strong>{edgeState.marketTape.assetsTracked}</strong><span>{edgeState.marketTape.snapshotCount} private observations</span></article>
+        <article className="panel"><small>Temporal labels</small><strong>{edgeState.marketTape.labeledExamples}</strong><span>{edgeState.marketTape.spanDays} days observed</span></article>
+        <article className="panel"><small>Completed trades</small><strong>{journal.trades.length}</strong><span>{completedTradeChecks} outcome checkpoints</span></article>
+        <article className="panel"><small>Offer labels</small><strong>{edgeState.marketTape.labeledOffers}</strong><span>{activeOffers} open records</span></article>
+      </section>
+
+      <section className="panel evidence-trade-tape">
+        <div className="panel-heading">
+          <div><span className="eyebrow">Completed league tape</span><h2>What managers actually traded</h2></div>
+          <div className="evidence-trade-actions">
+            <button type="button" onClick={onSyncJournal} disabled={journalSyncing}><RefreshCw size={14} className={journalSyncing ? 'spin' : ''} /> {journalSyncing ? 'Syncing…' : 'Sync Sleeper'}</button>
+            <button type="button" className="secondary" onClick={onOpenJournal}><BookOpen size={14} /> Full journal</button>
+          </div>
+        </div>
+        {journal.sync?.status === 'partial' && <div className="journal-warning evidence-trade-warning"><AlertTriangle size={15} /> Some linked-season requests failed; prior stored trades are still shown.</div>}
+        <div className="evidence-trade-list">
+          {recentTrades.length ? recentTrades.map((trade) => {
+            const sides = journalTradeSides(trade, journal, playerNames)
+            return (
+              <article className="evidence-trade-row" key={`${trade.leagueId}:${trade.transactionId}`}>
+                <header>
+                  <span>{trade.season} · week {trade.week}</span>
+                  <time>{new Date(trade.createdAtMs).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time>
+                </header>
+                <div className="evidence-trade-sides">
+                  {sides.map((side) => (
+                    <section key={side.rosterId}>
+                      <strong>{side.teamName} received</strong>
+                      <div>{side.received.length ? side.received.map((asset) => (
+                        <span key={asset.key}><AssetBadge position={asset.kind === 'pick' ? 'PICK' : 'NA'} /><b>{asset.name}</b>{asset.value !== null && <em>{formatValue(asset.value)}</em>}</span>
+                      )) : <span><b>No received assets resolved</b></span>}</div>
+                      {side.marketNet !== null && <small className={side.marketNet >= 0 ? 'positive' : 'negative'}>{side.marketNet >= 0 ? '+' : ''}{formatValue(side.marketNet)} captured market net</small>}
+                    </section>
+                  ))}
+                </div>
+              </article>
+            )
+          }) : <div className="intel-empty evidence-trade-empty"><BookOpen size={22} /><strong>No completed trades loaded.</strong><span>Sleeper has a completed Week 1 trade for this league. Sync the ledger to bring it into Evidence.</span><button type="button" onClick={onSyncJournal} disabled={journalSyncing}>{journalSyncing ? 'Syncing Sleeper…' : 'Sync now'}</button></div>}
+        </div>
+        {journal.trades.length > recentTrades.length && <button type="button" className="evidence-trade-more" onClick={onOpenJournal}>View all {journal.trades.length} completed trades</button>}
+      </section>
+
+      <section className="learning-desk panel">
+        <div className="panel-heading">
+          <div><span className="eyebrow">V4.7 tape · V4.8 calibration · V4.9 shadow ML</span><h2>Evidence before promotion</h2></div>
+          <span className={`learning-status learning-${edgeState.shadowModel.status}`}>{shadowStatus}</span>
+        </div>
+        <div className="learning-grid">
+          <article><small>Daily market tape</small><strong>{edgeState.marketTape.assetsTracked} assets</strong><span>Automatic refresh continues after the league is seeded.</span></article>
+          <article><small>Historical cohorts</small><strong>{edgeState.calibration.length}</strong><span>Research display only; no live price adjustment.</span></article>
+          <article><small>Shadow value model</small><strong>{shadowGatesPassed}/{edgeState.shadowModel.gates.length} gates</strong><span>It cannot change rankings or prices in V4.9.</span></article>
+          <article><small>Offer response labels</small><strong>{edgeState.marketTape.labeledOffers}</strong><span>Accepted, rejected, and countered offers only.</span></article>
+        </div>
+        <div className="learning-gates">
+          {edgeState.shadowModel.gates.map((gate) => <span className={gate.passed ? 'passed' : ''} key={gate.id}>{gate.passed ? <Check size={14} /> : <Clock3 size={14} />} {gate.label}: {['maeLift', 'rankGuardrail'].includes(gate.id) ? `${(gate.actual * 100).toFixed(1)}%` : gate.actual.toFixed(0)} / {gate.requirement}</span>)}
+        </div>
+        {edgeState.calibration.length > 0 && <div className="calibration-strip">
+          {edgeState.calibration.slice(0, 4).map((group) => <article key={group.key}><small>{group.label}</small><strong>{signedPercent(group.actualReturn)}</strong><span>{group.sampleSize} observed labels · research only</span></article>)}
+        </div>}
+        <div className="model-caveat"><Info size={17} /><span>The shadow model is deliberately firewalled from live recommendations. It advances only after later, time-split examples beat a no-change baseline.</span></div>
+        <div className="panel-heading historical-audit-heading">
+          <div><span className="eyebrow">V5.0 historical tape audit</span><h2>Backfill only what survives provenance checks</h2></div>
+          <span className={`learning-status learning-${edgeState.historicalTape.status}`}>{historicalStatus}</span>
+        </div>
+        <div className="calibration-strip historical-audit-stats">
+          <article><small>Coverage</small><strong>{Math.round(edgeState.historicalTape.coverageRate * 100)}%</strong><span>{edgeState.historicalTape.coveredAssets}/{edgeState.historicalTape.targetAssets} sampled players</span></article>
+          <article><small>Provider observations</small><strong>{edgeState.historicalTape.observationCount}</strong><span>{edgeState.historicalTape.labelCount} source-relative 30-day labels</span></article>
+          <article><small>Median depth</small><strong>{edgeState.historicalTape.medianSpanDays}</strong><span>days · {edgeState.historicalTape.medianObservations} observations/player</span></article>
+          <article><small>Scale compatible</small><strong>{Math.round(edgeState.historicalTape.scaleCompatibleRate * 100)}%</strong><span>Raw provider scales are never blended.</span></article>
+        </div>
+        {edgeState.historicalTape.gates.length > 0 && <div className="learning-gates">
+          {edgeState.historicalTape.gates.map((gate) => <span className={gate.passed ? 'passed' : ''} key={gate.id}>{gate.passed ? <Check size={14} /> : <Clock3 size={14} />} {gate.label}: {['coverage', 'scale'].includes(gate.id) ? `${(gate.actual * 100).toFixed(0)}%` : gate.actual.toFixed(0)} / {gate.requirement}</span>)}
+        </div>}
+        <div className="model-caveat"><Info size={17} /><span>{edgeState.historicalTape.notes[1] ?? edgeState.historicalTape.notes[0]}</span></div>
+        <div className="panel-heading historical-audit-heading">
+          <div><span className="eyebrow">V5.1–V5.6 historical intelligence</span><h2>Reconstruct, join, challenge, then promote</h2></div>
+          <span className="method-note">{research ? `${research.phases.filter((phase) => phase.status === 'ready' || phase.status === 'shadow').length}/6 pipelines active` : 'Loading private audit'}</span>
+        </div>
+        {research ? <div className="research-phase-grid">
+          {research.phases.map((phase) => (
+            <article className={`research-phase research-${phase.status}`} key={phase.version}>
+              <header><span>V{phase.version}</span><i>{phase.status}</i></header>
+              <strong>{phase.title}</strong>
+              <p>{phase.summary}</p>
+              <div>{phase.gates.map((gate) => <small className={gate.passed ? 'passed' : ''} key={gate.id}>{gate.passed ? <Check size={12} /> : <Clock3 size={12} />}{gate.label}: {formatResearchGate(gate)}</small>)}</div>
+            </article>
+          ))}
+        </div> : <div className="intel-empty research-loading"><RefreshCw className="spin" size={20} /><strong>Rebuilding the historical state tape…</strong><span>The first pass follows every linked Sleeper season and then runs automatically.</span></div>}
+        {research && <div className="model-caveat"><Info size={17} /><span>{research.notes[1]}</span></div>}
+      </section>
+
+      <section className="direction-tape panel">
+        <div><span className="eyebrow">Team context</span><strong>Labels are context only; they do not reprice picks.</strong></div>
+        <div className="direction-tape-list">
+          {directions.filter((direction) => direction.rosterId !== myRosterId).map((direction) => {
+            const team = teams.find((item) => item.rosterId === direction.rosterId)
+            return <button type="button" key={direction.rosterId} onClick={() => {
+              const first = opportunities.find((opportunity) => opportunity.owner.rosterId === direction.rosterId)
+              if (first) setSelectedKey(first.key)
+            }}><span className={`direction-dot direction-${direction.label}`} /><strong>{team?.teamName}</strong><small>{direction.label} · {direction.manual ? 'manual label' : 'neutral placeholder'}</small></button>
+          })}
+        </div>
+      </section>
+
+      <section className="edge-toolbar panel">
+        <label><small>My team</small><select value={myRosterId} onChange={(event) => onUpdatePreferences({ myRosterId: Number(event.target.value) })}>{teams.map((team) => <option value={team.rosterId} key={team.rosterId}>{team.teamName}</option>)}</select></label>
+        <label><small>Declared objective</small><select value={preferences.settings.teamStrategy?.mode ?? 'auto'} onChange={(event) => {
+          const mode = event.target.value as 'auto' | 'contender' | 'retooling' | 'rebuilding'
+          onUpdatePreferences({ settings: { teamStrategy: {
+            mode,
+            horizonYears: mode === 'rebuilding' ? 3 : mode === 'retooling' ? 2 : mode === 'contender' ? 1 : teamStrategy.horizonYears,
+            flipPriority: 0,
+          } } })
+        }}><option value="auto">Unspecified · neutral</option><option value="rebuilding">Rebuild</option><option value="retooling">Retool</option><option value="contender">Contend</option></select></label>
+        <label><small>Value horizon</small><select value={teamStrategy.horizonYears} onChange={(event) => onUpdatePreferences({ settings: { teamStrategy: {
+          mode: preferences.settings.teamStrategy?.mode ?? (teamStrategy.mode === 'neutral' ? 'auto' : teamStrategy.mode),
+          horizonYears: Number(event.target.value) as 1 | 2 | 3 | 4,
+          flipPriority: 0,
+        } } })}><option value={1}>1 year</option><option value={2}>2 years</option><option value={3}>3 years</option><option value={4}>4+ years</option></select></label>
+        <div className="intel-tabs" role="group" aria-label="Evidence filter">
+          {(['all', 'value', 'points', 'intel'] as const).map((item) => <button type="button" key={item} className={filter === item ? 'active' : ''} onClick={() => {
+            setFilter(item)
+            onUpdatePreferences({ settings: { edgeFilter: item } })
+          }}>{item === 'all' ? 'All assets' : item === 'value' ? 'Market' : item === 'points' ? 'Production' : 'News watch'}</button>)}
+        </div>
+        <span>{filtered.length} assets with evidence</span>
+      </section>
+      {edgeError && <div className="intel-error">Private research warning: {edgeError}</div>}
+
+      <section className="edge-layout">
+        <div className="edge-board panel">
+          <div className="panel-heading"><div><span className="eyebrow">League-wide evidence board</span><h2>Current asset inventory</h2></div><span className="method-note">Ordered by current composite value only</span></div>
+          <div className="edge-list">
+            {filtered.length ? filtered.slice(0, 15).map((opportunity) => (
+              <button type="button" className={`edge-row ${selected?.key === opportunity.key ? 'active' : ''}`} key={opportunity.key} onClick={() => setSelectedKey(opportunity.key)}>
+                <span className="edge-rank">—</span>
+                <span className="edge-player"><AssetBadge position={opportunity.asset.position} /><span><strong>{opportunity.asset.name}</strong><small>{opportunity.owner.teamName} · {opportunity.direction.label}</small></span></span>
+                <span className="edge-categories">{opportunity.categories.map((category) => <i key={category}>{category}</i>)}</span>
+                <span><small>Current market</small><strong>{formatValue(opportunity.asset.value)}</strong></span>
+                <span><small>Age now</small><strong>{opportunity.asset.age ?? '—'}</strong></span>
+                <span className="edge-score"><strong>{opportunity.asset.projectedPpg === undefined ? '—' : opportunity.asset.projectedPpg.toFixed(1)}</strong><small>modeled PPG</small></span>
+                <ChevronRight size={16} />
+              </button>
+            )) : <div className="intel-empty"><Radar size={22} /><strong>No asset has this evidence type.</strong><span>An empty list is more honest than a manufactured edge.</span></div>}
+          </div>
+        </div>
+
+        {selected && <aside className="edge-detail panel">
+          <div className="edge-detail-head"><span><AssetBadge position={selected.asset.position} /><small>Evidence only · no trade score</small></span><h2>{selected.asset.name}</h2><p>{selected.owner.teamName} · {formatValue(selected.asset.value)} current composite</p></div>
+          <div className="edge-price-grid">
+            <div><small>KTC</small><strong>{selectedValue?.sources.ktc ? formatValue(selectedValue.sources.ktc) : 'Unavailable'}</strong></div>
+            <div><small>FantasyCalc</small><strong>{selectedValue?.sources.fantasycalc ? formatValue(selectedValue.sources.fantasycalc) : 'Unavailable'}</strong></div>
+            <div><small>Age now</small><strong>{selected.asset.age ?? 'Unavailable'}</strong></div>
+            <div><small>Age in {teamStrategy.horizonYears} years</small><strong>{selected.asset.age === null || selected.asset.age === undefined ? 'Unavailable' : selected.asset.age + teamStrategy.horizonYears}</strong></div>
+          </div>
+          <div className="edge-thesis"><small>Observed market and production</small><p>{selected.thesis}</p><small>Unvalidated news watch</small><p>{selected.catalyst} News does not change this board's order or price.</p><small>Historical return estimate</small><p>Unavailable until the market tape has enough time-separated observations in this league format.</p></div>
+          <div className="edge-owner-control">
+            <div><small>Owner context</small><strong>{selected.direction.label} · {selected.direction.manual ? 'manual' : 'neutral'}</strong><small>{selectedProfile?.tradeCount ?? 0} completed trades in profile</small></div>
+            <select aria-label={`Direction override for ${selected.owner.teamName}`} value={preferences.settings.teamDirectionOverrides?.[String(selected.owner.rosterId)] ?? 'auto'} onChange={(event) => setDirectionOverride(selected.owner.rosterId, event.target.value as 'auto' | TeamDirectionOverride)}>
+              <option value="auto">No manager label</option><option value="contender">Manual contender</option><option value="retooling">Manual retooling</option><option value="rebuilding">Manual rebuilding</option>
+            </select>
+          </div>
+          <div className="model-caveat"><Info size={17} /><span>RosterLab has no calibrated exit value or manager-acceptance model yet. It will not invent one.</span></div>
+        </aside>}
+      </section>
+
+      {selected && <section className="package-board panel edge-packages">
+        <div className="panel-heading"><div><span className="eyebrow">Possible trade visualizer</span><h2>Closest current-value packages for {selected.asset.name}</h2></div><span className="method-note">Comparisons, not recommendations</span></div>
+        <div className="package-evidence-banner"><Info size={16} /><span>Ordered only by the absolute gap in today’s composite values. Age, news, manager history, and the shadow return model do not secretly move these packages.</span></div>
+        {comparablePackages.length ? comparablePackages.map((candidate, index) => {
+          const target = candidate.receive[0]
+          const horizonAge = target.kind === 'player' && target.age !== null && target.age !== undefined
+            ? target.age + teamStrategy.horizonYears
+            : null
+          return (
+            <article className="package-row factual-package" key={candidate.key}>
+              <span className="stage-label">Closest #{index + 1}</span>
+              <div><small>You send · {formatValue(candidate.sendValue)}</small><strong>{candidate.send.map((asset) => asset.name).join(' + ')}</strong></div>
+              <ArrowLeftRight size={18} />
+              <div><small>You receive · {formatValue(candidate.receiveValue)}</small><strong>{candidate.receive.map((asset) => asset.name).join(' + ')}</strong></div>
+              <div className="package-scores">
+                <span>Market net to you<b className={candidate.marketNetToMe >= 0 ? 'positive' : 'negative'}>{candidate.marketNetToMe >= 0 ? '+' : ''}{formatValue(candidate.marketNetToMe)}</b></span>
+                <span>Your lineup<b>{candidate.lineupDeltaMe === null ? 'Not covered' : `${candidate.lineupDeltaMe >= 0 ? '+' : ''}${candidate.lineupDeltaMe.toFixed(1)} PPG`}</b></span>
+                <span>Their lineup<b>{candidate.lineupDeltaThem === null ? 'Not covered' : `${candidate.lineupDeltaThem >= 0 ? '+' : ''}${candidate.lineupDeltaThem.toFixed(1)} PPG`}</b></span>
+                <span>Window fact<b>{target.kind === 'pick' ? 'Draft capital' : horizonAge === null ? 'Age unavailable' : `Age ${horizonAge.toFixed(1)}`}</b></span>
+              </div>
+              <div className="package-actions">
+                <button type="button" className="compare-package" onClick={() => onOpenTrade({
+                  teamAId: myRosterId,
+                  teamBId: selected.owner.rosterId,
+                  selectedA: candidate.send.map((asset) => asset.id),
+                  selectedB: candidate.receive.map((asset) => asset.id),
+                })}>Compare in Trade Lab</button>
+                <button type="button" className="log-offer" onClick={() => logComparablePackage(candidate)}>Log private draft</button>
+              </div>
+            </article>
+          )
+        }) : <div className="intel-empty"><Target size={22} /><strong>No priced package is available.</strong><span>This target or your outgoing assets are missing current market values.</span></div>}
+        <div className="model-caveat"><Info size={17} /><span>These packages answer “what is close in today’s market?” They do not answer “will the manager accept?” or “will this asset appreciate?” Those remain shadow-model questions until their time-split gates pass.</span></div>
+      </section>}
+
+      <section className="edge-review-grid">
+        <div className="panel offer-book">
+          <div className="panel-heading"><div><span className="eyebrow">Negotiation log</span><h2>Offers and responses</h2></div><span className="method-note">Manual because Sleeper hides private proposals</span></div>
+          {edgeState.offers.length ? edgeState.offers.slice(0, 8).map((offer) => (
+            <article key={offer.offerId}><span><strong>{offer.targetAssetName}</strong><small>{offer.sentAssets.map((asset) => asset.name).join(' + ')} → {offer.receiveAssets.map((asset) => asset.name).join(' + ')}</small></span><select value={offer.status} onChange={(event) => updateOffer(offer, event.target.value as TradeOfferStatus)}><option value="draft">Draft</option><option value="sent">Sent</option><option value="countered">Countered</option><option value="rejected">Rejected</option><option value="accepted">Accepted</option><option value="withdrawn">Withdrawn</option></select></article>
+          )) : <div className="intel-empty"><Handshake size={20} /><strong>No offers logged yet.</strong><span>Sleeper does not expose private proposals. Offer-response data must come from a real manual record, never an inferred response.</span></div>}
+        </div>
+        <div className="panel attribution-book">
+          <div className="panel-heading"><div><span className="eyebrow">Raw collection</span><h2>Market tape status</h2></div><span className="method-note">Observed values, not forecasts</span></div>
+          <div className="intel-empty"><Clock3 size={20} /><strong>{edgeState.marketTape.snapshotCount} observations across {edgeState.marketTape.assetsTracked} assets.</strong><span>{edgeState.marketTape.spanDays} days of depth. Promotion stays blocked until later observations create real, time-separated outcome labels.</span></div>
+        </div>
+      </section>
+    </main>
+  )
+}

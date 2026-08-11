@@ -7,7 +7,7 @@ import type {
 } from './types'
 
 const DAY_MS = 86_400_000
-const MODEL_VERSION = 'edge-return-ridge-v5.0-shadow'
+const MODEL_VERSION = 'edge-return-ridge-v5.1-shadow'
 const MIN_TRAIN_ROWS = 160
 const MIN_VALIDATION_ROWS = 40
 const MIN_UNIQUE_ASSETS = 75
@@ -16,6 +16,8 @@ const MIN_MAE_LIFT = 0.05
 const MIN_RANK_DELTA = -0.01
 
 export type MarketSnapshotRecord = MarketTapeAssetInput & {
+  /** Legacy storage column. New factual tape rows set this to currentValue. */
+  projection30: number
   snapshotDate: string
   capturedAt: string
   sourceVersion: string
@@ -32,6 +34,7 @@ export type EdgeTrainingExample = {
   outcomeAt: string
   currentValue: number
   outcomeValue: number
+  confidence: number
   actualReturn: number
   ruleReturn: number
   features: EdgeFeatureVector
@@ -74,14 +77,14 @@ function daysBetween(a: string, b: string): number {
   return (Date.parse(b) - Date.parse(a)) / DAY_MS
 }
 
-function valuesFor(input: Pick<MarketSnapshotRecord, 'currentValue' | 'features' | 'kind' | 'position'>): number[] {
+function valuesFor(input: Pick<MarketSnapshotRecord, 'currentValue' | 'confidence' | 'features' | 'kind' | 'position'>): number[] {
   const features = input.features
   return [
     Math.log1p(Math.max(0, input.currentValue)) / 10,
-    clamp(features.lineupDelta / 10, -2, 2),
-    features.confidence / 100,
-    clamp((features.age - 25) / 10, -1.5, 2),
-    clamp(((features.horizonYears ?? 2) - 1) / 3, 0, 1),
+    clamp((features.lineupDelta ?? 0) / 10, -2, 2),
+    input.confidence / 100,
+    clamp(((features.age ?? 25) - 25) / 10, -1.5, 2),
+    clamp((features.horizonYears - 1) / 3, 0, 1),
     input.kind === 'pick' ? 1 : 0,
     input.position === 'QB' ? 1 : 0,
     input.position === 'RB' ? 1 : 0,
@@ -147,6 +150,7 @@ export function labelMarketSnapshots(
         outcomeAt: outcome.capturedAt,
         currentValue: anchor.currentValue,
         outcomeValue: outcome.currentValue,
+        confidence: anchor.confidence,
         actualReturn,
         ruleReturn,
         features: anchor.features,
@@ -242,7 +246,7 @@ function predictArtifact(artifact: EdgeShadowArtifact, values: number[]): number
 }
 
 function fitRidge(examples: EdgeTrainingExample[]): EdgeShadowArtifact {
-  const matrix = examples.map((example) => valuesFor({ currentValue: example.currentValue, features: example.features, kind: example.kind, position: example.position }))
+  const matrix = examples.map((example) => valuesFor({ currentValue: example.currentValue, confidence: example.confidence, features: example.features, kind: example.kind, position: example.position }))
   const targets = examples.map((example) => example.actualReturn)
   const featureMeans = FEATURE_NAMES.map((_, index) => mean(matrix.map((row) => row[index])))
   const featureScales = FEATURE_NAMES.map((_, index) => Math.max(0.05, standardDeviation(matrix.map((row) => row[index]))))
@@ -298,7 +302,7 @@ export function trainShadowModel(examples: EdgeTrainingExample[], now = new Date
   if (trainingRows >= 20 && validationRows >= 10) {
     artifact = fitRidge(train)
     const actual = validation.map((row) => row.actualReturn)
-    const model = validation.map((row) => predictArtifact(artifact!, valuesFor({ currentValue: row.currentValue, features: row.features, kind: row.kind, position: row.position })))
+    const model = validation.map((row) => predictArtifact(artifact!, valuesFor({ currentValue: row.currentValue, confidence: row.confidence, features: row.features, kind: row.kind, position: row.position })))
     const baseline = validation.map((row) => row.ruleReturn)
     const modelMae = mae(actual, model)
     const baselineMae = mae(actual, baseline)

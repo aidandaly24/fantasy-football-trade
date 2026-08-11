@@ -10,19 +10,9 @@ import {
 import type { EdgeFeatureVector } from './types'
 
 const features: EdgeFeatureVector = {
-  ruleGain30: 0.1,
-  ruleGain90: 0.15,
-  edgeScore: 70,
   lineupDelta: 2,
-  catalystScore: 60,
-  sellerFit: 65,
-  liquidityScore: 75,
-  timingScore: 55,
-  uncertaintyPenalty: 25,
-  confidence: 70,
   age: 24,
-  contenderProbability: 0.2,
-  rebuildingProbability: 0.65,
+  horizonYears: 3,
 }
 
 function snapshot(assetId: string, capturedAt: string, currentValue: number, projection30 = 110): MarketSnapshotRecord {
@@ -69,6 +59,7 @@ describe('edge learning pipeline', () => {
       outcomeAt: `2026-02-0${index + 1}T00:00:00Z`,
       currentValue: 100,
       outcomeValue: 120,
+      confidence: 70,
       actualReturn: 0.2,
       ruleReturn: 0.1,
       features,
@@ -96,9 +87,10 @@ describe('edge learning pipeline', () => {
         outcomeAt: new Date(Date.parse(capturedAt) + 30 * 86_400_000).toISOString(),
         currentValue: 1000,
         outcomeValue: Math.round(1000 * (1 + actualReturn)),
+        confidence: 70,
         actualReturn,
         ruleReturn: 0,
-        features: { ...features, age, lineupDelta, ruleGain30: 0 },
+        features: { ...features, age, lineupDelta },
       }
     })
     const { health, artifact } = trainShadowModel(examples, new Date('2026-01-01T00:00:00Z'))

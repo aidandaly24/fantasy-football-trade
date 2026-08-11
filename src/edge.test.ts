@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { applyDirectionPickProjections, attributeOpportunity, buildEdgeBoard, buildTeamDirections } from './edge'
-import type { Asset, EdgeOpportunitySnapshot, IntelSignal, PickValue, SleeperTransaction, Team } from './types'
+import { buildEdgeBoard, buildTeamDirections } from './edge'
+import type { Asset, IntelSignal, PickValue, SleeperTransaction, Team } from './types'
 
 function asset(id: string, position: Asset['position'], value: number, overrides: Partial<Asset> = {}): Asset {
   return { id, name: id, kind: position === 'PICK' ? 'pick' : 'player', position, team: null, value, confidence: 0.9, age: 25, rank: null, depthChartOrder: position === 'PICK' ? undefined : 1, projectedPpg: position === 'PICK' ? undefined : value / 100, ...overrides }
@@ -28,19 +28,10 @@ describe('league-wide edge engine', () => {
   it('uses recent trade flow and an explicit override for team direction', () => {
     const teams = [team(2, [asset('veteran', 'RB', 600)], [], 55, 55), team(3, [], [], 55, 55)]
     const automatic = buildTeamDirections({ teams, transactions: [trade(Date.UTC(2026, 7, 1))], picks, now: new Date('2026-08-10T00:00:00Z') })
-    expect(automatic.find((item) => item.rosterId === 2)?.label).toBe('retooling')
+    expect(automatic.find((item) => item.rosterId === 2)?.label).toBe('neutral')
     expect(automatic.find((item) => item.rosterId === 2)?.recentTrades).toBe(1)
     const overridden = buildTeamDirections({ teams, transactions: [], picks, overrides: { '2': 'rebuilding' } })
-    expect(overridden.find((item) => item.rosterId === 2)).toMatchObject({ label: 'rebuilding', manual: true, confidence: 0 })
-  })
-
-  it('does not reprice an unresolved pick from an inferred manager direction', () => {
-    const futurePick = asset('pick', 'PICK', 450, { year: '2027', round: 1, originalRosterId: 2, projectedTier: 'mid' })
-    const teams = [team(1, [], [futurePick]), team(2, [])]
-    const directions = buildTeamDirections({ teams, transactions: [], picks, overrides: { '2': 'rebuilding' } })
-    const projected = applyDirectionPickProjections(teams, directions, picks)
-    expect(projected[0].picks[0].projectedTier).toBe('mid')
-    expect(projected[0].picks[0].value).toBe(450)
+    expect(overridden.find((item) => item.rosterId === 2)).toMatchObject({ label: 'rebuilding', manual: true })
   })
 
   it('scans every opponent but never lets unvalidated news move market ordering', () => {
@@ -54,19 +45,9 @@ describe('league-wide edge engine', () => {
       direction: 'up', impactScore: 80, edgeScore: 82, confidence: 84, marketReactionScore: 10, freshnessScore: 95,
       action: 'Quietly inquire', rationale: 'Role expanded before the market moved.', add24: 2, drop24: 0, acceleration: 2, ownerTeam: ownerA, isMine: false,
     } satisfies IntelSignal
-    const board = buildEdgeBoard([mine, ownerA, ownerB], { myRosterId: 1, rosterPositions: ['QB', 'RB', 'WR', 'TE'], directions, profiles: [], intelSignals: [signal], now: new Date('2026-08-10T00:00:00Z') })
+    const board = buildEdgeBoard([mine, ownerA, ownerB], { myRosterId: 1, rosterPositions: ['QB', 'RB', 'WR', 'TE'], directions, intelSignals: [signal] })
     expect(board[0].asset.id).toBe('rb-quiet')
     expect(board.find((item) => item.asset.id === 'rb-news')?.categories).toContain('intel')
     expect(board.some((item) => item.owner.rosterId === 3)).toBe(true)
-  })
-
-  it('attributes saved recommendations without claiming success too early', () => {
-    const snapshot: EdgeOpportunitySnapshot = {
-      snapshotKey: '2:rb:2026-08-01', assetId: 'rb', assetName: 'RB', ownerRosterId: 2,
-      capturedAt: '2026-08-01T00:00:00Z', currentValue: 400, projection30: 440, projection90: 470, projection180: 490,
-      edgeScore: 70, lineupDelta: 2, confidence: 72, categories: ['value'], catalyst: 'Role growth', status: 'tracking',
-    }
-    expect(attributeOpportunity(snapshot, 430, new Date('2026-08-05T00:00:00Z')).status).toBe('too-early')
-    expect(attributeOpportunity(snapshot, 470, new Date('2026-09-10T00:00:00Z')).status).toBe('ahead')
   })
 })
