@@ -125,8 +125,7 @@
 .edge-toolbar label { display: grid; gap: 3px; }
 .edge-toolbar label small { color: var(--ink-soft); font-size: 7px; font-weight: 800; }
 .edge-toolbar select,
-.edge-owner-control select,
-.offer-book select { padding: 8px 10px; color: var(--ink); background: #efede6; border: 1px solid var(--line); border-radius: 8px; font-size: 8px; }
+.edge-owner-control select { padding: 8px 10px; color: var(--ink); background: #efede6; border: 1px solid var(--line); border-radius: 8px; font-size: 8px; }
 .edge-toolbar > span { margin-left: auto; color: var(--ink-soft); font-size: 8px; }
 
 .market-dislocation-board { overflow: hidden; }
@@ -164,7 +163,6 @@
 
 .edge-board,
 .edge-detail,
-.offer-book,
 .attribution-book { overflow: hidden; }
 .edge-list { display: grid; }
 .edge-row {
@@ -290,19 +288,13 @@
 .package-actions button { min-height: 34px; padding: 0 9px; border-radius: 8px; font-size: 7px; font-weight: 900; white-space: nowrap; }
 .compare-package { color: #eef0ea; background: var(--dark); border: 1px solid var(--dark); }
 .compare-package:hover { color: var(--acid); }
-.log-offer { min-height: 34px; padding: 0 10px; color: var(--ink); background: var(--acid); border: 0; border-radius: 8px; font-size: 7px; font-weight: 900; white-space: nowrap; }
-
 .edge-review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.offer-book article,
 .attribution-book article { min-height: 68px; padding: 11px 14px; display: grid; align-items: center; gap: 10px; border-top: 1px solid var(--line); }
-.offer-book article { grid-template-columns: minmax(0, 1fr) auto; }
 .attribution-book article { grid-template-columns: minmax(0, 1fr) auto 74px; }
-.offer-book article > span,
 .attribution-book article > span { min-width: 0; display: grid; gap: 4px; }
-.offer-book strong,
 .attribution-book strong { font-size: 9px; }
-.offer-book small,
 .attribution-book small { overflow: hidden; color: var(--ink-soft); font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.edge-review-single { grid-template-columns: 1fr; }
 .attribution-book article > b { font-family: 'DM Mono', monospace; font-size: 9px; }
 .attribution-book article > i { padding: 5px 6px; color: #667066; background: #e8e9e3; border-radius: 6px; font-size: 6px; font-style: normal; font-weight: 900; text-align: center; text-transform: uppercase; }
 .attribution-book article > i.attribution-ahead,

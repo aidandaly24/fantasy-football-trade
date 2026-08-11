@@ -44,7 +44,6 @@ Offline training does not run in the request path.
 | `src/api.ts` | Browser-side adapters for Sleeper, Tradyr, static artifacts, and private Worker routes |
 | `src/types.ts` | Shared browser/domain data contracts |
 | `src/rankings.ts` | Team construction, direct rankings, lineup optimization, and source-separated trade scenarios |
-| `src/pending-trades.ts` | Pure accepted-trade projection, locked inventory, pick movement, reconciliation, and rollback |
 | `src/strategy.ts` | Declared roster strategy, bounded package enumeration, and deterministic Pareto discovery |
 | `src/edge.ts` | Evidence-board opportunity construction and market-tape preparation |
 | `src/dislocations.ts` | Current source disagreement, position-relative production divergence, owner-pressure facts, and their evidence-only Pareto frontier |
@@ -70,8 +69,6 @@ Offline training does not run in the request path.
 
 1. `fetchLeagueBundle` reads the league, rosters, managers, traded picks, and
    current draft from Sleeper.
-   A bounded neighboring-round probe also reads accepted `pending`
-   transactions when Sleeper publishes them.
 2. `fetchValues` reads attributed player and pick composites from Tradyr.
 3. `fetchProjections` and model-health readers load checked-in browser-safe
    artifacts.
@@ -82,20 +79,10 @@ Offline training does not run in the request path.
 5. Identity-aware Worker routes load preferences, the trade journal, alerts,
    evidence snapshots, and research state.
 
-Accepted trades have three deliberately separate client representations:
-
-- **settled** is the current Sleeper roster and traded-pick ledger;
-- **committed** applies every accepted pending player and pick leg to settled
-  state and drives the default pro-forma rankings and context;
-- **available** removes every asset in an accepted trade from committed state
-  and is the only inventory offered to Trade Lab and discovery.
-
-Sleeper can omit accepted trades during a league review window. In that case a
-user can mark the exact Trade Lab package as accepted. The private commitment
-is stored inside the existing league-preference JSON, reconciles away when the
-settled roster and pick ledger reflect every leg, and can be explicitly removed
-after a veto or cancellation. This fallback does not scrape chat, infer a deal,
-or mutate Sleeper.
+All live league views use the current Sleeper roster and traded-pick ledger as
+their single source of ownership truth. RosterLab does not persist or project
+accepted offers during Sleeper's review window because the public API does not
+provide a reliable lifecycle for keeping that private state current.
 
 The primary views are league facts, Trade Lab, Journal, News, Evidence, Rookie
 board, and Model. View-local presentation should consume typed domain results
@@ -108,7 +95,7 @@ instead of reimplementing ranking or valuation rules in JSX.
 | `/api/preferences` | `GET`, `PUT` | D1 | Requires hosted identity; localhost uses the explicit development identity |
 | `/api/journal` | `GET`, `POST` | D1 | Requires identity; POST is same-origin and syncs completed Sleeper trades |
 | `/api/alerts` | `GET`, `POST` | D1 | Requires identity; materializes private watchlist alerts |
-| `/api/edge` | `GET`, `POST` | D1 | Requires identity; stores snapshots, offers, and market tape |
+| `/api/edge` | `GET`, `POST` | D1 | Requires identity; stores and reads private market tape and learning state |
 | `/api/research` | `GET`, `POST` | D1 | Requires identity; syncs and reads historical evidence |
 | `/api/intel` | `GET` | None | Requires identity; generic feed is cached privately for five minutes |
 | `/api/rookies` | `GET` | None | Requires identity; returns the checked-in sanitized rookie-production artifact with no-store caching |
@@ -128,12 +115,9 @@ contains the imported RSS and Sleeper trend collection behavior.
 D1 contains several bounded capability groups:
 
 - user league preferences and strategy overrides;
-- bounded private accepted-trade commitments used only when Sleeper's public
-  transaction feed omits the review-period transaction;
 - linked league seasons, season-specific owner identities, completed trades,
   trade-value snapshots, and outcome checkpoints;
 - canonical intel events and per-user alert state;
-- manually tracked offer drafts and responses;
 - dated market values, learning reports, and historical-source audits;
 - historical league/player/news research tape and its coverage runs.
 
@@ -146,6 +130,10 @@ under `db/` and `drizzle/`, plus defensive `CREATE TABLE IF NOT EXISTS`
 statements in Worker stores. Until those are consolidated, every schema change
 must update and test both representations. Divergence is a known risk, not a
 feature.
+
+The deprecated `user_trade_offers` declaration remains in the Drizzle schema
+only to avoid turning this UI/runtime deletion into a destructive data
+migration. No Worker route reads from or writes to it.
 
 `db/schema-parity.test.ts` now fails if those representations diverge. The two
 declared migration-only tables are `season_users`, superseded by season-scoped
@@ -202,5 +190,5 @@ direction.
 7. Offline models cannot silently promote themselves into trade logic.
 8. New infrastructure requires an observed need and an explicit removal or
    ownership story.
-9. Settled rosters are never mutated by pending projections; removing a
-   pending transaction must deterministically restore settled ownership.
+9. Current Sleeper roster and pick ownership is the only live inventory state;
+   private offers are never projected as settled facts.

@@ -33,8 +33,9 @@ Important identity rule: a `roster_id` belongs to one league-season. Follow
 comparing historical behavior with current managers.
 
 Sleeper does not expose private chat, direct messages, rejected offers,
-counters, or negotiation rationale through the public API. Do not claim those
-records exist in the journal.
+counters, or negotiation rationale through the public API. RosterLab does not
+persist or project those records, and the journal contains completed trades
+only.
 
 ### Tradyr
 

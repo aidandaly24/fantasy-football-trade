@@ -190,21 +190,4 @@ describe('market dislocation evidence', () => {
     expect(target).not.toHaveProperty('acceptance')
   })
 
-  it('removes accepted-trade players from the dislocation population', () => {
-    const mine = completeTeam(1, 'mine')
-    const owner = completeTeam(2, 'owner', [
-      asset('locked-target', 'WR', 700),
-      asset('available-target', 'WR', 500),
-    ])
-    const candidates = buildMarketDislocations([mine, owner], {
-      myRosterId: 1,
-      rosterPositions,
-      directions: [direction(2)],
-      strategy,
-      excludedAssetIds: ['locked-target'],
-    })
-
-    expect(candidates.map((candidate) => candidate.asset.id)).not.toContain('locked-target')
-    expect(candidates.map((candidate) => candidate.asset.id)).toContain('available-target')
-  })
 })

@@ -1,6 +1,5 @@
-import { AlertTriangle, ChevronRight, Clock3, LockKeyhole, Sparkles, Target, TrendingUp, Trophy, X } from 'lucide-react'
+import { ChevronRight, Sparkles, Target, TrendingUp, Trophy } from 'lucide-react'
 import { useMemo } from 'react'
-import type { PendingTradeProjection } from '../pending-trades'
 import { rosterProfile } from '../rankings'
 import type { RankingMode, Team } from '../types'
 import { AssetBadge, Avatar, formatValue, MetricBar } from '../components/domain-ui'
@@ -20,66 +19,6 @@ const modeCopy: Record<RankingMode, { label: string; description: string }> = {
   },
 }
 
-function PendingRosterPanel({
-  settledTeams,
-  projection,
-  failedRounds,
-  snapshot,
-  onSnapshotChange,
-  onCancel,
-}: {
-  settledTeams: Team[]
-  projection: PendingTradeProjection
-  failedRounds: number[]
-  snapshot: 'settled' | 'committed'
-  onSnapshotChange: (snapshot: 'settled' | 'committed') => void
-  onCancel: (manualId: string) => void
-}) {
-  if (!projection.activeTrades.length && !failedRounds.length) return null
-  if (!projection.activeTrades.length) {
-    return <div className="pending-roster-warning pending-source-only panel"><AlertTriangle size={16} /> Sleeper transaction rounds {failedRounds.join(', ')} could not be checked. Rankings use the settled roster only.</div>
-  }
-  const names = new Map(settledTeams.map((team) => [team.rosterId, team.teamName]))
-  return (
-    <section className="pending-roster-panel panel" aria-label="Accepted trades awaiting Sleeper processing">
-      <div className="pending-roster-heading">
-        <span className="pending-roster-icon"><Clock3 size={20} /></span>
-        <div>
-          <span className="eyebrow">Accepted-trade overlay</span>
-          <h2>{projection.activeTrades.length} deal{projection.activeTrades.length === 1 ? '' : 's'} committed, not settled</h2>
-          <p>Rankings use the projected post-trade league. Every asset in review is removed from available trading inventory.</p>
-        </div>
-        <div className="pending-snapshot-switch" role="group" aria-label="Roster snapshot">
-          <button type="button" className={snapshot === 'committed' ? 'active' : ''} onClick={() => onSnapshotChange('committed')}>Committed</button>
-          <button type="button" className={snapshot === 'settled' ? 'active' : ''} onClick={() => onSnapshotChange('settled')}>Settled</button>
-        </div>
-      </div>
-      <div className="pending-trade-list">
-        {projection.activeTrades.map((record) => {
-          const transaction = record.transaction
-          const assetCount = new Set([
-            ...Object.keys(transaction.adds ?? {}),
-            ...Object.keys(transaction.drops ?? {}),
-            ...(transaction.draft_picks ?? []).map((pick) => `pick:${pick.season}:${pick.round}:${pick.roster_id}`),
-          ]).size
-          return (
-            <article key={`${record.source}:${transaction.transaction_id}`}>
-              <span><LockKeyhole size={15} /></span>
-              <div>
-                <strong>{transaction.roster_ids.map((rosterId) => names.get(rosterId) ?? `Roster ${rosterId}`).join(' ↔ ')}</strong>
-                <small>{assetCount} locked asset{assetCount === 1 ? '' : 's'} · {record.source === 'sleeper' ? 'Sleeper transaction' : 'Private commitment'}</small>
-              </div>
-              {record.manualId && <button type="button" onClick={() => onCancel(record.manualId!)} aria-label="Remove cancelled pending trade"><X size={14} /> Cancel / veto</button>}
-            </article>
-          )
-        })}
-      </div>
-      {projection.issues.length > 0 && <div className="pending-roster-warning"><AlertTriangle size={16} /> {projection.issues.length} asset leg{projection.issues.length === 1 ? '' : 's'} could not be resolved and were not invented.</div>}
-      {failedRounds.length > 0 && <div className="pending-roster-warning"><AlertTriangle size={16} /> Sleeper transaction rounds {failedRounds.join(', ')} could not be checked. Private commitments remain intact.</div>}
-      {projection.activeTrades.some((trade) => trade.source === 'manual') && <div className="pending-roster-note">Sleeper can omit accepted trades during its review window. Private commitments reconcile automatically once the settled roster and pick ledger reflect every leg; use Cancel / veto if a deal does not process.</div>}
-    </section>
-  )
-}
 function RankingBoard({
   teams,
   mode,
@@ -199,24 +138,12 @@ function TeamScout({ team, teams }: { team: Team; teams: Team[] }) {
 
 export function RankingsView({
   teams,
-  settledTeams,
-  pendingProjection,
-  pendingFetchFailedRounds,
-  rosterSnapshot,
-  setRosterSnapshot,
-  onCancelPending,
   mode,
   setMode,
   selectedId,
   setSelectedId,
 }: {
   teams: Team[]
-  settledTeams: Team[]
-  pendingProjection: PendingTradeProjection
-  pendingFetchFailedRounds: number[]
-  rosterSnapshot: 'settled' | 'committed'
-  setRosterSnapshot: (snapshot: 'settled' | 'committed') => void
-  onCancelPending: (manualId: string) => void
   mode: RankingMode
   setMode: (mode: RankingMode) => void
   selectedId: number
@@ -252,15 +179,6 @@ export function RankingsView({
           ))}
         </div>
       </section>
-
-      <PendingRosterPanel
-        settledTeams={settledTeams}
-        projection={pendingProjection}
-        failedRounds={pendingFetchFailedRounds}
-        snapshot={rosterSnapshot}
-        onSnapshotChange={setRosterSnapshot}
-        onCancel={onCancelPending}
-      />
 
       <section className="leader-strip" aria-label="League leaders">
         <div className="leader-card">
