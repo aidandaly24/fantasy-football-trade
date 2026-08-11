@@ -11,6 +11,7 @@ interchangeable.
 | Tradyr composite | Attributed current dynasty market comparison | Player/pick market values and trade comparison |
 | NFL production model | Expected next-season PPR points per NFL team game | Projected lineup impact when its gate passes |
 | Rookie production model | Expected position-relative rookie-season PPR production | Offline validated rookie research; not yet integrated into the site |
+| Future rookie-class tape | Same-horizon prospect population and source coverage | V6.4 historical evidence only; no model or application consumer |
 | News and trends | Time-sensitive factual catalyst evidence | Advisory signals and watchlist alerts |
 | Completed-trade journal | Factual league transaction ledger | Historical manager context and outcome tracking |
 | Historical market tape | Dated market observations | Calibration and shadow learning research |
@@ -167,6 +168,35 @@ and does not alter `Asset.value`, trade scoring, packages, or future-pick values
 The 180/365-day market-return head remains shadow-only because the target is
 expert-consensus movement rather than a complete price tape from actual
 transactions.
+
+## Future rookie-class research
+
+V6.4 constructs a separate historical candidate tape at an August anchor one
+season before each possible NFL draft. Pinned cfbfastR season rosters retain
+every QB, RB, WR, and TE candidate, including players who stay in school or
+never enter the NFL. Only production through the preceding season is eligible
+as a feature. Retrospective identity, declaration, and NFL draft fields are
+stored as audit labels and never as model inputs.
+
+The committed aggregate evidence is:
+
+- `ml/reports/future-rookie-evidence-v6.4.json`
+- `ml/reports/future-rookie-evidence-v6.4.md`
+- `ml/reports/future-rookie-complexity-ledger.md`
+
+The underlying manifest, raw files, and normalized 53,786-row tape remain in
+ignored local data paths. The V6.4 gate requires pinned source hashes, six
+completed evaluable classes, at least 85% entrant identity recovery per class,
+position/source missingness, retained entrants and non-entrants, and zero
+post-cutoff production.
+
+Passing the construction gate does not validate a class-strength forecast. It
+does not enable training, future-pick values, trade scoring, UI output, or a
+deployment change. V6.5 may test small prospect-level baselines with rolling
+class holdouts after review. The 2027 current-class build remains blocked until
+a version-pinned 2026 roster snapshot can be sourced. Historical roster files
+are also retrospective season records rather than untouched August archives;
+that limitation must stay visible in every downstream experiment.
 
 ## Historical market and return research
 

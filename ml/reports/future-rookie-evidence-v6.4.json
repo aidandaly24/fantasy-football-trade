@@ -1,0 +1,1060 @@
+{
+  "version": "future-rookie-evidence-v6.4",
+  "generatedAt": "2026-08-11T15:54:34.666548Z",
+  "decision": {
+    "phase": "V6.4 same-horizon evidence tape",
+    "phasePassed": true,
+    "trainingEnabled": false,
+    "downstreamEnabled": false,
+    "reason": "The historical tape passed its construction gates; model selection remains V6.5 work."
+  },
+  "currentClass": {
+    "targetDraftYear": 2027,
+    "status": "blocked",
+    "reason": "No version-pinned 2026 roster snapshot is available in the selected public archive."
+  },
+  "scope": {
+    "targetDefinition": "No prediction target in V6.4; target-class entry and draft fields are retrospective audit labels only.",
+    "candidateDefinition": "All rostered QB/RB/WR/TE players; plausible eligibility is roster year 2+ or unknown.",
+    "snapshotDateRule": "August 10 of the season before the target NFL draft year.",
+    "featureCutoffRule": "College seasons through target draft year minus two only.",
+    "retrospectiveLabels": [
+      "identity match",
+      "target-class entry",
+      "target-class draft overall"
+    ],
+    "excludedFromFeatures": [
+      "final college season",
+      "NFL combine",
+      "NFL draft capital",
+      "post-snapshot dynasty market values",
+      "future NFL production"
+    ]
+  },
+  "gates": [
+    {
+      "id": "pinned-source-provenance",
+      "passed": true,
+      "detail": "Every source file has a pinned revision, URL, and SHA-256 digest."
+    },
+    {
+      "id": "six-completed-classes",
+      "passed": true,
+      "detail": "Draft years 2020-2025 are present for later rolling evaluation."
+    },
+    {
+      "id": "same-horizon-no-leakage",
+      "passed": true,
+      "detail": "0 rows use production after their declared cutoff."
+    },
+    {
+      "id": "identity-recovery",
+      "passed": true,
+      "detail": "Each completed class recovers at least 85% of known entrants."
+    },
+    {
+      "id": "coverage-slices-reported",
+      "passed": true,
+      "detail": "QB, RB, WR, and TE candidate and production coverage is reported per class."
+    },
+    {
+      "id": "non-entrants-retained",
+      "passed": true,
+      "detail": "Completed classes retain both entrants and players who did not enter that target class."
+    }
+  ],
+  "tape": {
+    "rowCount": 53786,
+    "draftYears": [
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ],
+    "evaluableDraftYears": [
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "classes": [
+      {
+        "targetDraftYear": 2019,
+        "snapshotSeason": 2018,
+        "featureCutoffSeason": 2017,
+        "candidateRows": 4957,
+        "plausiblyEligibleRows": 4882,
+        "knownEntrants": 197,
+        "knownEntrantsRecovered": 152,
+        "identityRecovery": 0.7715736040609137,
+        "priorProductionCoverage": 0.45903318312167146,
+        "rosterYearCoverage": 0.7843097091356002,
+        "recruitingCoverage": 0.0,
+        "rosterIdentityAmbiguities": 0,
+        "enteredTargetClass": 152,
+        "draftedInTargetClass": 73,
+        "didNotEnterTargetClass": 4730,
+        "leakageRows": 0,
+        "positions": [
+          {
+            "position": "QB",
+            "candidateRows": 713,
+            "priorProductionCoverage": 0.46984572230014027,
+            "enteredTargetClass": 17
+          },
+          {
+            "position": "RB",
+            "candidateRows": 1267,
+            "priorProductionCoverage": 0.5011838989739542,
+            "enteredTargetClass": 40
+          },
+          {
+            "position": "WR",
+            "candidateRows": 2108,
+            "priorProductionCoverage": 0.4639468690702087,
+            "enteredTargetClass": 70
+          },
+          {
+            "position": "TE",
+            "candidateRows": 794,
+            "priorProductionCoverage": 0.3690176322418136,
+            "enteredTargetClass": 25
+          }
+        ],
+        "spotChecks": {
+          "enteredTargetClass": [
+            {
+              "athlete_id": "3917315",
+              "player_name": "Kyler Murray",
+              "position": "QB",
+              "team": "Oklahoma",
+              "prior_career_scrimmage_yards": 539.0,
+              "target_class_draft_overall": 1.0
+            },
+            {
+              "athlete_id": "3917792",
+              "player_name": "Daniel Jones",
+              "position": "QB",
+              "team": "Duke",
+              "prior_career_scrimmage_yards": 1295.0,
+              "target_class_draft_overall": 6.0
+            },
+            {
+              "athlete_id": "4036133",
+              "player_name": "T.J. Hockenson",
+              "position": "TE",
+              "team": "Iowa",
+              "prior_career_scrimmage_yards": 299.0,
+              "target_class_draft_overall": 8.0
+            }
+          ],
+          "didNotEnterTargetClass": [
+            {
+              "athlete_id": "3914324",
+              "player_name": "Marquis Young",
+              "position": "RB",
+              "team": "UMass",
+              "prior_career_scrimmage_yards": 3316.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "3116074",
+              "player_name": "Rodney Smith",
+              "position": "RB",
+              "team": "Minnesota",
+              "prior_career_scrimmage_yards": 3060.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "559716",
+              "player_name": "Jalen Hurd",
+              "position": "RB",
+              "team": "Baylor",
+              "prior_career_scrimmage_yards": 2855.0,
+              "target_class_draft_overall": null
+            }
+          ]
+        }
+      },
+      {
+        "targetDraftYear": 2020,
+        "snapshotSeason": 2019,
+        "featureCutoffSeason": 2018,
+        "candidateRows": 5685,
+        "plausiblyEligibleRows": 5228,
+        "knownEntrants": 165,
+        "knownEntrantsRecovered": 157,
+        "identityRecovery": 0.9515151515151515,
+        "priorProductionCoverage": 0.44491201224177507,
+        "rosterYearCoverage": 0.8626625860749809,
+        "recruitingCoverage": 0.0,
+        "rosterIdentityAmbiguities": 0,
+        "enteredTargetClass": 157,
+        "draftedInTargetClass": 76,
+        "didNotEnterTargetClass": 5071,
+        "leakageRows": 0,
+        "positions": [
+          {
+            "position": "QB",
+            "candidateRows": 770,
+            "priorProductionCoverage": 0.4857142857142857,
+            "enteredTargetClass": 19
+          },
+          {
+            "position": "RB",
+            "candidateRows": 1235,
+            "priorProductionCoverage": 0.5182186234817814,
+            "enteredTargetClass": 41
+          },
+          {
+            "position": "WR",
+            "candidateRows": 2288,
+            "priorProductionCoverage": 0.4383741258741259,
+            "enteredTargetClass": 70
+          },
+          {
+            "position": "TE",
+            "candidateRows": 935,
+            "priorProductionCoverage": 0.3304812834224599,
+            "enteredTargetClass": 27
+          }
+        ],
+        "spotChecks": {
+          "enteredTargetClass": [
+            {
+              "athlete_id": "3915511",
+              "player_name": "Joe Burrow",
+              "position": "QB",
+              "team": "LSU",
+              "prior_career_scrimmage_yards": 636.0,
+              "target_class_draft_overall": 1.0
+            },
+            {
+              "athlete_id": "4241479",
+              "player_name": "Tua Tagovailoa",
+              "position": "QB",
+              "team": "Alabama",
+              "prior_career_scrimmage_yards": 721.0,
+              "target_class_draft_overall": 5.0
+            },
+            {
+              "athlete_id": "4038941",
+              "player_name": "Justin Herbert",
+              "position": "QB",
+              "team": "Oregon",
+              "prior_career_scrimmage_yards": 938.0,
+              "target_class_draft_overall": 6.0
+            }
+          ],
+          "didNotEnterTargetClass": [
+            {
+              "athlete_id": "3915459",
+              "player_name": "James Gilbert",
+              "position": "RB",
+              "team": "Kansas State",
+              "prior_career_scrimmage_yards": 2951.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "4037366",
+              "player_name": "Ty Lee",
+              "position": "WR",
+              "team": "Middle Tennessee",
+              "prior_career_scrimmage_yards": 2486.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "4239768",
+              "player_name": "Spencer Brown",
+              "position": "RB",
+              "team": "UAB",
+              "prior_career_scrimmage_yards": 2443.0,
+              "target_class_draft_overall": null
+            }
+          ]
+        }
+      },
+      {
+        "targetDraftYear": 2021,
+        "snapshotSeason": 2020,
+        "featureCutoffSeason": 2019,
+        "candidateRows": 5235,
+        "plausiblyEligibleRows": 4574,
+        "knownEntrants": 114,
+        "knownEntrantsRecovered": 98,
+        "identityRecovery": 0.8596491228070176,
+        "priorProductionCoverage": 0.4529951902055094,
+        "rosterYearCoverage": 0.9912549191080018,
+        "recruitingCoverage": 0.0,
+        "rosterIdentityAmbiguities": 13,
+        "enteredTargetClass": 98,
+        "draftedInTargetClass": 71,
+        "didNotEnterTargetClass": 4476,
+        "leakageRows": 0,
+        "positions": [
+          {
+            "position": "QB",
+            "candidateRows": 663,
+            "priorProductionCoverage": 0.502262443438914,
+            "enteredTargetClass": 11
+          },
+          {
+            "position": "RB",
+            "candidateRows": 1007,
+            "priorProductionCoverage": 0.5312810327706058,
+            "enteredTargetClass": 27
+          },
+          {
+            "position": "WR",
+            "candidateRows": 1966,
+            "priorProductionCoverage": 0.4430315361139369,
+            "enteredTargetClass": 42
+          },
+          {
+            "position": "TE",
+            "candidateRows": 938,
+            "priorProductionCoverage": 0.35501066098081024,
+            "enteredTargetClass": 18
+          }
+        ],
+        "spotChecks": {
+          "enteredTargetClass": [
+            {
+              "athlete_id": "4360310",
+              "player_name": "Trevor Lawrence",
+              "position": "QB",
+              "team": "Clemson",
+              "prior_career_scrimmage_yards": 806.0,
+              "target_class_draft_overall": 1.0
+            },
+            {
+              "athlete_id": "4361259",
+              "player_name": "Zach Wilson",
+              "position": "QB",
+              "team": "BYU",
+              "prior_career_scrimmage_yards": 615.0,
+              "target_class_draft_overall": 2.0
+            },
+            {
+              "athlete_id": "4360248",
+              "player_name": "Kyle Pitts",
+              "position": "TE",
+              "team": "Florida",
+              "prior_career_scrimmage_yards": 668.0,
+              "target_class_draft_overall": 4.0
+            }
+          ],
+          "didNotEnterTargetClass": [
+            {
+              "athlete_id": "4257363",
+              "player_name": "Kevin Mensah",
+              "position": "RB",
+              "team": "Connecticut",
+              "prior_career_scrimmage_yards": 2870.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "4244599",
+              "player_name": "Shamari Brooks",
+              "position": "RB",
+              "team": "Tulsa",
+              "prior_career_scrimmage_yards": 2784.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "4034860",
+              "player_name": "JD Spielman",
+              "position": "WR",
+              "team": "TCU",
+              "prior_career_scrimmage_yards": 2666.0,
+              "target_class_draft_overall": null
+            }
+          ]
+        }
+      },
+      {
+        "targetDraftYear": 2022,
+        "snapshotSeason": 2021,
+        "featureCutoffSeason": 2020,
+        "candidateRows": 5701,
+        "plausiblyEligibleRows": 5106,
+        "knownEntrants": 135,
+        "knownEntrantsRecovered": 120,
+        "identityRecovery": 0.8888888888888888,
+        "priorProductionCoverage": 0.4968664316490403,
+        "rosterYearCoverage": 0.9616137877007442,
+        "recruitingCoverage": 0.0,
+        "rosterIdentityAmbiguities": 72,
+        "enteredTargetClass": 120,
+        "draftedInTargetClass": 76,
+        "didNotEnterTargetClass": 4986,
+        "leakageRows": 0,
+        "positions": [
+          {
+            "position": "QB",
+            "candidateRows": 730,
+            "priorProductionCoverage": 0.5301369863013699,
+            "enteredTargetClass": 13
+          },
+          {
+            "position": "RB",
+            "candidateRows": 1231,
+            "priorProductionCoverage": 0.5605199025182778,
+            "enteredTargetClass": 37
+          },
+          {
+            "position": "WR",
+            "candidateRows": 2176,
+            "priorProductionCoverage": 0.49724264705882354,
+            "enteredTargetClass": 46
+          },
+          {
+            "position": "TE",
+            "candidateRows": 969,
+            "priorProductionCoverage": 0.39009287925696595,
+            "enteredTargetClass": 24
+          }
+        ],
+        "spotChecks": {
+          "enteredTargetClass": [
+            {
+              "athlete_id": "4426502",
+              "player_name": "Drake London",
+              "position": "WR",
+              "team": "USC",
+              "prior_career_scrimmage_yards": 928.0,
+              "target_class_draft_overall": 8.0
+            },
+            {
+              "athlete_id": "4569618",
+              "player_name": "Garrett Wilson",
+              "position": "WR",
+              "team": "Ohio State",
+              "prior_career_scrimmage_yards": 1015.0,
+              "target_class_draft_overall": 10.0
+            },
+            {
+              "athlete_id": "4361370",
+              "player_name": "Chris Olave",
+              "position": "WR",
+              "team": "Ohio State",
+              "prior_career_scrimmage_yards": 1354.0,
+              "target_class_draft_overall": 11.0
+            }
+          ],
+          "didNotEnterTargetClass": [
+            {
+              "athlete_id": "4036650",
+              "player_name": "Shai Werts",
+              "position": "WR",
+              "team": "Georgia Southern",
+              "prior_career_scrimmage_yards": 3253.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "4244727",
+              "player_name": "Justin Hall",
+              "position": "WR",
+              "team": "Ball State",
+              "prior_career_scrimmage_yards": 3243.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "4035886",
+              "player_name": "Khalil Herbert",
+              "position": "RB",
+              "team": "Kansas",
+              "prior_career_scrimmage_yards": 3120.0,
+              "target_class_draft_overall": null
+            }
+          ]
+        }
+      },
+      {
+        "targetDraftYear": 2023,
+        "snapshotSeason": 2022,
+        "featureCutoffSeason": 2021,
+        "candidateRows": 9415,
+        "plausiblyEligibleRows": 7219,
+        "knownEntrants": 149,
+        "knownEntrantsRecovered": 141,
+        "identityRecovery": 0.9463087248322147,
+        "priorProductionCoverage": 0.39423742900678765,
+        "rosterYearCoverage": 0.9972295331763402,
+        "recruitingCoverage": 0.0,
+        "rosterIdentityAmbiguities": 1,
+        "enteredTargetClass": 141,
+        "draftedInTargetClass": 80,
+        "didNotEnterTargetClass": 7078,
+        "leakageRows": 0,
+        "positions": [
+          {
+            "position": "QB",
+            "candidateRows": 1079,
+            "priorProductionCoverage": 0.41427247451343835,
+            "enteredTargetClass": 18
+          },
+          {
+            "position": "RB",
+            "candidateRows": 1603,
+            "priorProductionCoverage": 0.48658764815970057,
+            "enteredTargetClass": 35
+          },
+          {
+            "position": "WR",
+            "candidateRows": 3123,
+            "priorProductionCoverage": 0.3900096061479347,
+            "enteredTargetClass": 63
+          },
+          {
+            "position": "TE",
+            "candidateRows": 1414,
+            "priorProductionCoverage": 0.2835926449787836,
+            "enteredTargetClass": 25
+          }
+        ],
+        "spotChecks": {
+          "enteredTargetClass": [
+            {
+              "athlete_id": "4685720",
+              "player_name": "Bryce Young",
+              "position": "QB",
+              "team": "Alabama",
+              "prior_career_scrimmage_yards": 448.0,
+              "target_class_draft_overall": 1.0
+            },
+            {
+              "athlete_id": "4432577",
+              "player_name": "C.J. Stroud",
+              "position": "QB",
+              "team": "Ohio State",
+              "prior_career_scrimmage_yards": 463.0,
+              "target_class_draft_overall": 2.0
+            },
+            {
+              "athlete_id": "4429084",
+              "player_name": "Anthony Richardson",
+              "position": "QB",
+              "team": "Florida",
+              "prior_career_scrimmage_yards": 500.0,
+              "target_class_draft_overall": 4.0
+            }
+          ],
+          "didNotEnterTargetClass": [
+            {
+              "athlete_id": "4360691",
+              "player_name": "Travis Dye",
+              "position": "RB",
+              "team": "USC",
+              "prior_career_scrimmage_yards": 3623.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "4244038",
+              "player_name": "Andrew Clair",
+              "position": "RB",
+              "team": "Northwestern",
+              "prior_career_scrimmage_yards": 2673.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "4259268",
+              "player_name": "Victor Tucker",
+              "position": "WR",
+              "team": "Charlotte",
+              "prior_career_scrimmage_yards": 2642.0,
+              "target_class_draft_overall": null
+            }
+          ]
+        }
+      },
+      {
+        "targetDraftYear": 2024,
+        "snapshotSeason": 2023,
+        "featureCutoffSeason": 2022,
+        "candidateRows": 7068,
+        "plausiblyEligibleRows": 5286,
+        "knownEntrants": 148,
+        "knownEntrantsRecovered": 134,
+        "identityRecovery": 0.9054054054054054,
+        "priorProductionCoverage": 0.6082103670071888,
+        "rosterYearCoverage": 0.9984865682936057,
+        "recruitingCoverage": 0.0,
+        "rosterIdentityAmbiguities": 0,
+        "enteredTargetClass": 134,
+        "draftedInTargetClass": 77,
+        "didNotEnterTargetClass": 5152,
+        "leakageRows": 0,
+        "positions": [
+          {
+            "position": "QB",
+            "candidateRows": 755,
+            "priorProductionCoverage": 0.6384105960264901,
+            "enteredTargetClass": 18
+          },
+          {
+            "position": "RB",
+            "candidateRows": 1243,
+            "priorProductionCoverage": 0.7071600965406275,
+            "enteredTargetClass": 41
+          },
+          {
+            "position": "WR",
+            "candidateRows": 2270,
+            "priorProductionCoverage": 0.6004405286343613,
+            "enteredTargetClass": 55
+          },
+          {
+            "position": "TE",
+            "candidateRows": 1018,
+            "priorProductionCoverage": 0.4823182711198428,
+            "enteredTargetClass": 20
+          }
+        ],
+        "spotChecks": {
+          "enteredTargetClass": [
+            {
+              "athlete_id": "4431611",
+              "player_name": "Caleb Williams",
+              "position": "QB",
+              "team": "USC",
+              "prior_career_scrimmage_yards": 1356.0,
+              "target_class_draft_overall": 1.0
+            },
+            {
+              "athlete_id": "4426348",
+              "player_name": "Jayden Daniels",
+              "position": "QB",
+              "team": "LSU",
+              "prior_career_scrimmage_yards": 2492.0,
+              "target_class_draft_overall": 2.0
+            },
+            {
+              "athlete_id": "4431452",
+              "player_name": "Drake Maye",
+              "position": "QB",
+              "team": "North Carolina",
+              "prior_career_scrimmage_yards": 1074.0,
+              "target_class_draft_overall": 3.0
+            }
+          ],
+          "didNotEnterTargetClass": [
+            {
+              "athlete_id": "4430468",
+              "player_name": "Marquez Cooper",
+              "position": "RB",
+              "team": "Ball State",
+              "prior_career_scrimmage_yards": 2869.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "4428732",
+              "player_name": "Sean Tyler",
+              "position": "RB",
+              "team": "Minnesota",
+              "prior_career_scrimmage_yards": 2731.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "4360205",
+              "player_name": "David Bailey",
+              "position": "RB",
+              "team": "Texas A&M",
+              "prior_career_scrimmage_yards": 2562.0,
+              "target_class_draft_overall": null
+            }
+          ]
+        }
+      },
+      {
+        "targetDraftYear": 2025,
+        "snapshotSeason": 2024,
+        "featureCutoffSeason": 2023,
+        "candidateRows": 6693,
+        "plausiblyEligibleRows": 4892,
+        "knownEntrants": 168,
+        "knownEntrantsRecovered": 162,
+        "identityRecovery": 0.9642857142857143,
+        "priorProductionCoverage": 0.616107931316435,
+        "rosterYearCoverage": 1.0,
+        "recruitingCoverage": 0.0,
+        "rosterIdentityAmbiguities": 3,
+        "enteredTargetClass": 162,
+        "draftedInTargetClass": 86,
+        "didNotEnterTargetClass": 4730,
+        "leakageRows": 0,
+        "positions": [
+          {
+            "position": "QB",
+            "candidateRows": 712,
+            "priorProductionCoverage": 0.6587078651685393,
+            "enteredTargetClass": 19
+          },
+          {
+            "position": "RB",
+            "candidateRows": 1121,
+            "priorProductionCoverage": 0.703835860838537,
+            "enteredTargetClass": 43
+          },
+          {
+            "position": "WR",
+            "candidateRows": 2080,
+            "priorProductionCoverage": 0.6,
+            "enteredTargetClass": 75
+          },
+          {
+            "position": "TE",
+            "candidateRows": 979,
+            "priorProductionCoverage": 0.5188968335035751,
+            "enteredTargetClass": 25
+          }
+        ],
+        "spotChecks": {
+          "enteredTargetClass": [
+            {
+              "athlete_id": "4688380",
+              "player_name": "Cam Ward",
+              "position": "QB",
+              "team": "Miami",
+              "prior_career_scrimmage_yards": 928.0,
+              "target_class_draft_overall": 1.0
+            },
+            {
+              "athlete_id": "4685415",
+              "player_name": "Travis Hunter",
+              "position": "WR",
+              "team": "Colorado",
+              "prior_career_scrimmage_yards": 721.0,
+              "target_class_draft_overall": 2.0
+            },
+            {
+              "athlete_id": "4890973",
+              "player_name": "Ashton Jeanty",
+              "position": "RB",
+              "team": "Boise State",
+              "prior_career_scrimmage_yards": 2720.0,
+              "target_class_draft_overall": 6.0
+            }
+          ],
+          "didNotEnterTargetClass": [
+            {
+              "athlete_id": "4430468",
+              "player_name": "Marquez Cooper",
+              "position": "RB",
+              "team": "San Diego State",
+              "prior_career_scrimmage_yards": 4138.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "4576294",
+              "player_name": "Harrison Waylee",
+              "position": "RB",
+              "team": "Wyoming",
+              "prior_career_scrimmage_yards": 3213.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "4427225",
+              "player_name": "Zakhari Franklin",
+              "position": "WR",
+              "team": "Illinois",
+              "prior_career_scrimmage_yards": 3075.0,
+              "target_class_draft_overall": null
+            }
+          ]
+        }
+      },
+      {
+        "targetDraftYear": 2026,
+        "snapshotSeason": 2025,
+        "featureCutoffSeason": 2024,
+        "candidateRows": 9032,
+        "plausiblyEligibleRows": 5649,
+        "knownEntrants": 134,
+        "knownEntrantsRecovered": 131,
+        "identityRecovery": 0.9776119402985075,
+        "priorProductionCoverage": 0.637103912196849,
+        "rosterYearCoverage": 1.0,
+        "recruitingCoverage": 0.0,
+        "rosterIdentityAmbiguities": 1,
+        "enteredTargetClass": 131,
+        "draftedInTargetClass": 81,
+        "didNotEnterTargetClass": 5518,
+        "leakageRows": 0,
+        "positions": [
+          {
+            "position": "QB",
+            "candidateRows": 810,
+            "priorProductionCoverage": 0.6839506172839506,
+            "enteredTargetClass": 15
+          },
+          {
+            "position": "RB",
+            "candidateRows": 1236,
+            "priorProductionCoverage": 0.7508090614886731,
+            "enteredTargetClass": 32
+          },
+          {
+            "position": "WR",
+            "candidateRows": 2472,
+            "priorProductionCoverage": 0.607200647249191,
+            "enteredTargetClass": 56
+          },
+          {
+            "position": "TE",
+            "candidateRows": 1131,
+            "priorProductionCoverage": 0.5446507515473032,
+            "enteredTargetClass": 28
+          }
+        ],
+        "spotChecks": {
+          "enteredTargetClass": [
+            {
+              "athlete_id": "4837248",
+              "player_name": "Fernando Mendoza",
+              "position": "QB",
+              "team": "Indiana",
+              "prior_career_scrimmage_yards": 601.0,
+              "target_class_draft_overall": 1.0
+            },
+            {
+              "athlete_id": "4870808",
+              "player_name": "Jeremiyah Love",
+              "position": "RB",
+              "team": "Notre Dame",
+              "prior_career_scrimmage_yards": 1768.0,
+              "target_class_draft_overall": 3.0
+            },
+            {
+              "athlete_id": "4871023",
+              "player_name": "Carnell Tate",
+              "position": "WR",
+              "team": "Ohio State",
+              "prior_career_scrimmage_yards": 939.0,
+              "target_class_draft_overall": 4.0
+            }
+          ],
+          "didNotEnterTargetClass": [
+            {
+              "athlete_id": "4576294",
+              "player_name": "Harrison Waylee",
+              "position": "RB",
+              "team": "Virginia",
+              "prior_career_scrimmage_yards": 3538.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "5083848",
+              "player_name": "Jamar Curtis",
+              "position": "RB",
+              "team": "Sacramento State",
+              "prior_career_scrimmage_yards": 3260.0,
+              "target_class_draft_overall": null
+            },
+            {
+              "athlete_id": "5084798",
+              "player_name": "Ismail Mahdi",
+              "position": "RB",
+              "team": "Arizona",
+              "prior_career_scrimmage_yards": 3156.0,
+              "target_class_draft_overall": null
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "identityAudit": {
+    "rows": 1210,
+    "stableEspnIds": 1210,
+    "excludedCollisionIds": []
+  },
+  "sourceManifest": {
+    "schemaVersion": 1,
+    "retrievedAt": "2026-08-11T15:54:19.903318Z"
+  },
+  "sources": {
+    "rosters": {
+      "provider": "sportsdataverse cfbfastR-data",
+      "license": "repository license and upstream CollegeFootballData/ESPN terms apply",
+      "sourceRef": "935eed66a08c95822992fd182495848ac4303f96",
+      "files": [
+        {
+          "name": "cfb_rosters_2018.csv",
+          "effectiveSeason": 2018,
+          "sha256": "3fb1b6a01bdb90828ba0a97320a5083170c6750631fe0d18be762b561d1dcbfd",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/rosters/csv/cfb_rosters_2018.csv",
+          "sourceMeaning": "retrospective season-roster record; not an untouched August archive"
+        },
+        {
+          "name": "cfb_rosters_2019.csv",
+          "effectiveSeason": 2019,
+          "sha256": "bdf6abeb919ec7b66e56d849e6a1fc5ada44d08ecffb932967cd9335e11c8888",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/rosters/csv/cfb_rosters_2019.csv",
+          "sourceMeaning": "retrospective season-roster record; not an untouched August archive"
+        },
+        {
+          "name": "cfb_rosters_2020.csv",
+          "effectiveSeason": 2020,
+          "sha256": "204110f064da1152d3c0564d0768396a9e24406ad094f4f9a02d5bb29aa89b78",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/rosters/csv/cfb_rosters_2020.csv",
+          "sourceMeaning": "retrospective season-roster record; not an untouched August archive"
+        },
+        {
+          "name": "cfb_rosters_2021.csv",
+          "effectiveSeason": 2021,
+          "sha256": "b788a2e32bbbbabf70f76cdbc16bb263df619ce6f8810f8d084d6a822ec0c188",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/rosters/csv/cfb_rosters_2021.csv",
+          "sourceMeaning": "retrospective season-roster record; not an untouched August archive"
+        },
+        {
+          "name": "cfb_rosters_2022.csv",
+          "effectiveSeason": 2022,
+          "sha256": "79f7edd50be31daa975ce0ef5070dd81b4220d93e49614e24769e056cb892295",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/rosters/csv/cfb_rosters_2022.csv",
+          "sourceMeaning": "retrospective season-roster record; not an untouched August archive"
+        },
+        {
+          "name": "cfb_rosters_2023.csv",
+          "effectiveSeason": 2023,
+          "sha256": "942614ce95e64a7ade69bf2fa25cbd042c931ca4cbc11c8acae0377158f40e47",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/rosters/csv/cfb_rosters_2023.csv",
+          "sourceMeaning": "retrospective season-roster record; not an untouched August archive"
+        },
+        {
+          "name": "cfb_rosters_2024.csv",
+          "effectiveSeason": 2024,
+          "sha256": "0a76b12329ad576b4ea07a78b1f57436445894a901b8d92212b2b4315602206d",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/rosters/csv/cfb_rosters_2024.csv",
+          "sourceMeaning": "retrospective season-roster record; not an untouched August archive"
+        },
+        {
+          "name": "cfb_rosters_2025.csv",
+          "effectiveSeason": 2025,
+          "sha256": "0f271a94f97274c1b4369421ff4a0e5df3b91995f0de38a246473abca4191958",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/rosters/csv/cfb_rosters_2025.csv",
+          "sourceMeaning": "retrospective season-roster record; not an untouched August archive"
+        }
+      ]
+    },
+    "collegeProduction": {
+      "provider": "sportsdataverse cfbfastR-data",
+      "license": "repository license and upstream ESPN terms apply",
+      "sourceRef": "935eed66a08c95822992fd182495848ac4303f96",
+      "files": [
+        {
+          "name": "player_stats_2014.parquet",
+          "effectiveSeason": 2014,
+          "sha256": "48219d67e6942f1648adf42440a4df3856f36a92b2f918f01b93ab5e4f19176e",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/player_stats/parquet/player_stats_2014.parquet",
+          "sourceMeaning": "season play-participant data"
+        },
+        {
+          "name": "player_stats_2015.parquet",
+          "effectiveSeason": 2015,
+          "sha256": "288490a363dd5e1f8ad7662992c485d10e0d604b9af99fc317ef498d74062011",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/player_stats/parquet/player_stats_2015.parquet",
+          "sourceMeaning": "season play-participant data"
+        },
+        {
+          "name": "player_stats_2016.parquet",
+          "effectiveSeason": 2016,
+          "sha256": "0dbdd5559b220f99e3038d80c16f0dfdda9291a02f1110f525640478537f5cdc",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/player_stats/parquet/player_stats_2016.parquet",
+          "sourceMeaning": "season play-participant data"
+        },
+        {
+          "name": "player_stats_2017.parquet",
+          "effectiveSeason": 2017,
+          "sha256": "fd9a1df800f725fe41d31093eb94ddc552f1ac03ef3eb582baf6edd20808cc91",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/player_stats/parquet/player_stats_2017.parquet",
+          "sourceMeaning": "season play-participant data"
+        },
+        {
+          "name": "player_stats_2018.parquet",
+          "effectiveSeason": 2018,
+          "sha256": "e3e75f9c165f423bb7fa0c2484c84a8e624f22c579adfba18f97826a0a763c07",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/player_stats/parquet/player_stats_2018.parquet",
+          "sourceMeaning": "season play-participant data"
+        },
+        {
+          "name": "player_stats_2019.parquet",
+          "effectiveSeason": 2019,
+          "sha256": "1e91dc41eb0422ab3f1fc3a8eea4d7a30144aa259d976aaf4844eded68cc5f86",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/player_stats/parquet/player_stats_2019.parquet",
+          "sourceMeaning": "season play-participant data"
+        },
+        {
+          "name": "player_stats_2020.parquet",
+          "effectiveSeason": 2020,
+          "sha256": "93be70034fe625b11c6699505aff29594b286517932fd33553eb3567aa06e2c7",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/player_stats/parquet/player_stats_2020.parquet",
+          "sourceMeaning": "season play-participant data"
+        },
+        {
+          "name": "player_stats_2021.parquet",
+          "effectiveSeason": 2021,
+          "sha256": "25282f83daec1654dcabd773e6895df639143827b0a1eeb0b388be3b04d29b28",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/player_stats/parquet/player_stats_2021.parquet",
+          "sourceMeaning": "season play-participant data"
+        },
+        {
+          "name": "player_stats_2022.parquet",
+          "effectiveSeason": 2022,
+          "sha256": "1244b3bdbd51b0197a35c3421e1f95a2f0b83937f461d5841a5d7f002e54ab2d",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/player_stats/parquet/player_stats_2022.parquet",
+          "sourceMeaning": "season play-participant data"
+        },
+        {
+          "name": "player_stats_2023.parquet",
+          "effectiveSeason": 2023,
+          "sha256": "8bc3eff29a58c016a565d1732684d3fc4dd23c623988f1c1942062daba284126",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/player_stats/parquet/player_stats_2023.parquet",
+          "sourceMeaning": "season play-participant data"
+        },
+        {
+          "name": "player_stats_2024.parquet",
+          "effectiveSeason": 2024,
+          "sha256": "46d2b61c938f6167837c6e761b0c245cbfa3ef3a1e9f63bb19c83e437c2d90da",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/player_stats/parquet/player_stats_2024.parquet",
+          "sourceMeaning": "season play-participant data"
+        },
+        {
+          "name": "player_stats_2025.parquet",
+          "effectiveSeason": 2025,
+          "sha256": "e0a5cfc8ae0c0d03ab98fe3f1d5f9acb3b5c6cd895dbb433670f8774b25ff3b2",
+          "url": "https://raw.githubusercontent.com/sportsdataverse/cfbfastR-data/935eed66a08c95822992fd182495848ac4303f96/player_stats/parquet/player_stats_2025.parquet",
+          "sourceMeaning": "season play-participant data"
+        }
+      ]
+    },
+    "nflIdentityOutcomes": {
+      "provider": "DynastyProcess open-data repository",
+      "license": "GPL-3.0 repository license; upstream source terms apply",
+      "sourceRef": "1d5766b788a6b059fbdcc7a8a8d4eb8cf1a0876c",
+      "files": [
+        {
+          "name": "db_playerids.csv",
+          "effectiveSeason": null,
+          "sha256": "3cc38bd31f5dbf8640136f1bbd175cba21bf5a4a6f1533409cd53797b16078a0",
+          "url": "https://raw.githubusercontent.com/dynastyprocess/data/1d5766b788a6b059fbdcc7a8a8d4eb8cf1a0876c/files/db_playerids.csv",
+          "sourceMeaning": "retrospective identity and NFL-entry outcome map"
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Roster files are retrospective season records, not untouched August snapshots.",
+    "Roster year is an eligibility proxy and cannot resolve every redshirt or age case.",
+    "A missing target-class identity means did not enter that class, not permanent failure.",
+    "Prior production is missing for some candidates and is retained as explicit missingness.",
+    "Recruiting identifiers are audited but not used as a feature because coverage is inadequate."
+  ],
+  "nextExperiment": "V6.5 may compare small same-horizon baselines with rolling class holdouts only after review."
+}
