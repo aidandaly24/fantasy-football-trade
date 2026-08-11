@@ -1,5 +1,8 @@
 # Target discovery and trade research system
 
+**Status:** Design proposal. The repository does not yet implement every signal
+or workflow described here.
+
 This document defines the evidence RosterLab should assemble before it calls a
 player a trade target. It is a product and modeling contract, not a claim that
 every signal below is already implemented.

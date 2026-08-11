@@ -14,8 +14,8 @@ changing it safely.
   leakage controls, promotion gates, and generated artifacts.
 - [Development workflow](development-workflow.md) — local setup, branch and PR
   policy, migrations, validation, and agent coordination.
-- [Target discovery and trade research](target-discovery-system.md) — required
-  evidence, target theses, negotiation loop, and model promotion gates.
+- [Design ideas](design-ideas/README.md) — proposed systems and model changes
+  that are not yet documentation of current runtime behavior.
 
 ## Documentation boundary
 
