@@ -1,28 +1,20 @@
-import type { ManagerProfile } from './negotiation'
 import { evaluateTrade } from './rankings'
 import type { ResolvedTeamStrategy } from './strategy'
 import type {
   Asset,
-  EdgeOpportunitySnapshot,
   IntelSignal,
   MarketTapeAssetInput,
   PickValue,
   SleeperTransaction,
   Team,
-  TeamStrategyProfile,
 } from './types'
 
-export type TeamDirectionLabel = 'contender' | 'retooling' | 'rebuilding'
-export type TeamDirectionOverride = TeamDirectionLabel
+export type TeamDirectionLabel = 'neutral' | 'contender' | 'retooling' | 'rebuilding'
+export type TeamDirectionOverride = Exclude<TeamDirectionLabel, 'neutral'>
 
 export type TeamDirection = {
   rosterId: number
   label: TeamDirectionLabel
-  /** Legacy storage fields. Zero means no calibrated probability is available. */
-  contenderProbability: number
-  retoolingProbability: number
-  rebuildingProbability: number
-  confidence: number
   manual: boolean
   recentTrades: number
   playerValueFlow: number
@@ -37,7 +29,7 @@ export type EdgeOpportunity = {
   asset: Asset
   owner: Team
   categories: EdgeCategory[]
-  lineupDelta: number
+  lineupDelta: number | null
   catalyst: string
   thesis: string
   direction: TeamDirection
@@ -48,21 +40,8 @@ export type EdgeBoardOptions = {
   myRosterId: number
   rosterPositions: string[]
   directions: TeamDirection[]
-  profiles: ManagerProfile[]
   intelSignals?: IntelSignal[]
-  teamStrategy?: TeamStrategyProfile
   maxResults?: number
-  now?: Date
-}
-
-export type OpportunityAttribution = {
-  daysTracked: number
-  currentValue: number
-  valueChange: number
-  valueChangePercent: number
-  expectedValue: number
-  expectedChangePercent: number
-  status: 'too-early' | 'ahead' | 'on-track' | 'behind'
 }
 
 function transactionTime(transaction: SleeperTransaction): number {
@@ -111,14 +90,10 @@ export function buildTeamDirections(options: {
     })
 
     const override = options.overrides?.[String(team.rosterId)]
-    const label = override ?? 'retooling'
+    const label = override ?? 'neutral'
     return {
       rosterId: team.rosterId,
       label,
-      contenderProbability: 0,
-      retoolingProbability: 0,
-      rebuildingProbability: 0,
-      confidence: 0,
       manual: Boolean(override),
       recentTrades,
       playerValueFlow: Math.round(playerValueFlow),
@@ -131,16 +106,6 @@ export function buildTeamDirections(options: {
       ],
     }
   })
-}
-
-/** Kept for API compatibility. Direction labels are context only and cannot
- * reprice unresolved picks without a validated pick-outcome model. */
-export function applyDirectionPickProjections(
-  teams: Team[],
-  _directions: TeamDirection[],
-  _picks: PickValue[],
-): Team[] {
-  return teams
 }
 
 /** A factual evidence board. Current market value determines ordering. Linked
@@ -161,8 +126,8 @@ export function buildEdgeBoard(teams: Team[], options: EdgeBoardOptions): EdgeOp
         .map((asset): EdgeOpportunity => {
           const signal = asset.kind === 'player' ? intel.get(asset.id) ?? null : null
           const lineupDelta = asset.kind === 'player' && asset.projectedPpg !== undefined
-            ? evaluateTrade([], [asset], { teamA: mine, teamB: owner, rosterPositions: options.rosterPositions }).lineupImpactA ?? 0
-            : 0
+            ? evaluateTrade([], [asset], { teamA: mine, teamB: owner, rosterPositions: options.rosterPositions }).lineupImpactA
+            : null
           const categories: EdgeCategory[] = ['value']
           if (asset.kind === 'player' && asset.projectedPpg !== undefined) categories.push('points')
           if (signal) categories.push('intel')
@@ -183,13 +148,13 @@ export function buildEdgeBoard(teams: Team[], options: EdgeBoardOptions): EdgeOp
     .slice(0, options.maxResults ?? 24)
 }
 
-/** Saves raw daily observations. Projection fields are equal to the observed
- * value until a time-split model clears promotion gates. */
+/** Saves factual daily observations and explicit missingness. The legacy D1
+ * projection column is populated from currentValue inside the storage adapter;
+ * no client-side return, profit, or manager-probability fields are invented. */
 export function marketTapeAssets(
   teams: Team[],
-  _directions: TeamDirection[],
   opportunities: EdgeOpportunity[],
-  strategy: ResolvedTeamStrategy = { mode: 'retooling', horizonYears: 2, flipPriority: 0 },
+  strategy: ResolvedTeamStrategy = { mode: 'neutral', horizonYears: 2, flipPriority: 0 },
 ): MarketTapeAssetInput[] {
   const opportunityByAsset = new Map(opportunities.map((opportunity) => [`${opportunity.owner.rosterId}:${opportunity.asset.id}`, opportunity]))
   const seen = new Set<string>()
@@ -207,27 +172,12 @@ export function marketTapeAssets(
       position: asset.position,
       ownerRosterId: team.rosterId,
       currentValue,
-      projection30: currentValue,
       confidence: sourceConfidence,
       eventType: opportunity?.intel?.articles[0]?.eventType ?? 'none',
       newsDirection: opportunity?.intel?.direction ?? 'none',
       features: {
-        ruleGain30: 0,
-        ruleGain90: 0,
-        edgeScore: 0,
-        lineupDelta: opportunity?.lineupDelta ?? 0,
-        catalystScore: 0,
-        sellerFit: 0,
-        liquidityScore: 0,
-        timingScore: 0,
-        uncertaintyPenalty: 0,
-        confidence: sourceConfidence,
-        age: asset.age ?? 0,
-        contenderProbability: 0,
-        rebuildingProbability: 0,
-        profitScore: 0,
-        resaleScore: 0,
-        decayRisk: 0,
+        lineupDelta: opportunity?.lineupDelta ?? null,
+        age: asset.age ?? null,
         horizonYears: strategy.horizonYears,
       },
       metadata: {
@@ -238,55 +188,4 @@ export function marketTapeAssets(
       },
     }]
   }))
-}
-
-/** Legacy snapshot adapter. New live recommendations do not write these rows. */
-export function opportunitySnapshot(
-  opportunity: EdgeOpportunity,
-  capturedAt = new Date().toISOString(),
-): EdgeOpportunitySnapshot {
-  const value = Math.round(opportunity.asset.value)
-  return {
-    snapshotKey: `${opportunity.key}:${capturedAt.slice(0, 10)}:${value}`,
-    assetId: opportunity.asset.id,
-    assetName: opportunity.asset.name,
-    ownerRosterId: opportunity.owner.rosterId,
-    capturedAt,
-    currentValue: value,
-    projection30: value,
-    projection90: value,
-    projection180: value,
-    edgeScore: 0,
-    lineupDelta: Number(opportunity.lineupDelta.toFixed(2)),
-    confidence: 0,
-    categories: opportunity.categories,
-    catalyst: opportunity.catalyst,
-    status: 'tracking',
-  }
-}
-
-/** Reads old snapshot rows without treating them as current recommendations. */
-export function attributeOpportunity(
-  snapshot: EdgeOpportunitySnapshot,
-  currentValue: number,
-  now = new Date(),
-): OpportunityAttribution {
-  const daysTracked = Math.max(0, Math.floor((now.getTime() - Date.parse(snapshot.capturedAt)) / 86_400_000))
-  const expectedValue = daysTracked >= 180
-    ? snapshot.projection180
-    : daysTracked >= 90
-      ? snapshot.projection90
-      : snapshot.projection30
-  const valueChange = currentValue - snapshot.currentValue
-  const valueChangePercent = snapshot.currentValue ? valueChange / snapshot.currentValue : 0
-  const expectedChangePercent = snapshot.currentValue ? (expectedValue - snapshot.currentValue) / snapshot.currentValue : 0
-  const gap = valueChangePercent - expectedChangePercent
-  const status: OpportunityAttribution['status'] = daysTracked < 7
-    ? 'too-early'
-    : gap >= 0.03
-      ? 'ahead'
-      : gap >= -0.04
-        ? 'on-track'
-        : 'behind'
-  return { daysTracked, currentValue, valueChange, valueChangePercent, expectedValue, expectedChangePercent, status }
 }

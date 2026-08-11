@@ -90,10 +90,6 @@ function featureNumber(features: Record<string, unknown>, key: string, min: numb
   return boundedNumber(features[key], `feature ${key}`, min, max)
 }
 
-function optionalFeatureNumber(features: Record<string, unknown>, key: string, min: number, max: number, fallback: number): number {
-  return features[key] == null ? fallback : featureNumber(features, key, min, max)
-}
-
 function normalizeTapeAsset(input: unknown): MarketTapeAssetInput {
   const value = object(input)
   const assetId = boundedText(value.assetId, 'asset ID', 80)
@@ -120,28 +116,13 @@ function normalizeTapeAsset(input: unknown): MarketTapeAssetInput {
     position: position as MarketTapeAssetInput['position'],
     ownerRosterId: Math.round(boundedNumber(value.ownerRosterId, 'owner roster', 1, 100)),
     currentValue: Math.round(boundedNumber(value.currentValue, 'current value', 0, 100_000)),
-    projection30: Math.round(boundedNumber(value.projection30, '30-day projection', 0, 100_000)),
     confidence: Math.round(boundedNumber(value.confidence, 'confidence', 0, 100)),
     eventType,
     newsDirection: newsDirection as MarketTapeAssetInput['newsDirection'],
     features: {
-      ruleGain30: featureNumber(features, 'ruleGain30', -1, 3),
-      ruleGain90: featureNumber(features, 'ruleGain90', -1, 3),
-      edgeScore: featureNumber(features, 'edgeScore', 0, 100),
-      lineupDelta: featureNumber(features, 'lineupDelta', -50, 50),
-      catalystScore: featureNumber(features, 'catalystScore', 0, 100),
-      sellerFit: featureNumber(features, 'sellerFit', 0, 100),
-      liquidityScore: featureNumber(features, 'liquidityScore', 0, 100),
-      timingScore: featureNumber(features, 'timingScore', 0, 100),
-      uncertaintyPenalty: featureNumber(features, 'uncertaintyPenalty', 0, 100),
-      confidence: featureNumber(features, 'confidence', 0, 100),
-      age: featureNumber(features, 'age', 0, 60),
-      contenderProbability: featureNumber(features, 'contenderProbability', 0, 1),
-      rebuildingProbability: featureNumber(features, 'rebuildingProbability', 0, 1),
-      profitScore: optionalFeatureNumber(features, 'profitScore', 0, 100, 0),
-      resaleScore: optionalFeatureNumber(features, 'resaleScore', 0, 100, 0),
-      decayRisk: optionalFeatureNumber(features, 'decayRisk', 0, 100, 0),
-      horizonYears: optionalFeatureNumber(features, 'horizonYears', 1, 4, 2),
+      lineupDelta: features.lineupDelta == null ? null : featureNumber(features, 'lineupDelta', -50, 50),
+      age: features.age == null ? null : featureNumber(features, 'age', 0, 60),
+      horizonYears: featureNumber(features, 'horizonYears', 1, 4) as 1 | 2 | 3 | 4,
     },
     metadata: {
       year: typeof metadata.year === 'string' && /^20\d{2}$/.test(metadata.year) ? metadata.year : undefined,
@@ -200,7 +181,7 @@ ON CONFLICT(user_id, league_id, snapshot_date, asset_id) DO UPDATE SET
   metadata_json=excluded.metadata_json, source=excluded.source, source_version=excluded.source_version,
   captured_at=excluded.captured_at`).bind(
     userId, leagueId, snapshotDate, asset.assetId, asset.assetName, asset.kind, asset.position,
-    asset.ownerRosterId, asset.currentValue, asset.projection30, asset.confidence, asset.eventType,
+    asset.ownerRosterId, asset.currentValue, asset.currentValue, asset.confidence, asset.eventType,
     asset.newsDirection, JSON.stringify(asset.features), JSON.stringify(asset.metadata), source,
     sourceVersion, capturedAt,
   )))
@@ -254,10 +235,7 @@ function snapshotFromRow(row: SnapshotRow): MarketSnapshotRecord {
     eventType: row.event_type,
     newsDirection: row.news_direction,
     features: parseJson(row.features_json, {
-      ruleGain30: 0, ruleGain90: 0, edgeScore: 0, lineupDelta: 0, catalystScore: 0,
-      sellerFit: 0, liquidityScore: 0, timingScore: 0, uncertaintyPenalty: 100,
-      confidence: 0, age: 0, contenderProbability: 0.33, rebuildingProbability: 0.33,
-      profitScore: 0, resaleScore: 0, decayRisk: 0, horizonYears: 2,
+      lineupDelta: null, age: null, horizonYears: 2,
     }),
     metadata: parseJson(row.metadata_json, {}),
   }

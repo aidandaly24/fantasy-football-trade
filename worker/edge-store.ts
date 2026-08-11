@@ -1,17 +1,6 @@
-import type { EdgeOpportunitySnapshot, EdgeStateBundle, TradeOfferRecord, TradeOfferStatus } from '../src/types'
-import type { D1Database, D1PreparedStatement } from './user-store'
+import type { EdgeStateBundle, TradeOfferRecord, TradeOfferStatus } from '../src/types'
+import type { D1Database } from './user-store'
 
-const CREATE_OPPORTUNITIES = `CREATE TABLE IF NOT EXISTS edge_opportunity_snapshots (
-  user_id TEXT NOT NULL, league_id TEXT NOT NULL, snapshot_key TEXT NOT NULL,
-  asset_id TEXT NOT NULL, asset_name TEXT NOT NULL, owner_roster_id INTEGER NOT NULL,
-  captured_at TEXT NOT NULL, current_value INTEGER NOT NULL, projection_30 INTEGER NOT NULL,
-  projection_90 INTEGER NOT NULL, projection_180 INTEGER NOT NULL, edge_score INTEGER NOT NULL,
-  lineup_delta REAL NOT NULL, confidence INTEGER NOT NULL, categories_json TEXT NOT NULL,
-  catalyst TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'tracking',
-  PRIMARY KEY (user_id, league_id, snapshot_key)
-)`
-const CREATE_OPPORTUNITY_INDEX = `CREATE INDEX IF NOT EXISTS idx_edge_opportunities_user_league
-ON edge_opportunity_snapshots (user_id, league_id, captured_at DESC)`
 const CREATE_OFFERS = `CREATE TABLE IF NOT EXISTS user_trade_offers (
   user_id TEXT NOT NULL, league_id TEXT NOT NULL, offer_id TEXT NOT NULL,
   counterpart_roster_id INTEGER NOT NULL, target_asset_id TEXT NOT NULL, target_asset_name TEXT NOT NULL,
@@ -28,8 +17,6 @@ let schemaReady: Promise<void> | null = null
 export async function ensureEdgeSchema(db: D1Database): Promise<void> {
   if (!schemaReady) {
     schemaReady = db.batch([
-      db.prepare(CREATE_OPPORTUNITIES),
-      db.prepare(CREATE_OPPORTUNITY_INDEX),
       db.prepare(CREATE_OFFERS),
       db.prepare(CREATE_OFFER_INDEX),
     ]).then(() => undefined).catch((error) => {
@@ -55,37 +42,6 @@ function boundedNumber(value: unknown, label: string, min: number, max: number):
   const number = Number(value)
   if (!Number.isFinite(number) || number < min || number > max) throw new Error(`Invalid ${label}`)
   return number
-}
-
-export function normalizeOpportunityInput(input: unknown, now = new Date()): EdgeOpportunitySnapshot {
-  const value = object(input)
-  const assetId = boundedText(value.assetId, 'asset ID', 80)
-  if (!/^[\w:.\-]+$/.test(assetId)) throw new Error('Invalid asset ID')
-  const ownerRosterId = Math.round(boundedNumber(value.ownerRosterId, 'owner roster', 1, 100))
-  const categories = Array.isArray(value.categories)
-    ? [...new Set(value.categories.filter((category): category is 'value' | 'flip' | 'points' | 'intel' => ['value', 'flip', 'points', 'intel'].includes(String(category))))].slice(0, 4)
-    : []
-  if (!categories.length) throw new Error('Invalid categories')
-  const capturedAt = now.toISOString()
-  const edgeScore = Math.round(boundedNumber(value.edgeScore, 'edge score', 0, 100))
-  const projection90 = Math.round(boundedNumber(value.projection90, '90-day projection', 0, 100_000))
-  return {
-    snapshotKey: `${ownerRosterId}:${assetId}:${capturedAt.slice(0, 10)}:${edgeScore}:${projection90}`,
-    assetId,
-    assetName: boundedText(value.assetName, 'asset name', 120),
-    ownerRosterId,
-    capturedAt,
-    currentValue: Math.round(boundedNumber(value.currentValue, 'current value', 0, 100_000)),
-    projection30: Math.round(boundedNumber(value.projection30, '30-day projection', 0, 100_000)),
-    projection90,
-    projection180: Math.round(boundedNumber(value.projection180, '180-day projection', 0, 100_000)),
-    edgeScore,
-    lineupDelta: Number(boundedNumber(value.lineupDelta, 'lineup delta', -50, 50).toFixed(2)),
-    confidence: Math.round(boundedNumber(value.confidence, 'confidence', 0, 100)),
-    categories,
-    catalyst: boundedText(value.catalyst, 'catalyst', 500),
-    status: 'tracking',
-  }
 }
 
 const OFFER_STATUSES = new Set<TradeOfferStatus>(['draft', 'sent', 'countered', 'rejected', 'accepted', 'withdrawn'])
@@ -131,32 +87,6 @@ export function normalizeOfferInput(input: unknown, now = new Date()): TradeOffe
   }
 }
 
-async function batchInChunks(db: D1Database, statements: D1PreparedStatement[], size = 75): Promise<void> {
-  for (let index = 0; index < statements.length; index += size) {
-    await db.batch(statements.slice(index, index + size))
-  }
-}
-
-export async function saveOpportunitySnapshots(
-  db: D1Database,
-  userId: string,
-  leagueId: string,
-  snapshots: EdgeOpportunitySnapshot[],
-): Promise<void> {
-  if (!snapshots.length) return
-  await batchInChunks(db, snapshots.map((snapshot) => db.prepare(`INSERT INTO edge_opportunity_snapshots (
-  user_id, league_id, snapshot_key, asset_id, asset_name, owner_roster_id, captured_at,
-  current_value, projection_30, projection_90, projection_180, edge_score, lineup_delta,
-  confidence, categories_json, catalyst, status
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(user_id, league_id, snapshot_key) DO NOTHING`).bind(
-    userId, leagueId, snapshot.snapshotKey, snapshot.assetId, snapshot.assetName, snapshot.ownerRosterId,
-    snapshot.capturedAt, snapshot.currentValue, snapshot.projection30, snapshot.projection90,
-    snapshot.projection180, snapshot.edgeScore, snapshot.lineupDelta, snapshot.confidence,
-    JSON.stringify(snapshot.categories), snapshot.catalyst, snapshot.status,
-  )))
-}
-
 export async function saveTradeOffer(
   db: D1Database,
   userId: string,
@@ -178,11 +108,6 @@ ON CONFLICT(user_id, league_id, offer_id) DO UPDATE SET
   ).run()
 }
 
-type OpportunityRow = {
-  snapshot_key: string; asset_id: string; asset_name: string; owner_roster_id: number; captured_at: string
-  current_value: number; projection_30: number; projection_90: number; projection_180: number
-  edge_score: number; lineup_delta: number; confidence: number; categories_json: string; catalyst: string; status: string
-}
 type OfferRow = {
   offer_id: string; counterpart_roster_id: number; target_asset_id: string; target_asset_name: string
   stage: TradeOfferRecord['stage']; status: TradeOfferStatus; sent_assets_json: string; receive_assets_json: string
@@ -197,25 +122,11 @@ export async function readEdgeState(
   db: D1Database,
   userId: string,
   leagueId: string,
-): Promise<Pick<EdgeStateBundle, 'opportunities' | 'offers'>> {
-  const [opportunities, offers] = await Promise.all([
-    db.prepare(`SELECT snapshot_key, asset_id, asset_name, owner_roster_id, captured_at, current_value,
-projection_30, projection_90, projection_180, edge_score, lineup_delta, confidence,
-categories_json, catalyst, status FROM edge_opportunity_snapshots
-WHERE user_id=? AND league_id=? ORDER BY captured_at DESC LIMIT 500`).bind(userId, leagueId).all<OpportunityRow>(),
-    db.prepare(`SELECT offer_id, counterpart_roster_id, target_asset_id, target_asset_name, stage, status,
+): Promise<Pick<EdgeStateBundle, 'offers'>> {
+  const offers = await db.prepare(`SELECT offer_id, counterpart_roster_id, target_asset_id, target_asset_name, stage, status,
 sent_assets_json, receive_assets_json, market_delta, lineup_delta, thesis, created_at, updated_at
-FROM user_trade_offers WHERE user_id=? AND league_id=? ORDER BY updated_at DESC LIMIT 200`).bind(userId, leagueId).all<OfferRow>(),
-  ])
+FROM user_trade_offers WHERE user_id=? AND league_id=? ORDER BY updated_at DESC LIMIT 200`).bind(userId, leagueId).all<OfferRow>()
   return {
-    opportunities: opportunities.results.map((row) => ({
-      snapshotKey: row.snapshot_key, assetId: row.asset_id, assetName: row.asset_name,
-      ownerRosterId: row.owner_roster_id, capturedAt: row.captured_at, currentValue: row.current_value,
-      projection30: row.projection_30, projection90: row.projection_90, projection180: row.projection_180,
-      edgeScore: row.edge_score, lineupDelta: row.lineup_delta, confidence: row.confidence,
-      categories: parseJson<EdgeOpportunitySnapshot['categories']>(row.categories_json, []),
-      catalyst: row.catalyst, status: row.status,
-    })),
     offers: offers.results.map((row) => ({
       offerId: row.offer_id, counterpartRosterId: row.counterpart_roster_id,
       targetAssetId: row.target_asset_id, targetAssetName: row.target_asset_name,

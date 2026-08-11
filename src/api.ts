@@ -1,7 +1,6 @@
 import type {
   ApiMeta,
   EventModelHealthBundle,
-  EdgeOpportunitySnapshot,
   EdgeStateBundle,
   AlertInbox,
   IntelFeed,
@@ -17,7 +16,6 @@ import type {
   SleeperDraft,
   SleeperPlayer,
   SleeperRoster,
-  SleeperTransaction,
   TradyrPlayer,
   TradedPick,
   TradeOfferRecord,
@@ -58,41 +56,6 @@ export async function fetchLeagueBundle(leagueId: string): Promise<LeagueBundle>
   ])
 
   return { league, rosters, users, tradedPicks, draft }
-}
-
-export async function fetchTransactionHistory(
-  currentLeague: League,
-  maxSeasons = 3,
-): Promise<SleeperTransaction[]> {
-  const transactions = new Map<string, SleeperTransaction>()
-  let league: League | null = currentLeague
-  for (let seasonIndex = 0; league && seasonIndex < maxSeasons; seasonIndex += 1) {
-    const seasonLeague: League = league
-    const weeks = await Promise.all(
-      Array.from({ length: 18 }, (_, index) => index + 1).map(async (week) => {
-        try {
-          const items = await fetchJson<SleeperTransaction[]>(
-            `${SLEEPER_BASE}/league/${seasonLeague.league_id}/transactions/${week}`,
-          )
-          return items.map((item) => ({
-            ...item,
-            season: seasonLeague.season,
-            leagueId: seasonLeague.league_id,
-            transactionWeek: week,
-          }))
-        } catch {
-          return []
-        }
-      }),
-    )
-    weeks.flat().forEach((transaction) => {
-      if (transaction.status === 'complete') transactions.set(transaction.transaction_id, transaction)
-    })
-    league = seasonLeague.previous_league_id
-      ? await fetchJson<League>(`${SLEEPER_BASE}/league/${seasonLeague.previous_league_id}`).catch(() => null)
-      : null
-  }
-  return [...transactions.values()].sort((a, b) => b.created - a.created)
 }
 
 type TradyrResponse<T> = { data: T; meta: ApiMeta }
@@ -236,17 +199,6 @@ export async function fetchResearchState(leagueId: string, syncIfStale = true): 
     || Date.now() - Date.parse(current.lastLeagueSyncAt) > 24 * 60 * 60 * 1000
   if (!syncIfStale || !stale) return current
   return fetchJson<ResearchPipelineBundle>(path, { method: 'POST' })
-}
-
-export async function saveEdgeSnapshots(
-  leagueId: string,
-  opportunities: EdgeOpportunitySnapshot[],
-): Promise<EdgeStateBundle> {
-  return fetchJson<EdgeStateBundle>(`/api/edge?leagueId=${encodeURIComponent(leagueId)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'snapshot', opportunities }),
-  })
 }
 
 export async function saveTradeOffer(

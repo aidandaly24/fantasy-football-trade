@@ -61,13 +61,22 @@ Bring in current `origin/main` without force-pushing over another agent's work.
 Resolve conflicts by preserving both accepted outcomes and rerun validation.
 Push the branch and open a PR. Do not merge it unless the user explicitly asks.
 
+Every pull request also runs the repository's `Verify` GitHub Actions workflow.
+It installs from the committed lockfile, creates the same `.venv` expected by
+the package scripts, runs both test suites, and builds the production bundle.
+Once the workflow has passed on `main`, configure branch protection to require
+the `verify` job before merge. Local validation remains required so a failing
+PR does not use CI as its first feedback loop.
+
 ## Concurrent-agent rules
 
 - Read the assigned handoff and this `docs/` folder before editing.
 - State the branch and owned files at the start of work.
 - Avoid broad formatting or renaming in shared hotspots.
-- Treat `src/App.tsx`, `src/types.ts`, `src/api.ts`, `worker/index.ts`,
-  `db/schema.ts`, `package.json`, and the lockfile as conflict-prone surfaces.
+- Treat `src/types.ts`, `src/api.ts`, `src/views/EdgeView.tsx`, `db/schema.ts`,
+  `package.json`, and the lockfile as conflict-prone surfaces. `src/App.tsx` and
+  `worker/index.ts` are shared orchestration files, so integrations there should
+  remain small.
 - Prefer adding a focused module and making a small integration patch.
 - Never discard an unfamiliar working-tree change. Confirm ownership or work
   around it.
@@ -123,6 +132,14 @@ When D1 changes:
 6. confirm the migration is present under `dist/.openai/drizzle` after build.
 
 Do not edit already-deployed migrations. Add a new ordered migration.
+
+`db/schema-parity.test.ts` is the current convergence guard. It requires every
+live defensive runtime table to exist in Drizzle and every Drizzle table to
+exist in the ordered migration history. `season_users` and
+`edge_opportunity_snapshots` are explicit migration-only legacy tables; their
+live identity and unvalidated-projection paths have been replaced or removed.
+Removing runtime table creation entirely remains gated on a clean-database and
+existing-database Sites migration rehearsal.
 
 ## Site validation and deployment
 

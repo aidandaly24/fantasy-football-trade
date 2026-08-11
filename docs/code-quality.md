@@ -56,10 +56,10 @@ validation status must remain inspectable.
 - Bound combinatorial searches and external response sizes.
 - Do not duplicate a calculation in JSX merely to format it differently.
 
-`src/App.tsx` is currently a large orchestration surface. New substantial views
-should move their stateful UI into focused components/modules rather than making
-the file an indefinite catch-all. Do not perform a broad component rewrite in
-an unrelated feature PR.
+`src/App.tsx` is the shared league-loading and view-composition surface. Keep
+tab-local state and presentation in `src/views/`; only move state upward when
+two views genuinely coordinate through it. Shared visual helpers belong in
+`src/components/`, not duplicated inside view modules.
 
 ## Worker and API quality
 
@@ -76,10 +76,10 @@ an unrelated feature PR.
 - Never log or commit authentication headers, credentials, private messages, or
   raw user identifiers beyond the IDs required by the data model.
 
-The browser-side `fetchTransactionHistory` currently turns failed historical
-week requests into empty arrays. Durable journal/research ingestion correctly
-tracks coverage; new historical features should use that explicit path rather
-than treating the browser helper as a complete ledger.
+Durable journal/research ingestion is the only supported historical transaction
+path. It tracks coverage and failures explicitly; new historical features must
+use that path rather than adding browser-side history fetches that can mistake a
+failed week for an empty ledger.
 
 ## D1 and migrations
 
@@ -158,16 +158,17 @@ directly to `main`; do not merge unless the user explicitly asks.
 These are existing constraints to improve deliberately, not excuses for broad
 unrelated rewrites:
 
-- `src/App.tsx` carries many view responsibilities and is a merge-conflict
-  hotspot for concurrent agents.
-- Drizzle schema and runtime `CREATE TABLE` statements can drift.
+- `src/types.ts` is still a broad shared contract surface; split domains only as
+  related changes touch them rather than creating a mass import rewrite.
+- Drizzle schema and runtime `CREATE TABLE` statements remain duplicated, though
+  the parity test now blocks silent table-level drift.
 - Some live public reads occur directly in the browser while durable research
   uses Worker ingestion; callers must understand which path is complete.
 - Historical market-return labels are incomplete and remain blocked.
 - The production rookie model has retrospective rolling evidence but still
   needs prospective tracking.
-- The live intel endpoint is advisory and currently not identity-gated in its
-  handler, so it must never include user-private data.
+- Live intel remains advisory even though its route is identity-gated; signed-in
+  access does not make unvalidated reports suitable for automatic repricing.
 
 Address one risk only when it is in the PR's scope and the replacement has a
 clear verification path.
