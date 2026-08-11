@@ -15,9 +15,13 @@ export type MarketDislocation = {
   market: {
     ktc: number | null
     fantasycalc: number | null
-    spread: number | null
-    spreadPercent: number | null
-    higherSource: 'KTC' | 'FantasyCalc' | 'equal' | null
+    ktcRank: number | null
+    fantasycalcRank: number | null
+    population: number
+    ktcPercentile: number | null
+    fantasycalcPercentile: number | null
+    percentileGap: number | null
+    higherRankSource: 'KTC' | 'FantasyCalc' | 'equal' | null
   }
   production: {
     projectedPpg: number | null
@@ -78,23 +82,6 @@ function rankFact(
   return { rank, percentile: (players.length - averageRank) / (players.length - 1) }
 }
 
-function marketFacts(asset: Asset): MarketDislocation['market'] {
-  const ktc = positiveSource(asset.marketSources?.ktc)
-  const fantasycalc = positiveSource(asset.marketSources?.fantasycalc)
-  if (ktc === null || fantasycalc === null) {
-    return { ktc, fantasycalc, spread: null, spreadPercent: null, higherSource: null }
-  }
-  const spread = Math.abs(ktc - fantasycalc)
-  const average = (ktc + fantasycalc) / 2
-  return {
-    ktc,
-    fantasycalc,
-    spread: Math.round(spread),
-    spreadPercent: average > 0 ? spread / average : null,
-    higherSource: ktc === fantasycalc ? 'equal' : ktc > fantasycalc ? 'KTC' : 'FantasyCalc',
-  }
-}
-
 function numberOr(value: number | null, fallback: number): number {
   return value === null ? fallback : value
 }
@@ -105,7 +92,7 @@ function dominates(
   strategy: ResolvedTeamStrategy,
 ): boolean {
   const comparisons: Array<{ mine: number; theirs: number; higherIsBetter: boolean }> = [
-    { mine: numberOr(candidate.market.spreadPercent, Number.NEGATIVE_INFINITY), theirs: numberOr(other.market.spreadPercent, Number.NEGATIVE_INFINITY), higherIsBetter: true },
+    { mine: numberOr(candidate.market.percentileGap, Number.NEGATIVE_INFINITY), theirs: numberOr(other.market.percentileGap, Number.NEGATIVE_INFINITY), higherIsBetter: true },
     { mine: numberOr(candidate.production.percentileGap, Number.NEGATIVE_INFINITY), theirs: numberOr(other.production.percentileGap, Number.NEGATIVE_INFINITY), higherIsBetter: true },
     { mine: numberOr(candidate.pressure.myLineupDelta, Number.NEGATIVE_INFINITY), theirs: numberOr(other.pressure.myLineupDelta, Number.NEGATIVE_INFINITY), higherIsBetter: true },
     { mine: candidate.pressure.ownerLikelyStarter ? 0 : 1, theirs: other.pressure.ownerLikelyStarter ? 0 : 1, higherIsBetter: true },
@@ -136,10 +123,10 @@ function dominates(
 
 function evidenceFor(candidate: Omit<MarketDislocation, 'frontier' | 'evidence'>): string[] {
   const evidence: string[] = []
-  if (candidate.market.spreadPercent !== null && candidate.market.higherSource !== null) {
-    evidence.push(candidate.market.higherSource === 'equal'
-      ? 'KTC and FantasyCalc are equal on the current provider tape.'
-      : `The current source pair differs by ${(candidate.market.spreadPercent * 100).toFixed(1)}%, with ${candidate.market.higherSource} higher.`)
+  if (candidate.market.percentileGap !== null && candidate.market.higherRankSource !== null) {
+    evidence.push(candidate.market.higherRankSource === 'equal'
+      ? `KTC and FantasyCalc give the player the same relative rank in the ${candidate.market.population}-player dual-source pool.`
+      : `KTC ranks the player ${candidate.market.ktcRank}/${candidate.market.population} and FantasyCalc ranks the player ${candidate.market.fantasycalcRank}/${candidate.market.population}, a ${candidate.market.percentileGap.toFixed(1)} percentile-point gap with ${candidate.market.higherRankSource} higher.`)
   }
   if (candidate.production.percentileGap !== null) {
     evidence.push(`Modeled production percentile is ${candidate.production.percentileGap >= 0 ? '+' : ''}${candidate.production.percentileGap.toFixed(0)} points versus market within ${candidate.asset.position}.`)
@@ -173,6 +160,10 @@ export function buildMarketDislocations(
     group.push(player)
     byPosition.set(player.asset.position, group)
   })
+  const dualSourcePlayers = players.filter((player) => (
+    positiveSource(player.asset.marketSources?.ktc) !== null
+    && positiveSource(player.asset.marketSources?.fantasycalc) !== null
+  ))
 
   const candidates = players
     .filter((player) => player.owner.rosterId !== mine.rosterId)
@@ -211,7 +202,32 @@ export function buildMarketDislocations(
         rosterPositions: options.rosterPositions,
         horizonYears: options.strategy.horizonYears,
       })
-      const market = marketFacts(player.asset)
+      const ktc = positiveSource(player.asset.marketSources?.ktc)
+      const fantasycalc = positiveSource(player.asset.marketSources?.fantasycalc)
+      const ktcFact = ktc === null || fantasycalc === null || dualSourcePlayers.length < 2
+        ? null
+        : rankFact(dualSourcePlayers, player, (item) => positiveSource(item.asset.marketSources?.ktc) ?? 0)
+      const fantasycalcFact = ktc === null || fantasycalc === null || dualSourcePlayers.length < 2
+        ? null
+        : rankFact(dualSourcePlayers, player, (item) => positiveSource(item.asset.marketSources?.fantasycalc) ?? 0)
+      const sourcePercentileGap = ktcFact === null || fantasycalcFact === null
+        ? null
+        : Number((Math.abs(ktcFact.percentile - fantasycalcFact.percentile) * 100).toFixed(1))
+      const market: MarketDislocation['market'] = {
+        ktc,
+        fantasycalc,
+        ktcRank: ktcFact?.rank ?? null,
+        fantasycalcRank: fantasycalcFact?.rank ?? null,
+        population: dualSourcePlayers.length,
+        ktcPercentile: ktcFact?.percentile ?? null,
+        fantasycalcPercentile: fantasycalcFact?.percentile ?? null,
+        percentileGap: sourcePercentileGap,
+        higherRankSource: ktcFact === null || fantasycalcFact === null
+          ? null
+          : ktcFact.percentile === fantasycalcFact.percentile
+            ? 'equal'
+            : ktcFact.percentile > fantasycalcFact.percentile ? 'KTC' : 'FantasyCalc',
+      }
       const production: MarketDislocation['production'] = {
         projectedPpg: player.asset.projectedPpg ?? null,
         marketRank,
@@ -242,7 +258,7 @@ export function buildMarketDislocations(
           : Number((player.asset.age + options.strategy.horizonYears).toFixed(1)),
       }
       const categories: DislocationCategory[] = []
-      if (market.spreadPercent !== null && market.spreadPercent > 0) categories.push('market-gap')
+      if (market.percentileGap !== null && market.percentileGap > 0) categories.push('market-gap')
       if (percentileGap !== null && percentileGap > 0) categories.push('production-ahead')
       if (!ownerLikelyStarter && ownerPositionCount > dedicatedSlots) categories.push('owner-depth')
       if (direction.recentTrades > 0) categories.push('active-trader')
@@ -278,14 +294,14 @@ export function selectMarketDislocations(
 ): MarketDislocation[] {
   const filtered = candidates.filter((candidate) => {
     if (lens === 'frontier') return candidate.frontier
-    if (lens === 'market') return (candidate.market.spreadPercent ?? 0) > 0
+    if (lens === 'market') return (candidate.market.percentileGap ?? 0) > 0
     if (lens === 'production') return (candidate.production.percentileGap ?? 0) > 0
     return candidate.categories.includes('owner-depth') || candidate.categories.includes('active-trader')
   })
   return [...filtered]
     .sort((left, right) => {
       if (lens === 'market') {
-        return nullableDescending(left.market.spreadPercent, right.market.spreadPercent) || left.key.localeCompare(right.key)
+        return nullableDescending(left.market.percentileGap, right.market.percentileGap) || left.key.localeCompare(right.key)
       }
       if (lens === 'production') {
         return nullableDescending(left.production.percentileGap, right.production.percentileGap) || left.key.localeCompare(right.key)
@@ -296,7 +312,7 @@ export function selectMarketDislocations(
           || right.pressure.recentTrades - left.pressure.recentTrades
           || left.key.localeCompare(right.key)
       }
-      return nullableDescending(left.market.spreadPercent, right.market.spreadPercent)
+      return nullableDescending(left.market.percentileGap, right.market.percentileGap)
         || nullableDescending(left.production.percentileGap, right.production.percentileGap)
         || Number(left.pressure.ownerLikelyStarter) - Number(right.pressure.ownerLikelyStarter)
         || right.pressure.countAboveDedicatedSlots - left.pressure.countAboveDedicatedSlots

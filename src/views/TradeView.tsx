@@ -274,6 +274,7 @@ function ScenarioPanel({
     : `${value > 0 ? '+' : ''}${decimals ? value.toFixed(1) : formatValue(value)}${suffix}`
   const production = result.lineupScenarioA
   const sourceCoverage = Math.min(result.packageA.providerCoveragePercent, result.packageB.providerCoveragePercent)
+  const providerTotalsApplicable = result.packageA.providerTotalsApplicable && result.packageB.providerTotalsApplicable
   const objectiveApplies = teamA.rosterId === strategyRosterId
 
   return (
@@ -285,9 +286,10 @@ function ScenarioPanel({
       <div className="scenario-grid">
         <article>
           <small>Provider disagreement</small>
-          <strong>{sourceCoverage}% dual-source coverage</strong>
+          <strong>{providerTotalsApplicable ? `${sourceCoverage}% dual-source coverage` : 'Player-only lens unavailable'}</strong>
           <span>KTC player lens <b>{signed(result.providerNetA.ktc)}</b></span>
           <span>FantasyCalc player lens <b>{signed(result.providerNetA.fantasycalc)}</b></span>
+          {!providerTotalsApplicable && <em>Picks have no value on either provider’s player scale.</em>}
         </article>
         <article>
           <small>Production range</small>

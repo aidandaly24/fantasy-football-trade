@@ -82,8 +82,10 @@ date, and available source hashes.
 The Trade Lab evaluates an explicit package through separate factual lenses:
 
 - the literal sum of current Tradyr composites;
-- KTC and FantasyCalc player-value package lenses when every player has both
-  provider values, with any picks held at their current composite;
+- KTC and FantasyCalc player-value package lenses only for player-only trades
+  when every player has the corresponding provider value. Any pick makes these
+  provider-scale package totals unavailable because picks have no value on
+  either provider's player scale;
 - the provider-derived early-to-late range for unresolved picks;
 - floor, expected, and ceiling lineup deltas from the enabled production
   artifact;
@@ -111,9 +113,10 @@ resale return.
 The Evidence view includes a player-only research desk that keeps three kinds
 of current evidence separate:
 
-- **Market-source disagreement:** the symmetric percentage spread between the
-  current KTC and FantasyCalc values supplied through Tradyr. It shows which
-  source is higher but does not decide which source is correct.
+- **Market-source disagreement:** each provider's player rank percentile inside
+  the same current dual-covered league player pool. The absolute percentile
+  gap and both ranks are shown; raw KTC and FantasyCalc values remain on their
+  original, non-comparable scales.
 - **Production divergence:** the enabled production model's percentile minus
   the current composite-market percentile within the same position and the
   same rostered, covered population. The UI retains each rank and population. This is
@@ -126,7 +129,7 @@ of current evidence separate:
 
 The desk provides separate source-gap, production-ahead, and owner-pressure
 lenses. Its supported frontier compares only the visible measured objectives:
-source spread, within-position percentile gap, covered lineup effects, likely
+source rank-percentile gap, within-position production percentile gap, covered lineup effects, likely
 lineup status, positional depth, recent completed-trade count, and—when the
 user declares a rebuilding or retooling objective—age at the declared horizon.
 Missing source or lineup evidence is not imputed. The population is current

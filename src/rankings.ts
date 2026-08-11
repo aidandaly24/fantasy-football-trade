@@ -442,6 +442,7 @@ export type TradePackageFacts = {
   averageAgeAtHorizon: number | null
   ageCoveragePercent: number
   providerCoveragePercent: number
+  providerTotalsApplicable: boolean
   providerTotals: {
     ktc: number | null
     fantasycalc: number | null
@@ -539,10 +540,7 @@ function lineupProjectionScenario(
 function packageProviderTotal(assets: Asset[], provider: keyof NonNullable<Asset['marketSources']>): number | null {
   let total = 0
   for (const asset of assets) {
-    if (asset.kind === 'pick') {
-      total += asset.value
-      continue
-    }
+    if (asset.kind === 'pick') return null
     const value = asset.marketSources?.[provider]
     if (value === null || value === undefined) return null
     total += value
@@ -575,6 +573,7 @@ function packageFacts(assets: Asset[], horizonYears: number): TradePackageFacts 
     averageAgeAtHorizon: averageAgeNow === null ? null : Number((averageAgeNow + horizonYears).toFixed(1)),
     ageCoveragePercent: players.length ? Math.round((knownAges.length / players.length) * 100) : 100,
     providerCoveragePercent: players.length ? Math.round((providerCovered / players.length) * 100) : 100,
+    providerTotalsApplicable: picks.length === 0,
     providerTotals: {
       ktc: packageProviderTotal(assets, 'ktc'),
       fantasycalc: packageProviderTotal(assets, 'fantasycalc'),
