@@ -4,6 +4,7 @@ import App from './App'
 import './styles.css'
 import './styles/journal.css'
 import './styles/edge.css'
+import './styles/rookies.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

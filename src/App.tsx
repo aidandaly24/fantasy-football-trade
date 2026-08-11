@@ -1,6 +1,6 @@
-import { ArrowLeftRight, BarChart3, BookOpen, ChevronRight, CircleGauge, Radar, RefreshCw, Target } from 'lucide-react'
+import { ArrowLeftRight, BarChart3, BookOpen, ChevronRight, CircleGauge, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
 import { FormEvent, useEffect, useRef, useState } from 'react'
-import { fetchEventModelHealth, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchSleeperPlayers, fetchUserState, fetchValues, saveLeaguePreferences, saveMarketTape, syncJournal } from './api'
+import { fetchEventModelHealth, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchRookieBoard, fetchSleeperPlayers, fetchUserState, fetchValues, saveLeaguePreferences, saveMarketTape, syncJournal } from './api'
 import { buildEdgeBoard, buildTeamDirections, marketTapeAssets } from './edge'
 import type { TeamDirection } from './edge'
 import { journalTransactionsForCurrentManagers } from './journal'
@@ -8,11 +8,13 @@ import { buildManagerProfiles } from './negotiation'
 import type { ManagerProfile } from './negotiation'
 import { buildTeams, leagueFormat } from './rankings'
 import { resolveTeamStrategy } from './strategy'
+import type { RookieBoardBundle } from './rookies'
 import type { EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, Team, UserIdentity, UserState, ValueBundle } from './types'
 import { EdgeView } from './views/EdgeView'
 import { IntelView } from './views/IntelView'
 import { ModelView } from './views/ModelView'
 import { RankingsView } from './views/RankingsView'
+import { RookieBoardView } from './views/RookieBoardView'
 import { TradeJournalView } from './views/TradeJournalView'
 import { TradeView } from './views/TradeView'
 import type { TradeDraft } from './views/types'
@@ -25,6 +27,7 @@ type AppData = {
   teams: Team[]
   modelHealth: ModelHealthBundle | null
   eventModelHealth: EventModelHealthBundle | null
+  rookieBoard: RookieBoardBundle | null
   managerProfiles: ManagerProfile[]
   directions: TeamDirection[]
   journal: JournalBundle
@@ -32,7 +35,7 @@ type AppData = {
   user: UserIdentity | null
 }
 
-type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'model'
+type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model'
 
 function AppHeader({
   view,
@@ -77,6 +80,9 @@ function AppHeader({
           </button>
           <button type="button" className={view === 'strategy' ? 'active' : ''} onClick={() => setView('strategy')}>
             <Target size={17} /> Evidence
+          </button>
+          <button type="button" className={view === 'rookies' ? 'active' : ''} onClick={() => setView('rookies')}>
+            <GraduationCap size={17} /> Rookie board
           </button>
           <button type="button" className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}>
             <CircleGauge size={17} /> Model
@@ -182,7 +188,7 @@ function App() {
     try {
       const leagueBundle = await fetchLeagueBundle(cleanId)
       const format = leagueFormat(leagueBundle)
-      const [valueBundle, projectionBundle, modelHealth, eventModelHealth, storedJournal] = await Promise.all([
+      const [valueBundle, projectionBundle, modelHealth, eventModelHealth, rookieBoard, storedJournal] = await Promise.all([
         fetchValues({
           ...format,
           numTeams: leagueBundle.league.total_rosters,
@@ -190,6 +196,7 @@ function App() {
         fetchProjections(),
         fetchModelHealth(),
         fetchEventModelHealth(),
+        fetchRookieBoard().catch(() => null),
         fetchJournal(cleanId).catch(() => null),
       ])
       const journalFresh = storedJournal?.sync?.finishedAt
@@ -248,7 +255,7 @@ function App() {
         }
         setUserState(nextState)
       }
-      setData({ leagueBundle, valueBundle, teams, modelHealth, eventModelHealth, managerProfiles, directions, journal, preferences, user })
+      setData({ leagueBundle, valueBundle, teams, modelHealth, eventModelHealth, rookieBoard, managerProfiles, directions, journal, preferences, user })
       const seedRosterId = preferences.myRosterId ?? teams[0]?.rosterId
       if (seedRosterId) {
         const seedTeam = teams.find((team) => team.rosterId === seedRosterId) ?? teams[0]
@@ -408,6 +415,8 @@ function App() {
             <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
           ) : view === 'strategy' ? (
             <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} marketFormat={{ ...leagueFormat(data.leagueBundle), numTeams: data.leagueBundle.league.total_rosters }} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} journalSyncing={journalSyncing} onSyncJournal={() => void refreshJournal()} onOpenJournal={() => setView('journal')} />
+          ) : view === 'rookies' ? (
+            <RookieBoardView bundle={data.rookieBoard} />
           ) : (
             <ModelView health={data.modelHealth} />
           )}

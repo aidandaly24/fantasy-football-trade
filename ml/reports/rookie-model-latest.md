@@ -1,6 +1,6 @@
 # Rookie sleeper model
 
-Generated: `2026-08-11T00:55:17.906976Z`
+Generated: `2026-08-11T13:54:09.436156Z`
 
 ## Decision
 

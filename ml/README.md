@@ -99,6 +99,7 @@ The aggregate audit is retained in:
 
 - `ml/reports/rookie-model-latest.json`
 - `ml/reports/rookie-model-latest.md`
+- `worker/generated/rookie-board.json` (sanitized private-site contract)
 
 V6.0 builds the historical tape. V6.1 compares a small market-return model with
 a no-change error baseline and an NFL-draft-capital sleeper basket on the two

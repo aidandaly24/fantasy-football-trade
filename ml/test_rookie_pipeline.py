@@ -1,3 +1,4 @@
+import json
 import unittest
 from datetime import date
 
@@ -5,6 +6,9 @@ import pandas as pd
 
 from ml.rookie_pipeline import (
     CommitPoint,
+    REPORT_JSON,
+    ROOKIE_BOARD_JSON,
+    build_browser_rookie_bundle,
     build_class_rows,
     normalize_market_snapshot,
     parse_commit_log,
@@ -13,6 +17,31 @@ from ml.rookie_pipeline import (
 
 
 class RookiePipelineTests(unittest.TestCase):
+    def test_private_browser_artifact_matches_and_sanitizes_the_report(self) -> None:
+        report = json.loads(REPORT_JSON.read_text())
+        expected = build_browser_rookie_bundle(report)
+        artifact = json.loads(ROOKIE_BOARD_JSON.read_text())
+
+        self.assertEqual(artifact, expected)
+        self.assertEqual(
+            [player["sleeperId"] for player in artifact["board"]],
+            [player["sleeperId"] for player in report["currentDraftBoard"]],
+        )
+        self.assertEqual(len({player["id"] for player in artifact["board"]}), len(artifact["board"]))
+        self.assertEqual(
+            [player["sleeperId"] for player in artifact["board"] if player["inValidatedSleeperBasket"]],
+            [player["sleeperId"] for player in report["currentDraftBoard"] if player["inValidatedSleeperBasket"]],
+        )
+        serialized = json.dumps(artifact)
+        for forbidden in (
+            "currentShadowBoard",
+            "marketReturnModels",
+            "rawSourceRows",
+            "productionFeatureImportance",
+            "sources",
+        ):
+            self.assertNotIn(forbidden, serialized)
+
     def test_parses_old_and_new_market_schemas_into_the_same_contract(self) -> None:
         old = "\ufeffmergename,pos,age,dyno2QBECR,draft_year\nAlpha Back,RB,21.2,40.5,2019\nBeta Wide,WR,22.0,90.0,2019\n"
         new = '"player","pos","age","ecr_2qb","draft_year","fp_id"\n"Alpha Back","RB",21.2,40.5,2019,"10"\n"Beta Wide","WR",22.0,90.0,2019,"11"\n'

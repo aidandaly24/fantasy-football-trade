@@ -23,6 +23,7 @@ import type {
   ValueBundle,
 } from './types'
 import type { ResearchPipelineBundle } from './research'
+import type { RookieBoardBundle } from './rookies'
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
@@ -107,6 +108,10 @@ export async function fetchEventModelHealth(): Promise<EventModelHealthBundle | 
   } catch {
     return null
   }
+}
+
+export async function fetchRookieBoard(): Promise<RookieBoardBundle> {
+  return fetchJson<RookieBoardBundle>('/api/rookies')
 }
 
 export async function fetchUserState(): Promise<UserState | null> {

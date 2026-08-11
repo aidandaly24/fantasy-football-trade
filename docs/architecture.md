@@ -51,6 +51,7 @@ Offline training does not run in the request path.
 | `src/research.ts` | Browser representation of historical research state and gates |
 | `worker/index.ts` | Route dispatch, static asset fallback, and scheduled refresh orchestration |
 | `worker/routes/` | Authenticated capability handlers |
+| `worker/generated/` | Sanitized generated artifacts bundled only into authenticated Worker routes |
 | `worker/http.ts` | Shared HTTP boundary helpers |
 | `worker/intel-feed.ts` | RSS and Sleeper trend collection adapter |
 | `worker/*-store.ts` | D1 schemas, normalization, persistence, refreshes, and read models by capability |
@@ -77,9 +78,9 @@ Offline training does not run in the request path.
 5. Identity-aware Worker routes load preferences, the trade journal, alerts,
    evidence snapshots, and research state.
 
-The primary views are league facts, Trade Lab, Journal, News, Evidence, and
-Model. View-local presentation should consume typed domain results instead of
-reimplementing ranking or valuation rules in JSX.
+The primary views are league facts, Trade Lab, Journal, News, Evidence, Rookie
+board, and Model. View-local presentation should consume typed domain results
+instead of reimplementing ranking or valuation rules in JSX.
 
 ## Worker API boundaries
 
@@ -91,6 +92,7 @@ reimplementing ranking or valuation rules in JSX.
 | `/api/edge` | `GET`, `POST` | D1 | Requires identity; stores snapshots, offers, and market tape |
 | `/api/research` | `GET`, `POST` | D1 | Requires identity; syncs and reads historical evidence |
 | `/api/intel` | `GET` | None | Requires identity; generic feed is cached privately for five minutes |
+| `/api/rookies` | `GET` | None | Requires identity; returns the checked-in sanitized rookie-production artifact with no-store caching |
 
 Write routes reject cross-origin requests. Private JSON responses use
 `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`.
