@@ -2,7 +2,7 @@
 
 RosterLab is a private dynasty fantasy football research desk for Sleeper leagues. It imports league data, builds league-relative power rankings, resolves current draft-pick ownership, evaluates proposed trades, and inventories the entire league by current market value with covered production and linked news evidence shown separately.
 
-The league ribbon has one-click controls for the two private leagues (`1336087922847289344` and `1312112570039037952`). There is intentionally no free-form league ID input; adding another league requires an explicit code and evidence review.
+The league ribbon has one-click controls for BC League (`1336087922847289344`) and Emperor Phil (`1312112570039037952`). There is intentionally no free-form league ID input; adding another league requires an explicit code and evidence review.
 
 ## Data sources
 
