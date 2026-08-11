@@ -34,8 +34,19 @@ Then open the local URL shown by Vite.
 
 ```bash
 npm test
+npm run ml:test
 npm run build
 ```
+
+## Project documentation
+
+- [Architecture](docs/architecture.md)
+- [Code quality](docs/code-quality.md)
+- [Data and models](docs/data-and-models.md)
+- [Development and pull-request workflow](docs/development-workflow.md)
+
+All project changes use task-specific branches and GitHub pull requests. Do not
+push directly to `main`, and do not merge without explicit approval.
 
 ## Ranking model
 
