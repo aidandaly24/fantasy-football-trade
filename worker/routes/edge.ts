@@ -1,10 +1,4 @@
 import {
-  ensureEdgeSchema,
-  normalizeOfferInput,
-  readEdgeState,
-  saveTradeOffer,
-} from '../edge-store'
-import {
   ensureEdgeLearningSchema,
   normalizeMarketTapeInput,
   readEdgeLearningState,
@@ -24,14 +18,13 @@ export async function edgeResponse(request: Request, env: Env): Promise<Response
   const leagueId = url.searchParams.get('leagueId')
   if (!validLeagueId(leagueId)) return privateJson({ message: 'Invalid league ID' }, 400)
   try {
-    await Promise.all([ensureEdgeSchema(env.DB), ensureEdgeLearningSchema(env.DB), ensureHistoricalTapeSchema(env.DB)])
+    await Promise.all([ensureEdgeLearningSchema(env.DB), ensureHistoricalTapeSchema(env.DB)])
     const readState = async () => {
-      const [edge, learning, historicalTape] = await Promise.all([
-        readEdgeState(env.DB!, user.id, leagueId),
+      const [learning, historicalTape] = await Promise.all([
         readEdgeLearningState(env.DB!, user.id, leagueId),
         readHistoricalTapeAudit(env.DB!, user.id, leagueId),
       ])
-      return { ...edge, ...learning, historicalTape }
+      return { ...learning, historicalTape }
     }
     if (request.method === 'GET') return privateJson(await readState())
     if (request.method !== 'POST') {
@@ -39,11 +32,9 @@ export async function edgeResponse(request: Request, env: Env): Promise<Response
     }
     if (!sameOriginWrite(request)) return privateJson({ message: 'Cross-origin writes are not allowed' }, 403)
     const input = await request.json().catch(() => null) as {
-      action?: unknown; offer?: unknown; marketTape?: unknown
+      action?: unknown; marketTape?: unknown
     } | null
-    if (input?.action === 'offer') {
-      await saveTradeOffer(env.DB, user.id, leagueId, normalizeOfferInput(input.offer))
-    } else if (input?.action === 'market') {
+    if (input?.action === 'market') {
       const tape = normalizeMarketTapeInput(input.marketTape)
       await saveMarketTape(env.DB, user.id, leagueId, tape)
       await queueHistoricalTapeAudit(env.DB, user.id, leagueId, tape)

@@ -33,8 +33,8 @@ For every rostered player, the target-discovery pipeline should maintain:
 8. Pick-specific rookie opportunity cost, using the known-slot rookie model
    only where it has passed its validation gates and otherwise showing an
    honest range.
-9. The user's pending/pro-forma roster, committed pick ownership, and actually
-   available trading inventory.
+9. The user's current Sleeper roster, pick ownership, and available trading
+   inventory.
 10. An opening offer, target price, maximum price, intended holding period, and
     exit condition. Prices are decision boundaries, not predictions that an
     opposing manager will accept.
@@ -78,7 +78,7 @@ create a calibrated acceptance probability.
 
 ## Discovery and negotiation loop
 
-1. Refresh settled and pending/pro-forma league state.
+1. Refresh the current Sleeper roster and traded-pick ledger.
 2. Screen each roster for surplus, needs, timeline mismatch, and manager trade
    behavior.
 3. Form a target thesis from market, production, horizon, and owner utility.

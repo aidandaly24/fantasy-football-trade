@@ -353,139 +353,6 @@ a {
   gap: 14px;
 }
 
-.pending-roster-panel {
-  margin-bottom: 18px;
-  overflow: hidden;
-  border-color: #b8c58f;
-  box-shadow: 0 14px 38px rgba(54, 68, 31, 0.09);
-}
-
-.pending-roster-heading {
-  padding: 18px 20px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  background: linear-gradient(110deg, rgba(216, 255, 104, 0.25), rgba(251, 250, 245, 0.45));
-  border-bottom: 1px solid #d8ddc5;
-}
-
-.pending-roster-icon {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  color: #46531f;
-  background: var(--acid);
-  border-radius: 12px;
-}
-
-.pending-roster-heading h2 {
-  margin: 4px 0 3px;
-  font-size: 16px;
-}
-
-.pending-roster-heading p,
-.pending-roster-note {
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: 9px;
-  line-height: 1.5;
-}
-
-.pending-snapshot-switch {
-  padding: 4px;
-  display: flex;
-  background: #e8e9df;
-  border-radius: 10px;
-}
-
-.pending-snapshot-switch button {
-  padding: 8px 11px;
-  color: var(--ink-soft);
-  background: transparent;
-  border: 0;
-  border-radius: 7px;
-  font-size: 8px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.pending-snapshot-switch button.active {
-  color: white;
-  background: var(--dark);
-}
-
-.pending-trade-list {
-  padding: 7px 12px;
-  display: grid;
-}
-
-.pending-trade-list article {
-  min-height: 54px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 11px;
-  border-bottom: 1px solid #e3e2da;
-}
-
-.pending-trade-list article:last-child {
-  border-bottom: 0;
-}
-
-.pending-trade-list article > span {
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  color: #647232;
-  background: #eef3dd;
-  border-radius: 9px;
-}
-
-.pending-trade-list article > div {
-  display: grid;
-  gap: 2px;
-}
-
-.pending-trade-list strong { font-size: 10px; }
-.pending-trade-list small { color: var(--ink-soft); font-size: 8px; }
-
-.pending-trade-list button {
-  padding: 7px 9px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--red);
-  background: transparent;
-  border: 1px solid #dfc4bd;
-  border-radius: 8px;
-  font-size: 8px;
-  font-weight: 800;
-}
-
-.pending-roster-warning,
-.pending-roster-note {
-  padding: 9px 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-top: 1px solid #e3e2da;
-}
-
-.pending-roster-warning {
-  color: #865442;
-  background: #fff3e8;
-  font-size: 9px;
-}
-
-.pending-source-only {
-  margin-bottom: 18px;
-  border: 1px solid #e1c6b5;
-  box-shadow: none;
-}
-
 .leader-card {
   min-width: 0;
   padding: 17px 18px;
@@ -930,21 +797,6 @@ a {
   margin-bottom: 30px;
 }
 
-.trade-pending-chip {
-  width: max-content;
-  margin-top: 12px;
-  padding: 7px 9px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #526023;
-  background: rgba(216, 255, 104, 0.34);
-  border: 1px solid #cadb92;
-  border-radius: 8px;
-  font-size: 8px;
-  font-weight: 800;
-}
-
 .live-value-chip {
   flex: 0 0 auto;
   padding: 10px 13px;
@@ -1001,54 +853,6 @@ a {
   grid-template-columns: minmax(310px, 1fr) 290px minmax(310px, 1fr);
   align-items: start;
   gap: 16px;
-}
-
-.pending-commit-panel {
-  margin-top: 16px;
-  padding: 14px 16px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 13px;
-  border-style: dashed;
-  box-shadow: none;
-}
-
-.pending-commit-panel > span {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  color: #526023;
-  background: #edf4d8;
-  border-radius: 11px;
-}
-
-.pending-commit-panel > div {
-  display: grid;
-  gap: 3px;
-}
-
-.pending-commit-panel strong { font-size: 10px; }
-.pending-commit-panel small { color: var(--ink-soft); font-size: 8px; line-height: 1.5; }
-.pending-commit-panel em { color: var(--green); font-size: 8px; font-style: normal; font-weight: 800; }
-
-.pending-commit-panel button {
-  padding: 10px 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--ink);
-  background: var(--acid);
-  border: 1px solid var(--acid-deep);
-  border-radius: 9px;
-  font-size: 8px;
-  font-weight: 900;
-}
-
-.pending-commit-panel button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .trade-side {
@@ -3023,18 +2827,6 @@ footer a {
     grid-template-columns: 1fr;
   }
 
-  .pending-roster-heading {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .pending-snapshot-switch {
-    grid-column: 1 / -1;
-  }
-
-  .pending-snapshot-switch button {
-    flex: 1;
-  }
-
   .rankings-layout {
     grid-template-columns: 1fr;
   }
@@ -3046,15 +2838,6 @@ footer a {
 
   .trade-builder {
     grid-template-columns: 1fr;
-  }
-
-  .pending-commit-panel {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .pending-commit-panel button {
-    grid-column: 1 / -1;
-    justify-content: center;
   }
 
   .trade-verdict {

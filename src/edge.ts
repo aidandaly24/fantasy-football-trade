@@ -41,7 +41,6 @@ export type EdgeBoardOptions = {
   rosterPositions: string[]
   directions: TeamDirection[]
   intelSignals?: IntelSignal[]
-  excludedAssetIds?: string[]
   maxResults?: number
 }
 
@@ -116,15 +115,13 @@ export function buildEdgeBoard(teams: Team[], options: EdgeBoardOptions): EdgeOp
   if (!mine) return []
   const directions = new Map(options.directions.map((direction) => [direction.rosterId, direction]))
   const intel = new Map((options.intelSignals ?? []).map((signal) => [String(signal.player.sleeperId), signal]))
-  const excluded = new Set(options.excludedAssetIds ?? [])
-
   return teams
     .filter((team) => team.rosterId !== mine.rosterId)
     .flatMap((owner) => {
       const direction = directions.get(owner.rosterId)
       if (!direction) return []
       return [...owner.players, ...owner.picks]
-        .filter((asset) => asset.value > 0 && !excluded.has(asset.id))
+        .filter((asset) => asset.value > 0)
         .map((asset): EdgeOpportunity => {
           const signal = asset.kind === 'player' ? intel.get(asset.id) ?? null : null
           const lineupDelta = asset.kind === 'player' && asset.projectedPpg !== undefined

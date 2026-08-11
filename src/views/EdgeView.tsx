@@ -1,6 +1,6 @@
-import { AlertTriangle, ArrowLeftRight, BookOpen, Check, ChevronRight, Clock3, Handshake, Info, LockKeyhole, Radar, RefreshCw, Target } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, BookOpen, Check, ChevronRight, Clock3, Info, LockKeyhole, Radar, RefreshCw, Target } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { fetchEdgeState, fetchIntel, fetchResearchState, saveMarketTape, saveTradeOffer } from '../api'
+import { fetchEdgeState, fetchIntel, fetchResearchState, saveMarketTape } from '../api'
 import { marketTapeLeagueContext } from '../league-context'
 import type { LeagueContext } from '../league-context'
 import { buildEdgeBoard, marketTapeAssets } from '../edge'
@@ -13,18 +13,16 @@ import { journalTradeSides, tradePartyNames } from '../journal'
 import type { ManagerProfile } from '../negotiation'
 import type { ResearchPipelineBundle } from '../research'
 import { findComparablePackages, findTradeFrontier, resolveTeamStrategy } from '../strategy'
-import type { ComparablePackage } from '../strategy'
-import type { EdgeStateBundle, IntelFeed, JournalBundle, LeaguePreferences, Team, TradeOfferRecord, TradeOfferStatus, ValueBundle } from '../types'
+import type { EdgeStateBundle, IntelFeed, JournalBundle, LeaguePreferences, Team, ValueBundle } from '../types'
 import { AssetBadge, formatResearchGate, formatValue, signedPercent } from '../components/domain-ui'
 import { DislocationBoard } from './DislocationBoard'
 import type { TradeDraft } from './types'
 
 function emptyEdgeState(): EdgeStateBundle {
   return {
-    offers: [],
     marketTape: {
       snapshotCount: 0, assetsTracked: 0, firstSnapshotAt: null, lastSnapshotAt: null,
-      spanDays: 0, labeledExamples: 0, labeledOffers: 0, lastAutomaticRefreshAt: null,
+      spanDays: 0, labeledExamples: 0, lastAutomaticRefreshAt: null,
       automaticRefreshError: null,
     },
     calibration: [],
@@ -43,7 +41,6 @@ function emptyEdgeState(): EdgeStateBundle {
 
 export function EdgeView({
   teams,
-  lockedAssetIds,
   profiles,
   directions,
   myRosterId,
@@ -59,7 +56,6 @@ export function EdgeView({
   onOpenJournal,
 }: {
   teams: Team[]
-  lockedAssetIds: string[]
   profiles: ManagerProfile[]
   directions: TeamDirection[]
   myRosterId: number
@@ -107,8 +103,8 @@ export function EdgeView({
     [feed, myRosterId, teams, valueBundle.players],
   )
   const allOpportunities = useMemo(
-    () => buildEdgeBoard(teams, { myRosterId, rosterPositions, directions, intelSignals: signals, excludedAssetIds: lockedAssetIds, maxResults: 500 }),
-    [teams, myRosterId, rosterPositions, directions, signals, lockedAssetIds],
+    () => buildEdgeBoard(teams, { myRosterId, rosterPositions, directions, intelSignals: signals, maxResults: 500 }),
+    [teams, myRosterId, rosterPositions, directions, signals],
   )
   const opportunities = allOpportunities.slice(0, 24)
   const filtered = opportunities.filter((opportunity) => filter === 'all' || opportunity.categories.includes(filter))
@@ -124,17 +120,16 @@ export function EdgeView({
       rosterPositions,
       targetAssetId: selected.asset.id,
       strategy: teamStrategy,
-      excludedAssetIds: lockedAssetIds,
     }) : [],
-    [teams, myRosterId, rosterPositions, selected, teamStrategy, lockedAssetIds],
+    [teams, myRosterId, rosterPositions, selected, teamStrategy],
   )
   const tradeFrontier = useMemo(
-    () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy, excludedAssetIds: lockedAssetIds }, 8),
-    [teams, myRosterId, rosterPositions, teamStrategy, lockedAssetIds],
+    () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy }, 8),
+    [teams, myRosterId, rosterPositions, teamStrategy],
   )
   const dislocations = useMemo(
-    () => buildMarketDislocations(teams, { myRosterId, rosterPositions, directions, strategy: teamStrategy, excludedAssetIds: lockedAssetIds }),
-    [teams, myRosterId, rosterPositions, directions, teamStrategy, lockedAssetIds],
+    () => buildMarketDislocations(teams, { myRosterId, rosterPositions, directions, strategy: teamStrategy }),
+    [teams, myRosterId, rosterPositions, directions, teamStrategy],
   )
 
   useEffect(() => {
@@ -168,39 +163,9 @@ export function EdgeView({
     onUpdatePreferences({ settings: { teamDirectionOverrides: overrides } })
   }
 
-  const updateOffer = (offer: TradeOfferRecord, status: TradeOfferStatus) => {
-    void saveTradeOffer(preferences.leagueId, { ...offer, status, updatedAt: new Date().toISOString() })
-      .then(setEdgeState)
-      .catch((error) => setEdgeError(error instanceof Error ? error.message : 'Offer status could not be saved'))
-  }
-
   const inspectDislocation = (candidate: MarketDislocation) => {
     setSelectedKey(candidate.key)
     window.requestAnimationFrame(() => document.getElementById('target-package-frontier')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-  }
-
-  const logComparablePackage = (candidate: ComparablePackage) => {
-    if (!selected) return
-    const now = new Date().toISOString()
-    const targetId = selected.asset.id.replace(/[^\w-]/g, '').slice(0, 20) || 'asset'
-    const offer: TradeOfferRecord = {
-      offerId: `draft-${Date.now().toString(36)}-${selected.owner.rosterId}-${targetId}`,
-      counterpartRosterId: selected.owner.rosterId,
-      targetAssetId: selected.asset.id,
-      targetAssetName: selected.asset.name,
-      stage: 'target',
-      status: 'draft',
-      sentAssets: candidate.send.map((asset) => ({ id: asset.id, name: asset.name, value: Math.round(asset.value) })),
-      receiveAssets: candidate.receive.map((asset) => ({ id: asset.id, name: asset.name, value: Math.round(asset.value) })),
-      marketDelta: Math.round(candidate.marketNetToMe),
-      lineupDelta: Number((candidate.lineupDeltaMe ?? 0).toFixed(2)),
-      thesis: `Current-market comparison only: send ${formatValue(candidate.sendValue)} and receive ${formatValue(candidate.receiveValue)}. Declared ${teamStrategy.mode} window: ${teamStrategy.horizonYears} years. No acceptance or resale prediction.`,
-      createdAt: now,
-      updatedAt: now,
-    }
-    void saveTradeOffer(preferences.leagueId, offer)
-      .then(setEdgeState)
-      .catch((error) => setEdgeError(error instanceof Error ? error.message : 'Draft could not be saved'))
   }
 
   const completedTradeChecks = journal.outcomes.filter((outcome) => outcome.status === 'complete').length
@@ -209,7 +174,6 @@ export function EdgeView({
     [valueBundle.players],
   )
   const recentTrades = journal.trades.slice(0, 6)
-  const activeOffers = edgeState.offers.filter((offer) => !['rejected', 'withdrawn', 'accepted'].includes(offer.status)).length
   const shadowGatesPassed = edgeState.shadowModel.gates.filter((gate) => gate.passed).length
   const shadowStatus = edgeState.shadowModel.status === 'passed-shadow'
     ? 'Passed shadow gates'
@@ -236,7 +200,7 @@ export function EdgeView({
           <h1>Find targets.<br />Compare real packages.</h1>
           <p>Your declared window is {teamStrategy.horizonYears} years and your objective is {teamStrategy.mode}. Select any league asset to compare concrete packages using current prices and covered production—without inventing a profit or acceptance score.</p>
         </div>
-        <div className="private-status"><LockKeyhole size={18} /><span><strong>Private research book</strong><small>Signals, overrides, offers, and outcomes are isolated to your account and league.</small></span></div>
+        <div className="private-status"><LockKeyhole size={18} /><span><strong>Private research book</strong><small>Signals, overrides, market observations, and completed-trade outcomes are isolated to your account and league.</small></span></div>
       </section>
 
       <div className="league-context-note panel"><span><strong>{leagueContext.label} evidence book</strong> · {leagueContext.labels.format}</span><small>Snapshots and outcomes stay isolated under this league and context fingerprint. Prices use the broad {leagueContext.labels.market}; exact TEP affects covered lineup evidence, not provider prices.</small></div>
@@ -246,7 +210,6 @@ export function EdgeView({
         <article className="panel"><small>Market tape</small><strong>{edgeState.marketTape.assetsTracked}</strong><span>{edgeState.marketTape.snapshotCount} private observations</span></article>
         <article className="panel"><small>Temporal labels</small><strong>{edgeState.marketTape.labeledExamples}</strong><span>{edgeState.marketTape.spanDays} days observed</span></article>
         <article className="panel"><small>Completed trades</small><strong>{journal.trades.length}</strong><span>{completedTradeChecks} outcome checkpoints</span></article>
-        <article className="panel"><small>Offer labels</small><strong>{edgeState.marketTape.labeledOffers}</strong><span>{activeOffers} open records</span></article>
       </section>
 
       <section className="panel evidence-trade-tape">
@@ -294,7 +257,7 @@ export function EdgeView({
           <article><small>Daily market tape</small><strong>{edgeState.marketTape.assetsTracked} assets</strong><span>Automatic refresh continues after the league is seeded.</span></article>
           <article><small>Historical cohorts</small><strong>{edgeState.calibration.length}</strong><span>Research display only; no live price adjustment.</span></article>
           <article><small>Shadow value model</small><strong>{shadowGatesPassed}/{edgeState.shadowModel.gates.length} gates</strong><span>It cannot change rankings or prices in V4.9.</span></article>
-          <article><small>Offer response labels</small><strong>{edgeState.marketTape.labeledOffers}</strong><span>Accepted, rejected, and countered offers only.</span></article>
+          <article><small>Outcome checks</small><strong>{completedTradeChecks}</strong><span>Completed trades with follow-up snapshots.</span></article>
         </div>
         <div className="learning-gates">
           {edgeState.shadowModel.gates.map((gate) => <span className={gate.passed ? 'passed' : ''} key={gate.id}>{gate.passed ? <Check size={14} /> : <Clock3 size={14} />} {gate.label}: {['maeLift', 'rankGuardrail'].includes(gate.id) ? `${(gate.actual * 100).toFixed(1)}%` : gate.actual.toFixed(0)} / {gate.requirement}</span>)}
@@ -472,7 +435,6 @@ export function EdgeView({
                   selectedA: candidate.send.map((asset) => asset.id),
                   selectedB: candidate.receive.map((asset) => asset.id),
                 })}>Compare in Trade Lab</button>
-                <button type="button" className="log-offer" onClick={() => logComparablePackage(candidate)}>Log private draft</button>
               </div>
             </article>
           )
@@ -480,13 +442,7 @@ export function EdgeView({
         <div className="model-caveat"><Info size={17} /><span>These packages answer “what is close in today’s market?” They do not answer “will the manager accept?” or “will this asset appreciate?” Those remain shadow-model questions until their time-split gates pass.</span></div>
       </section>}
 
-      <section className="edge-review-grid">
-        <div className="panel offer-book">
-          <div className="panel-heading"><div><span className="eyebrow">Negotiation log</span><h2>Offers and responses</h2></div><span className="method-note">Manual because Sleeper hides private proposals</span></div>
-          {edgeState.offers.length ? edgeState.offers.slice(0, 8).map((offer) => (
-            <article key={offer.offerId}><span><strong>{offer.targetAssetName}</strong><small>{offer.sentAssets.map((asset) => asset.name).join(' + ')} → {offer.receiveAssets.map((asset) => asset.name).join(' + ')}</small></span><select value={offer.status} onChange={(event) => updateOffer(offer, event.target.value as TradeOfferStatus)}><option value="draft">Draft</option><option value="sent">Sent</option><option value="countered">Countered</option><option value="rejected">Rejected</option><option value="accepted">Accepted</option><option value="withdrawn">Withdrawn</option></select></article>
-          )) : <div className="intel-empty"><Handshake size={20} /><strong>No offers logged yet.</strong><span>Sleeper does not expose private proposals. Offer-response data must come from a real manual record, never an inferred response.</span></div>}
-        </div>
+      <section className="edge-review-grid edge-review-single">
         <div className="panel attribution-book">
           <div className="panel-heading"><div><span className="eyebrow">Raw collection</span><h2>Market tape status</h2></div><span className="method-note">Observed values, not forecasts</span></div>
           <div className="intel-empty"><Clock3 size={20} /><strong>{edgeState.marketTape.snapshotCount} observations across {edgeState.marketTape.assetsTracked} assets.</strong><span>{edgeState.marketTape.spanDays} days of depth. Promotion stays blocked until later observations create real, time-separated outcome labels.</span></div>
