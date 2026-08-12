@@ -27,6 +27,14 @@ import type { RookieBoardBundle } from './rookies'
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
 let sleeperPlayerCatalog: Promise<Record<string, SleeperPlayer>> | null = null
+let modelHealthRequest: Promise<ModelHealthBundle | null> | null = null
+let eventModelHealthRequest: Promise<EventModelHealthBundle | null> | null = null
+let rookieBoardRequest: Promise<RookieBoardBundle> | null = null
+let intelRequest: Promise<IntelFeed> | null = null
+let intelCachedAt = 0
+const journalRequests = new Map<string, Promise<JournalBundle>>()
+const edgeStateRequests = new Map<string, Promise<EdgeStateBundle>>()
+const researchStateRequests = new Map<string, Promise<ResearchPipelineBundle>>()
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init)
@@ -94,23 +102,21 @@ export async function fetchProjections(): Promise<ProjectionBundle | null> {
 }
 
 export async function fetchModelHealth(): Promise<ModelHealthBundle | null> {
-  try {
-    return await fetchJson<ModelHealthBundle>('/data/model-health.json')
-  } catch {
-    return null
-  }
+  modelHealthRequest ??= fetchJson<ModelHealthBundle>('/data/model-health.json').catch(() => null)
+  return modelHealthRequest
 }
 
 export async function fetchEventModelHealth(): Promise<EventModelHealthBundle | null> {
-  try {
-    return await fetchJson<EventModelHealthBundle>('/data/event-model-health.json')
-  } catch {
-    return null
-  }
+  eventModelHealthRequest ??= fetchJson<EventModelHealthBundle>('/data/event-model-health.json').catch(() => null)
+  return eventModelHealthRequest
 }
 
 export async function fetchRookieBoard(): Promise<RookieBoardBundle> {
-  return fetchJson<RookieBoardBundle>('/api/rookies')
+  rookieBoardRequest ??= fetchJson<RookieBoardBundle>('/api/rookies').catch((error) => {
+    rookieBoardRequest = null
+    throw error
+  })
+  return rookieBoardRequest
 }
 
 export async function fetchUserState(): Promise<UserState | null> {
@@ -158,16 +164,37 @@ export async function fetchSleeperPlayers(ids: string[]): Promise<Map<string, Sl
   return selectSleeperPlayers(await sleeperPlayerCatalog, ids)
 }
 
-export async function fetchIntel(): Promise<IntelFeed> {
-  return fetchJson<IntelFeed>('/api/intel')
+export async function fetchIntel(options: { fresh?: boolean } = {}): Promise<IntelFeed> {
+  const freshEnough = Date.now() - intelCachedAt < 5 * 60 * 1000
+  if (options.fresh || (intelCachedAt > 0 && !freshEnough)) intelRequest = null
+  intelRequest ??= fetchJson<IntelFeed>('/api/intel').then((feed) => {
+    intelCachedAt = Date.now()
+    return feed
+  }).catch((error) => {
+    intelRequest = null
+    throw error
+  })
+  return intelRequest
 }
 
 export async function fetchJournal(leagueId: string): Promise<JournalBundle> {
-  return fetchJson<JournalBundle>(`/api/journal?leagueId=${encodeURIComponent(leagueId)}`)
+  const existing = journalRequests.get(leagueId)
+  if (existing) return existing
+  const request = fetchJson<JournalBundle>(`/api/journal?leagueId=${encodeURIComponent(leagueId)}`).catch((error) => {
+    journalRequests.delete(leagueId)
+    throw error
+  })
+  journalRequests.set(leagueId, request)
+  return request
 }
 
 export async function syncJournal(leagueId: string): Promise<JournalBundle> {
-  return fetchJson<JournalBundle>(`/api/journal?leagueId=${encodeURIComponent(leagueId)}`, { method: 'POST' })
+  const request = fetchJson<JournalBundle>(`/api/journal?leagueId=${encodeURIComponent(leagueId)}`, { method: 'POST' })
+  journalRequests.set(leagueId, request)
+  return request.catch((error) => {
+    journalRequests.delete(leagueId)
+    throw error
+  })
 }
 
 export async function fetchAlerts(leagueId: string, sync = true): Promise<AlertInbox> {
@@ -189,27 +216,53 @@ export async function updateAlertReadState(
 }
 
 export async function fetchEdgeState(leagueId: string): Promise<EdgeStateBundle> {
-  return fetchJson<EdgeStateBundle>(`/api/edge?leagueId=${encodeURIComponent(leagueId)}`)
+  const existing = edgeStateRequests.get(leagueId)
+  if (existing) return existing
+  const request = fetchJson<EdgeStateBundle>(`/api/edge?leagueId=${encodeURIComponent(leagueId)}`).catch((error) => {
+    edgeStateRequests.delete(leagueId)
+    throw error
+  })
+  edgeStateRequests.set(leagueId, request)
+  return request
 }
 
-export async function fetchResearchState(leagueId: string, syncIfStale = true): Promise<ResearchPipelineBundle> {
+export async function fetchResearchState(leagueId: string, syncIfStale = false): Promise<ResearchPipelineBundle> {
   const path = `/api/research?leagueId=${encodeURIComponent(leagueId)}`
-  const current = await fetchJson<ResearchPipelineBundle>(path)
+  let request = researchStateRequests.get(leagueId)
+  if (!request) {
+    request = fetchJson<ResearchPipelineBundle>(path).catch((error) => {
+      researchStateRequests.delete(leagueId)
+      throw error
+    })
+    researchStateRequests.set(leagueId, request)
+  }
+  const current = await request
   const stale = !current.lastLeagueSyncAt
     || Date.now() - Date.parse(current.lastLeagueSyncAt) > 24 * 60 * 60 * 1000
   if (!syncIfStale || !stale) return current
-  return fetchJson<ResearchPipelineBundle>(path, { method: 'POST' })
+  const refreshed = fetchJson<ResearchPipelineBundle>(path, { method: 'POST' })
+    .catch((error) => {
+      researchStateRequests.delete(leagueId)
+      throw error
+    })
+  researchStateRequests.set(leagueId, refreshed)
+  return refreshed
 }
 
 export async function saveMarketTape(
   leagueId: string,
   marketTape: MarketTapeRequest,
 ): Promise<EdgeStateBundle> {
-  return fetchJson<EdgeStateBundle>(`/api/edge?leagueId=${encodeURIComponent(leagueId)}`, {
+  const request = fetchJson<EdgeStateBundle>(`/api/edge?leagueId=${encodeURIComponent(leagueId)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'market', marketTape }),
+  }).catch((error) => {
+    edgeStateRequests.delete(leagueId)
+    throw error
   })
+  edgeStateRequests.set(leagueId, request)
+  return request
 }
 
 export function sleeperAvatar(avatar: string | null | undefined): string | null {

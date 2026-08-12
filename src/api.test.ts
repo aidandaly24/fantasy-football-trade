@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchSleeperPlayers, selectSleeperPlayers } from './api'
+import { fetchIntel, fetchJournal, fetchSleeperPlayers, selectSleeperPlayers } from './api'
 import type { SleeperPlayer } from './types'
 
 afterEach(() => {
@@ -34,5 +34,34 @@ describe('Sleeper player catalog selection', () => {
     expect(fetchMock).toHaveBeenCalledWith('https://api.sleeper.app/v1/players/nfl', undefined)
     expect(first.get('101')?.full_name).toBe('First Player')
     expect(second.get('202')?.full_name).toBe('Second Player')
+  })
+})
+
+describe('secondary workspace request reuse', () => {
+  it('shares an in-flight intel request across workspaces', async () => {
+    let finishRequest: ((response: Response) => void) | undefined
+    const fetchMock = vi.fn().mockImplementation(() => new Promise<Response>((resolve) => {
+      finishRequest = resolve
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const first = fetchIntel()
+    const second = fetchIntel()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    finishRequest?.(Response.json({ articles: [], trends: [], sources: [], phaseGates: {} }))
+    await expect(Promise.all([first, second])).resolves.toHaveLength(2)
+  })
+
+  it('reuses the prefetched journal when its screen opens', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({
+      trades: [], identities: [], snapshots: [], outcomes: [], sync: null,
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchJournal('999999999999999999')
+    await fetchJournal('999999999999999999')
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })

@@ -92,7 +92,7 @@ export function EdgeView({
     void fetchEdgeState(preferences.leagueId).then((result) => { if (active) setEdgeState(result) }).catch((error) => {
       if (active) setEdgeError(error instanceof Error ? error.message : 'Private edge history unavailable')
     })
-    void fetchResearchState(preferences.leagueId).then((result) => { if (active) setResearch(result) }).catch((error) => {
+    void fetchResearchState(preferences.leagueId, false).then((result) => { if (active) setResearch(result) }).catch((error) => {
       if (active) setEdgeError(error instanceof Error ? error.message : 'Historical research pipeline unavailable')
     })
     return () => { active = false }
