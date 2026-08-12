@@ -1,5 +1,6 @@
 import type {
   ApiMeta,
+  CurrentSeasonValueBundle,
   EventModelHealthBundle,
   EdgeStateBundle,
   AlertInbox,
@@ -30,6 +31,7 @@ const TRADYR_BASE = 'https://api.tradyr.app/v1'
 let sleeperPlayerCatalog: Promise<Record<string, SleeperPlayer>> | null = null
 let projectionRequest: Promise<ProjectionBundle | null> | null = null
 const valueRequests = new Map<string, Promise<ValueBundle>>()
+const currentSeasonValueRequests = new Map<string, Promise<CurrentSeasonValueBundle>>()
 let modelHealthRequest: Promise<ModelHealthBundle | null> | null = null
 let eventModelHealthRequest: Promise<EventModelHealthBundle | null> | null = null
 let rookieBoardRequest: Promise<RookieBoardBundle> | null = null
@@ -99,6 +101,29 @@ export async function fetchValues(options: {
       throw error
     })
   valueRequests.set(cacheKey, request)
+  return request
+}
+
+export async function fetchCurrentSeasonValues(options: {
+  numQbs: 1 | 2
+  tep: boolean
+}): Promise<CurrentSeasonValueBundle> {
+  const cacheKey = `${options.numQbs}:${options.tep}`
+  const existing = currentSeasonValueRequests.get(cacheKey)
+  if (existing) return existing
+  const params = new URLSearchParams({
+    format: 'redraft',
+    numQbs: String(options.numQbs),
+    tep: String(options.tep),
+    limit: '1000',
+  })
+  const request = fetchJson<TradyrResponse<TradyrPlayer[]>>(`${TRADYR_BASE}/players?${params}`)
+    .then((players) => ({ players: players.data, meta: players.meta }))
+    .catch((error) => {
+      currentSeasonValueRequests.delete(cacheKey)
+      throw error
+    })
+  currentSeasonValueRequests.set(cacheKey, request)
   return request
 }
 

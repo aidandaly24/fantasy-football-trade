@@ -1,6 +1,6 @@
 import { ArrowLeftRight, BarChart3, BookOpen, CircleGauge, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchResearchState, fetchRookieBoard, fetchTradeModelHealth, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
+import { fetchCurrentSeasonValues, fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchResearchState, fetchRookieBoard, fetchTradeModelHealth, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
 import { buildTeamDirections } from './edge'
 import type { TeamDirection } from './edge'
 import { journalTransactionsForCurrentManagers } from './journal'
@@ -12,7 +12,7 @@ import { buildTeams } from './rankings'
 import { resolveTeamStrategy } from './strategy'
 import type { RookieBoardBundle } from './rookies'
 import type { TradeModelHealthBundle } from './trade-models'
-import type { EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, PlayerProjection, ProjectionBundle, RankingMode, Team, UserState, ValueBundle } from './types'
+import type { CurrentSeasonValueBundle, EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, PlayerProjection, ProjectionBundle, RankingMode, Team, UserState, ValueBundle } from './types'
 import { EdgeView } from './views/EdgeView'
 import { IntelView } from './views/IntelView'
 import { ModelView } from './views/ModelView'
@@ -24,13 +24,14 @@ import type { TradeDraft } from './views/types'
 
 const DEFAULT_LEAGUE_ID: SupportedLeagueId = SUPPORTED_LEAGUES[0].id
 const LAST_LEAGUE_KEY = 'rosterlab:last-league'
-const CORE_CACHE_PREFIX = 'rosterlab:core:v1:'
+const CORE_CACHE_PREFIX = 'rosterlab:core:v2:'
 const CORE_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000
 
 type AppData = {
   leagueBundle: LeagueBundle
   leagueContext: LeagueContext
   valueBundle: ValueBundle
+  currentSeasonValueBundle: CurrentSeasonValueBundle | null
   playerProjections: Map<string, PlayerProjection>
   teams: Team[]
   modelHealth: ModelHealthBundle | null | undefined
@@ -45,10 +46,11 @@ type AppData = {
 }
 
 type CachedLeagueCore = {
-  version: 1
+  version: 2
   cachedAt: string
   leagueBundle: LeagueBundle
   valueBundle: ValueBundle
+  currentSeasonValueBundle: CurrentSeasonValueBundle | null
   projectionBundle: ProjectionBundle | null
   preferences: LeaguePreferences
 }
@@ -56,6 +58,7 @@ type CachedLeagueCore = {
 type LeagueLoadPrefetch = {
   league?: Promise<LeagueBundle>
   values?: Promise<ValueBundle>
+  currentSeasonValues?: Promise<CurrentSeasonValueBundle | null>
   projections?: Promise<ProjectionBundle | null>
   preferences?: LeaguePreferences
 }
@@ -118,9 +121,10 @@ const EMPTY_JOURNAL: JournalBundle = {
 function readCachedLeagueCore(id: SupportedLeagueId): CachedLeagueCore | null {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(`${CORE_CACHE_PREFIX}${id}`) ?? 'null') as CachedLeagueCore | null
-    if (!parsed || parsed.version !== 1 || parsed.leagueBundle?.league?.league_id !== id) return null
+    if (!parsed || parsed.version !== 2 || parsed.leagueBundle?.league?.league_id !== id) return null
     if (!Number.isFinite(Date.parse(parsed.cachedAt)) || Date.now() - Date.parse(parsed.cachedAt) > CORE_CACHE_MAX_AGE_MS) return null
     if (!Array.isArray(parsed.valueBundle?.players) || !Array.isArray(parsed.valueBundle?.picks)) return null
+    if (parsed.currentSeasonValueBundle && !Array.isArray(parsed.currentSeasonValueBundle.players)) return null
     if (parsed.preferences?.leagueId !== id || !parsed.preferences.settings) return null
     return parsed
   } catch {
@@ -130,7 +134,7 @@ function readCachedLeagueCore(id: SupportedLeagueId): CachedLeagueCore | null {
 
 function writeCachedLeagueCore(id: SupportedLeagueId, value: Omit<CachedLeagueCore, 'version' | 'cachedAt'>): void {
   try {
-    window.localStorage.setItem(`${CORE_CACHE_PREFIX}${id}`, JSON.stringify({ version: 1, cachedAt: new Date().toISOString(), ...value }))
+    window.localStorage.setItem(`${CORE_CACHE_PREFIX}${id}`, JSON.stringify({ version: 2, cachedAt: new Date().toISOString(), ...value }))
   } catch {
     // The live refresh remains authoritative when device storage is unavailable or full.
   }
@@ -143,6 +147,7 @@ function writeCachedLeaguePreferences(preferences: LeaguePreferences): void {
   writeCachedLeagueCore(preferences.leagueId, {
     leagueBundle: cached.leagueBundle,
     valueBundle: cached.valueBundle,
+    currentSeasonValueBundle: cached.currentSeasonValueBundle,
     projectionBundle: cached.projectionBundle,
     preferences,
   })
@@ -341,12 +346,13 @@ function App() {
     const context = leagueContext(cached.leagueBundle)
     const playerProjections = new Map(cached.projectionBundle?.stale ? [] : Object.entries(cached.projectionBundle?.projections ?? {})
       .map(([playerId, projection]) => [playerId, projectionForLeague(projection, context)] as const))
-    const teams = buildTeams(cached.leagueBundle, cached.valueBundle, new Map(), playerProjections)
+    const teams = buildTeams(cached.leagueBundle, cached.valueBundle, new Map(), playerProjections, cached.currentSeasonValueBundle?.players ?? [])
     const transactions = journalTransactionsForCurrentManagers(EMPTY_JOURNAL, cached.leagueBundle.league.league_id)
     setData({
       leagueBundle: cached.leagueBundle,
       leagueContext: context,
       valueBundle: cached.valueBundle,
+      currentSeasonValueBundle: cached.currentSeasonValueBundle,
       playerProjections,
       teams,
       modelHealth: undefined,
@@ -382,6 +388,7 @@ function App() {
       const preset = SUPPORTED_LEAGUES.find((item) => item.id === id)!
       const leagueRequest = observePromise(prefetch.league ?? fetchLeagueBundle(id))
       const valueRequest = observePromise(prefetch.values ?? fetchValues(preset.marketFormat))
+      const currentSeasonValueRequest = observePromise(prefetch.currentSeasonValues ?? fetchCurrentSeasonValues(preset.marketFormat).catch(() => null))
       const projectionRequest = observePromise(prefetch.projections ?? fetchProjections())
       const leagueBundle = await leagueRequest
       const context = leagueContext(leagueBundle)
@@ -389,13 +396,14 @@ function App() {
       const presetMatches = context.marketFormat.numQbs === preset.marketFormat.numQbs
         && context.marketFormat.tep === preset.marketFormat.tep
         && context.marketFormat.numTeams === preset.marketFormat.numTeams
-      const [valueBundle, projectionBundle] = await Promise.all([
+      const [valueBundle, currentSeasonValueBundle, projectionBundle] = await Promise.all([
         presetMatches ? valueRequest : fetchValues(context.marketFormat),
+        presetMatches ? currentSeasonValueRequest : fetchCurrentSeasonValues(context.marketFormat).catch(() => null),
         projectionRequest,
       ])
       const playerProjections = new Map(projectionBundle?.stale ? [] : Object.entries(projectionBundle?.projections ?? {})
         .map(([playerId, projection]) => [playerId, projectionForLeague(projection, context)] as const))
-      const teams = buildTeams(leagueBundle, valueBundle, new Map(), playerProjections)
+      const teams = buildTeams(leagueBundle, valueBundle, new Map(), playerProjections, currentSeasonValueBundle?.players ?? [])
       const transactions = journalTransactionsForCurrentManagers(EMPTY_JOURNAL, leagueBundle.league.league_id)
       const directions = buildTeamDirections({
         teams,
@@ -429,6 +437,7 @@ function App() {
         leagueBundle,
         leagueContext: context,
         valueBundle,
+        currentSeasonValueBundle,
         playerProjections,
         teams,
         modelHealth: undefined,
@@ -446,7 +455,7 @@ function App() {
       try { window.localStorage.setItem(LAST_LEAGUE_KEY, id) } catch { /* Device storage is an optional acceleration only. */ }
       setSelectedId(teams[0]?.rosterId ?? 1)
       setTradeDraft(null)
-      writeCachedLeagueCore(id, { leagueBundle, valueBundle, projectionBundle, preferences: basePreference })
+      writeCachedLeagueCore(id, { leagueBundle, valueBundle, currentSeasonValueBundle, projectionBundle, preferences: basePreference })
 
       if (stateOverride) {
         void saveLeaguePreferences(basePreference).then((saved) => {
@@ -485,13 +494,14 @@ function App() {
       const statePromise = fetchUserState()
       const leaguePromise = observePromise(fetchLeagueBundle(initialLeague))
       const valuePromise = observePromise(fetchValues(preset.marketFormat))
+      const currentSeasonValuePromise = observePromise(fetchCurrentSeasonValues(preset.marketFormat).catch(() => null))
       const projectionPromise = observePromise(fetchProjections())
       const state = await statePromise
       setUserState(state)
       const savedLeagueId = state?.preferences.find((item) => isSupportedLeagueId(item.leagueId))?.leagueId
       const savedLeague = localLeague ?? (isSupportedLeagueId(savedLeagueId) ? savedLeagueId : initialLeague)
       await loadLeague(savedLeague, state, savedLeague === initialLeague
-        ? { league: leaguePromise, values: valuePromise, projections: projectionPromise, preferences: cached?.preferences }
+        ? { league: leaguePromise, values: valuePromise, currentSeasonValues: currentSeasonValuePromise, projections: projectionPromise, preferences: cached?.preferences }
         : {})
     })()
   }, [])
@@ -703,6 +713,8 @@ function App() {
               selectedId={selectedId}
               setSelectedId={setSelectedId}
               leagueContext={data.leagueContext}
+              myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId}
+              rosterPositions={data.leagueBundle.league.roster_positions}
             />
           ) : (
             <>

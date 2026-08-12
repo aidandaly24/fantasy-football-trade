@@ -10,7 +10,7 @@ Evaluate every proposed trade through separate lanes:
 
 | Lane | Question | May affect a recommendation when |
 | --- | --- | --- |
-| Current market | What can each asset be exchanged for now? | The attributed market snapshot is current and format-matched. |
+| Current market | What can each asset be exchanged for now, and how does the same-format redraft market rank a legal lineup? | The attributed dynasty or redraft snapshot is current, format-matched, and shown on its own scale. |
 | Covered production | What lineup points are supported by the held-out forecast? | The production model is enabled and required starters are covered. |
 | Exchange premium | What premium has the market paid for this package structure? | The exchange model passes all gates and this trade matches its eligible structure. |
 | Future outcome | Did similar premium decisions preserve value after 90/180/365 days? | That exact horizon and challenger pass every chronological holdout gate. |
@@ -18,6 +18,11 @@ Evaluate every proposed trade through separate lanes:
 Do not combine the lanes into a hidden grade. The user may weight promoted
 signals, and uncovered weight must remain visible rather than being silently
 redistributed.
+
+The redraft lineup-power index belongs to the current-market lane. It is a
+relative consensus proxy, not covered production. It may be shown as a direct
+strategy objective and Pareto fact, but it never supplies the Trade Lab's
+covered-production weight or bypasses that model's coverage gate.
 
 ## Five stages of historical evidence
 

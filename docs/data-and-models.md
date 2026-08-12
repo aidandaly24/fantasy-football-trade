@@ -9,6 +9,7 @@ interchangeable.
 |---|---|---|
 | Sleeper league state | Current rosters, settings, owners, draft, and traded-pick ownership | Team construction and league context |
 | Tradyr composite | Attributed current dynasty market comparison | Player/pick market values and trade comparison |
+| Tradyr redraft composite | Same-format current-season market consensus | Best-legal-lineup power index and trade power delta |
 | NFL production model | Expected next-season PPR points per NFL team game | Projected lineup impact when its gate passes |
 | Rookie production model | Expected position-relative rookie-season PPR production | Offline validated rookie research; not yet integrated into the site |
 | Future rookie-class tape | Same-horizon prospect population and source coverage | V6.4 historical evidence only; no model or application consumer |
@@ -41,9 +42,15 @@ only.
 
 ### Tradyr
 
-Tradyr provides permitted, attributed composites derived from public dynasty
-sources. The application uses its player and pick endpoints for current market
-comparisons. KeepTradeCut is not scraped directly.
+Tradyr provides permitted, attributed composites derived from public market
+sources. The application reads dynasty player/pick values for asset and trade
+comparisons and separately reads the matching redraft player bucket for the
+current-season lineup-power index. KeepTradeCut is not scraped directly.
+
+The power index is the direct sum of redraft composites in the best legal
+QB/RB/WR/TE/FLEX/SUPER_FLEX lineup. It is a same-format relative market proxy,
+not projected fantasy points. Missing redraft coverage stays missing and is
+shown as slot coverage; dynasty value is never used as a power fallback.
 
 Store the provider's generation/version timestamp with observations. A current
 composite captured during a historical backfill is retrospective and cannot be
@@ -92,6 +99,8 @@ The Trade Lab evaluates an explicit package through separate factual lenses:
 - the provider-derived early-to-late range for unresolved picks;
 - floor, expected, and ceiling lineup deltas from the enabled production
   artifact;
+- the current-season power change from the same-format redraft lineup before
+  and after the trade;
 - current draft-capital flow, roster-space change, and player age at the
   user's declared horizon.
 
@@ -116,6 +125,11 @@ bounded outgoing pool and returns the non-dominated set across the visible
 current-value, lineup-coverage, and declared-window objectives. Deterministic
 display ordering is a tie-break only. Neither frontier estimates acceptance or
 resale return.
+
+The private Emperor Phil profile adds a declared top-six objective and explicit
+move, timing, and protected-pick gates. That policy is isolated under
+`src/leagues/emperor-phil/`; the reusable lineup-power calculation contains no
+Phil-specific threshold or roster identity.
 
 ## Current-state market dislocations
 

@@ -13,6 +13,7 @@ import type {
   ValueBundle,
 } from './types'
 import { sleeperAvatar } from './api'
+import { currentSeasonLineup, currentSeasonPowerScenario, optimizeLineupBy } from './team-power'
 
 const SKILL_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE'])
 const EMPTY_METRICS: TeamMetrics = {
@@ -46,6 +47,7 @@ function playerName(player: SleeperPlayer | undefined, id: string): string {
 function toAsset(
   id: string,
   tradyr: TradyrPlayer | undefined,
+  currentSeason: TradyrPlayer | undefined,
   sleeper: SleeperPlayer | undefined,
   projection: PlayerProjection | undefined,
   flags: { isStarter: boolean; isTaxi: boolean; isReserve: boolean },
@@ -68,6 +70,10 @@ function toAsset(
     rank: tradyr?.rank ?? null,
     sourceValue: tradyr?.sources.ktc,
     marketSources: tradyr ? { ...tradyr.sources } : undefined,
+    currentSeasonValue: currentSeason?.composite,
+    currentSeasonRank: currentSeason?.rank ?? null,
+    currentSeasonPosRank: currentSeason?.posRank ?? null,
+    currentSeasonSources: currentSeason ? { ...currentSeason.sources } : undefined,
     active: sleeper?.active,
     nflStatus: sleeper?.status,
     injuryStatus: sleeper?.injury_status,
@@ -249,44 +255,6 @@ export function projectedLineupPpg(asset: Asset): number {
   return asset.projectedPpg ?? 0
 }
 
-function takeBest(
-  pool: Asset[],
-  position: string,
-  scoreAsset: (asset: Asset) => number,
-): Asset | undefined {
-  const eligible = pool
-    .filter((asset) => {
-      if (position === 'FLEX') return ['RB', 'WR', 'TE'].includes(asset.position)
-      if (position === 'SUPER_FLEX') return SKILL_POSITIONS.has(asset.position)
-      return asset.position === position
-    })
-    .sort((a, b) => scoreAsset(b) - scoreAsset(a) || b.value - a.value)[0]
-  if (!eligible) return undefined
-  pool.splice(
-    pool.findIndex((asset) => asset.id === eligible.id),
-    1,
-  )
-  return eligible
-}
-
-function optimizeLineupBy(
-  players: Asset[],
-  rosterPositions: string[],
-  scoreAsset: (asset: Asset) => number,
-): Asset[] {
-  const pool = players.filter((player) => SKILL_POSITIONS.has(player.position))
-  const selected: Asset[] = []
-  const required = rosterPositions.filter((position) => SKILL_POSITIONS.has(position))
-  const flex = rosterPositions.filter((position) => position === 'FLEX')
-  const superFlex = rosterPositions.filter((position) => position === 'SUPER_FLEX')
-
-  ;[...required, ...flex, ...superFlex].forEach((position) => {
-    const best = takeBest(pool, position, scoreAsset)
-    if (best) selected.push(best)
-  })
-  return selected
-}
-
 export function optimizeLineup(players: Asset[], rosterPositions: string[]): Asset[] {
   return optimizeLineupBy(players, rosterPositions, currentRoleValue)
 }
@@ -309,7 +277,7 @@ function rawMetrics(team: Team): Pick<TeamMetrics, 'lineupRaw' | 'coreRaw' | 'de
   }
 }
 
-export function scoreTeams(teams: Team[]): Team[] {
+export function scoreTeams(teams: Team[], rosterPositions?: string[]): Team[] {
   const raw = teams.map(rawMetrics)
   return teams.map((team, index) => {
     const current = raw[index]
@@ -322,7 +290,7 @@ export function scoreTeams(teams: Team[]): Team[] {
       liquidity: 0,
       market: Math.round(current.marketRaw),
       overall: Math.round(current.marketRaw),
-      contender: Number(current.lineupRaw.toFixed(1)),
+      contender: rosterPositions ? currentSeasonLineup(team.players, rosterPositions).score : Number(current.lineupRaw.toFixed(1)),
       future: Math.round(current.picksRaw),
     }
     return { ...team, metrics }
@@ -334,19 +302,19 @@ export function rebuildTeamMetrics(teams: Team[], rosterPositions: string[]): Te
   return scoreTeams(teams.map((team) => ({
     ...team,
     optimizedStarters: optimizeLineupBy(team.players, rosterPositions, projectedLineupPpg),
-  })))
+  })), rosterPositions)
 }
 
 export function rosterProfile(team: Team, teams: Team[]): { label: string; description: string } {
-  const rank = (field: keyof Pick<TeamMetrics, 'overall' | 'lineup' | 'depth' | 'future' | 'picks'>) =>
+  const rank = (field: keyof Pick<TeamMetrics, 'overall' | 'contender' | 'lineup' | 'depth' | 'future' | 'picks'>) =>
     [...teams].sort((a, b) => b.metrics[field] - a.metrics[field]).findIndex((item) => item.rosterId === team.rosterId) + 1
   const overall = rank('overall')
-  const lineup = rank('lineup')
+  const power = rank('contender')
   const depth = rank('depth')
   const picks = rank('picks')
   return {
     label: 'Observed roster snapshot',
-    description: `Current market ranks #${overall}; covered lineup PPG ranks #${lineup}; bench market ranks #${depth}; draft-capital market ranks #${picks}.`,
+    description: `Current market ranks #${overall}; current-season lineup power ranks #${power}; bench market ranks #${depth}; draft-capital market ranks #${picks}.`,
   }
 }
 
@@ -355,9 +323,13 @@ export function buildTeams(
   values: ValueBundle,
   sleeperPlayers: Map<string, SleeperPlayer>,
   playerProjections: Map<string, PlayerProjection> = new Map(),
+  currentSeasonPlayers: TradyrPlayer[] = [],
 ): Team[] {
   const tradyrById = new Map(
     values.players.filter((player) => player.sleeperId).map((player) => [player.sleeperId!, player]),
+  )
+  const currentSeasonById = new Map(
+    currentSeasonPlayers.filter((player) => player.sleeperId).map((player) => [player.sleeperId!, player]),
   )
   const teamNames = new Map<number, string>()
 
@@ -376,7 +348,7 @@ export function buildTeams(
     const players = (roster.players ?? [])
       .filter((id) => id !== '0')
       .map((id) =>
-        toAsset(id, tradyrById.get(id), sleeperPlayers.get(id), playerProjections.get(id), {
+        toAsset(id, tradyrById.get(id), currentSeasonById.get(id), sleeperPlayers.get(id), playerProjections.get(id), {
           isStarter: starterIds.has(id),
           isTaxi: taxiIds.has(id),
           isReserve: reserveIds.has(id),
@@ -638,6 +610,12 @@ export function evaluateTrade(
     : null
   const lineupImpactA = lineupScenarioA?.expectedDelta ?? null
   const lineupImpactB = lineupScenarioB?.expectedDelta ?? null
+  const currentSeasonScenarioA = context?.teamA && context.rosterPositions
+    ? currentSeasonPowerScenario(context.teamA, sideA, sideB, context.rosterPositions)
+    : null
+  const currentSeasonScenarioB = context?.teamB && context.rosterPositions
+    ? currentSeasonPowerScenario(context.teamB, sideB, sideA, context.rosterPositions)
+    : null
   const winner = marketNetA === 0 ? null : marketNetA > 0 ? 'A' : 'B'
   const winnerLabel = winner === 'A'
     ? (context?.teamA?.teamName ?? 'Side A')
@@ -670,6 +648,10 @@ export function evaluateTrade(
     lineupImpactB,
     lineupScenarioA,
     lineupScenarioB,
+    currentSeasonImpactA: currentSeasonScenarioA?.delta ?? null,
+    currentSeasonImpactB: currentSeasonScenarioB?.delta ?? null,
+    currentSeasonScenarioA,
+    currentSeasonScenarioB,
     packageA,
     packageB,
     providerNetA: {

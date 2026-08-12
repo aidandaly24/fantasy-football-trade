@@ -13,6 +13,9 @@ export type ComparablePackage = {
   lineupDeltaMe: number | null
   lineupDeltaThem: number | null
   lineupCoveragePercent: number
+  currentSeasonPowerDeltaMe: number | null
+  currentSeasonPowerDeltaThem: number | null
+  currentSeasonCoveragePercent: number
   projectionCoverage: number
   rangeMe: { worst: number; best: number }
   providerNetToMe: { ktc: number | null; fantasycalc: number | null }
@@ -100,6 +103,9 @@ function dominates(
   if (candidate.lineupDeltaMe !== null && other.lineupDeltaMe !== null) {
     comparisons.push({ mine: candidate.lineupDeltaMe, theirs: other.lineupDeltaMe, higherIsBetter: true })
   }
+  if (candidate.currentSeasonPowerDeltaMe !== null && other.currentSeasonPowerDeltaMe !== null) {
+    comparisons.push({ mine: candidate.currentSeasonPowerDeltaMe, theirs: other.currentSeasonPowerDeltaMe, higherIsBetter: true })
+  }
   if (strategy.mode === 'rebuilding' || strategy.mode === 'retooling') {
     comparisons.push({ mine: candidate.draftCapitalSent, theirs: other.draftCapitalSent, higherIsBetter: false })
     comparisons.push({ mine: candidate.draftCapitalNetToMe, theirs: other.draftCapitalNetToMe, higherIsBetter: true })
@@ -150,11 +156,17 @@ function toComparablePackage(options: {
   const lineupCoveragePercent = evidence.lineupScenarioA
     ? Math.min(evidence.lineupScenarioA.beforeCoverage.percent, evidence.lineupScenarioA.afterCoverage.percent)
     : 0
+  const currentSeasonCoveragePercent = evidence.currentSeasonScenarioA
+    ? Math.min(evidence.currentSeasonScenarioA.before.coveragePercent, evidence.currentSeasonScenarioA.after.coveragePercent)
+    : 0
   const tradeoffs = [
     `${Math.abs(marketGapPercent * 100).toFixed(1)}% from the current composite`,
     evidence.lineupImpactA === null
       ? `Lineup evidence guarded at ${lineupCoveragePercent}% coverage`
       : `${evidence.lineupImpactA >= 0 ? '+' : ''}${evidence.lineupImpactA.toFixed(1)} expected lineup PPG`,
+    evidence.currentSeasonImpactA === null
+      ? `Current-season power guarded at ${currentSeasonCoveragePercent}% coverage`
+      : `${evidence.currentSeasonImpactA >= 0 ? '+' : ''}${evidence.currentSeasonImpactA} current-season lineup power`,
   ]
   if (options.strategy.mode === 'rebuilding' || options.strategy.mode === 'retooling') {
     tradeoffs.push(evidence.packageA.pickValue
@@ -177,6 +189,9 @@ function toComparablePackage(options: {
     lineupDeltaMe: evidence.lineupImpactA,
     lineupDeltaThem: evidence.lineupImpactB,
     lineupCoveragePercent,
+    currentSeasonPowerDeltaMe: evidence.currentSeasonImpactA,
+    currentSeasonPowerDeltaThem: evidence.currentSeasonImpactB,
+    currentSeasonCoveragePercent,
     projectionCoverage: evidence.projectionCoverage,
     rangeMe: evidence.rangeA,
     providerNetToMe: evidence.providerNetA,
@@ -231,6 +246,7 @@ export function findComparablePackages(
     .sort((a, b) => (
       Number(b.frontier) - Number(a.frontier)
       || a.marketDistancePercent - b.marketDistancePercent
+      || (b.currentSeasonPowerDeltaMe ?? Number.NEGATIVE_INFINITY) - (a.currentSeasonPowerDeltaMe ?? Number.NEGATIVE_INFINITY)
       || b.marketNetToMe - a.marketNetToMe
       || a.send.length - b.send.length
       || a.key.localeCompare(b.key)

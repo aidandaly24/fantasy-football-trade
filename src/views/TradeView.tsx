@@ -4,6 +4,7 @@ import { fetchTradeTapeState, refreshTradeTape } from '../api'
 import type { LeagueContext } from '../league-context'
 import { assetRoleLabel, evaluateTrade, optimizeLineup, projectedLineupPpg } from '../rankings'
 import type { ResolvedTeamStrategy } from '../strategy'
+import { strategyProfileForLeague } from '../leagues'
 import type { Asset, Team, TeamStrategyProfile } from '../types'
 import {
   buildConsolidationStructure,
@@ -175,8 +176,8 @@ function TradeVerdict({
       {ready && (
         <div className="trade-lenses">
           <span><small>Side A current-price net</small><b className={result.marketNetA > 0 ? 'positive' : result.marketNetA < 0 ? 'negative' : ''}>{result.marketNetA > 0 ? '+' : ''}{formatValue(result.marketNetA)}</b></span>
-          <span><small>Production coverage</small><b>{result.projectionCoverage}%</b></span>
-          <span><small>Side A modeled lineup</small><b>{result.lineupImpactA === null ? 'Not available' : `${result.lineupImpactA >= 0 ? '+' : ''}${result.lineupImpactA.toFixed(1)}`}</b></span>
+          <span><small>Power coverage</small><b>{result.currentSeasonScenarioA?.before.coveragePercent ?? 0}%</b></span>
+          <span><small>Side A lineup power</small><b>{result.currentSeasonImpactA === null ? 'Not available' : `${result.currentSeasonImpactA >= 0 ? '+' : ''}${result.currentSeasonImpactA}`}</b></span>
         </div>
       )}
       {ready && (result.riskNotesA.length > 0 || result.riskNotesB.length > 0) && (
@@ -222,6 +223,7 @@ function RosterImpact({
 
   const rows = [
     { label: 'Current market value', a: netA, b: netB, suffix: '', decimals: false },
+    { label: 'Current-season lineup power', a: result.currentSeasonImpactA, b: result.currentSeasonImpactB, suffix: '', decimals: false },
     { label: 'Expected lineup PPG', a: result.lineupImpactA, b: result.lineupImpactB, suffix: '', decimals: true },
     { label: 'Current pick value', a: result.pickValueNetA, b: -result.pickValueNetA, suffix: '', decimals: false },
     { label: 'Roster spots opened', a: spotsA, b: -spotsA, suffix: '', decimals: false },
@@ -289,6 +291,7 @@ function ScenarioPanel({
     ? 'Unavailable'
     : `${value > 0 ? '+' : ''}${decimals ? value.toFixed(1) : formatValue(value)}${suffix}`
   const production = result.lineupScenarioA
+  const currentSeason = result.currentSeasonScenarioA
   const sourceCoverage = Math.min(result.packageA.providerCoveragePercent, result.packageB.providerCoveragePercent)
   const providerTotalsApplicable = result.packageA.providerTotalsApplicable && result.packageB.providerTotalsApplicable
   const objectiveApplies = teamA.rosterId === strategyRosterId
@@ -296,7 +299,7 @@ function ScenarioPanel({
   return (
     <section className="scenario-panel panel">
       <div className="panel-heading">
-        <div><span className="eyebrow">Honest scenario simulator</span><h2>Four lenses, no blended grade</h2></div>
+        <div><span className="eyebrow">Honest scenario simulator</span><h2>Five lenses, no blended grade</h2></div>
         <span className="method-note">{objectiveApplies ? `${strategy.mode} · ${strategy.horizonYears}-year horizon` : 'Factual comparison only'}</span>
       </div>
       <div className="scenario-grid">
@@ -308,12 +311,19 @@ function ScenarioPanel({
           {!providerTotalsApplicable && <em>Picks have no value on either provider’s player scale.</em>}
         </article>
         <article>
-          <small>Production range</small>
-          <strong>{production?.complete ? 'Likely lineup covered' : 'Lineup result guarded'}</strong>
+          <small>Starting-lineup power</small>
+          <strong>{signed(result.currentSeasonImpactA)} power</strong>
+          <span>Before <b>{currentSeason?.before.score.toLocaleString() ?? 'Unavailable'}</b></span>
+          <span>After <b>{currentSeason?.after.score.toLocaleString() ?? 'Unavailable'}</b></span>
+          {currentSeason && <em>{currentSeason.before.covered}/{currentSeason.before.required} redraft-valued slots before · {currentSeason.after.covered}/{currentSeason.after.required} after</em>}
+        </article>
+        <article>
+          <small>Covered production</small>
+          <strong>{production?.complete ? signed(production.expectedDelta, ' PPG', true) : 'Lineup guarded'}</strong>
           <span>Floor <b>{signed(production?.floorDelta ?? null, ' PPG', true)}</b></span>
           <span>Expected <b>{signed(production?.expectedDelta ?? null, ' PPG', true)}</b></span>
           <span>Ceiling <b>{signed(production?.ceilingDelta ?? null, ' PPG', true)}</b></span>
-          {production && <em>{production.beforeCoverage.covered}/{production.beforeCoverage.required} slots before · {production.afterCoverage.covered}/{production.afterCoverage.required} after</em>}
+          {production && <em>{production.beforeCoverage.covered}/{production.beforeCoverage.required} modeled slots before · {production.afterCoverage.covered}/{production.afterCoverage.required} after</em>}
         </article>
         <article>
           <small>Pick-position scenarios</small>
@@ -471,7 +481,7 @@ function PremiumModelPanel({
           const contribution = weighted.contributions.find((item) => item.id === key)
           return (
             <label key={key}>
-              <span><strong>{key === 'exchange' ? 'Exchange premium' : key === 'outcome' ? 'Future outcome' : key[0].toUpperCase() + key.slice(1)}</strong><b>{weights[key]}</b></span>
+              <span><strong>{key === 'exchange' ? 'Exchange premium' : key === 'outcome' ? 'Future outcome' : key === 'lineup' ? 'Covered production' : 'Market'}</strong><b>{weights[key]}</b></span>
               <input type="range" min="0" max="100" value={weights[key]} onChange={(event) => setWeight(key, Number(event.target.value))} onPointerUp={(event) => commitWeight(key, Number(event.currentTarget.value))} onKeyUp={(event) => commitWeight(key, Number(event.currentTarget.value))} />
               <small>{contribution?.signal === null ? 'Not promoted' : `${contribution?.signal && contribution.signal >= 0 ? '+' : ''}${contribution?.signal?.toFixed(1)}% Side A signal`}</small>
             </label>
@@ -555,6 +565,7 @@ export function TradeView({
   const lineupPercent = result.lineupImpactA === null || beforeLineup <= 0 ? null : (result.lineupImpactA / beforeLineup) * 100
   const signals = modelSignalsForTrade({ rawMarketPercent, lineupPercent, structure, health: tradeModelHealth, weights })
   const weighted = weightTradeEvidence(signals, weights)
+  const privateStrategy = strategyProfileForLeague(leagueContext.id, strategyRosterId)
 
   const toggle = (ids: string[], setIds: (value: string[]) => void, id: string) => {
     setIds(ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id])
@@ -601,6 +612,7 @@ export function TradeView({
       </section>
 
       <div className="league-context-note panel"><span><strong>{leagueContext.label}</strong> · {leagueContext.labels.format}</span><small>Lineup legality uses {leagueContext.roster.skillStartingSlots} skill starters. Market prices use the broader {leagueContext.labels.market}, so 0.5 and 0.75 TEP are not presented as exact provider distinctions.</small></div>
+      {privateStrategy && <div className="league-context-note power-trade-gate panel"><span><strong>Private power gate</strong> · +{privateStrategy.minimumMeaningfulPowerGain} minimum · +{privateStrategy.idealPowerGain} ideal</span><small>{ready && result.currentSeasonImpactA !== null ? `This package changes your current-season lineup power by ${result.currentSeasonImpactA >= 0 ? '+' : ''}${result.currentSeasonImpactA}.` : 'Build both sides to measure the move against the declared lineup-power goal.'}</small></div>}
 
       <section className="trade-builder">
         <TradeSide
