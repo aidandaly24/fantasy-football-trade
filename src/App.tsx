@@ -1,6 +1,7 @@
 import { ArrowLeftRight, BarChart3, BookOpen, CircleGauge, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { fetchCurrentSeasonValues, fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchResearchState, fetchRookieBoard, fetchTradeModelHealth, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
+import { fetchAssetReturnHealth, fetchCurrentSeasonValues, fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchResearchState, fetchRookieBoard, fetchTradeModelHealth, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
+import type { AssetReturnHealthBundle } from './asset-returns'
 import { buildTeamDirections } from './edge'
 import type { TeamDirection } from './edge'
 import { journalTransactionsForCurrentManagers } from './journal'
@@ -37,6 +38,7 @@ type AppData = {
   modelHealth: ModelHealthBundle | null | undefined
   eventModelHealth: EventModelHealthBundle | null | undefined
   tradeModelHealth: TradeModelHealthBundle | null | undefined
+  assetReturnHealth: AssetReturnHealthBundle | null | undefined
   rookieBoard: RookieBoardBundle | null | undefined
   managerProfiles: ManagerProfile[]
   directions: TeamDirection[]
@@ -358,6 +360,7 @@ function App() {
       modelHealth: undefined,
       eventModelHealth: undefined,
       tradeModelHealth: undefined,
+      assetReturnHealth: undefined,
       rookieBoard: undefined,
       managerProfiles: buildManagerProfiles(transactions, teams, cached.valueBundle.players, cached.valueBundle.picks),
       directions: buildTeamDirections({
@@ -383,7 +386,7 @@ function App() {
   ) => {
     setLoading(true)
     setError(null)
-    ;['rookies', 'model', 'event-model', 'journal'].forEach((kind) => secondaryLoads.current.delete(`${id}:${kind}`))
+    ;['rookies', 'model', 'event-model', 'trade-model', 'asset-returns', 'journal'].forEach((kind) => secondaryLoads.current.delete(`${id}:${kind}`))
     try {
       const preset = SUPPORTED_LEAGUES.find((item) => item.id === id)!
       const leagueRequest = observePromise(prefetch.league ?? fetchLeagueBundle(id))
@@ -443,6 +446,7 @@ function App() {
         modelHealth: undefined,
         eventModelHealth: undefined,
         tradeModelHealth: undefined,
+        assetReturnHealth: undefined,
         rookieBoard: undefined,
         managerProfiles,
         directions,
@@ -539,6 +543,9 @@ function App() {
       void fetchTradeModelHealth().then((tradeModelHealth) => {
         setData((current) => current?.leagueBundle.league.league_id === activeLeagueId ? { ...current, tradeModelHealth } : current)
       })
+      void fetchAssetReturnHealth().then((assetReturnHealth) => {
+        setData((current) => current?.leagueBundle.league.league_id === activeLeagueId ? { ...current, assetReturnHealth } : current)
+      })
       void fetchEventModelHealth().then((eventModelHealth) => {
         setData((current) => current?.leagueBundle.league.league_id === activeLeagueId ? { ...current, eventModelHealth } : current)
       })
@@ -583,6 +590,14 @@ function App() {
         const tradeModelHealth = await fetchTradeModelHealth()
         setData((current) => current?.leagueBundle.league.league_id === activeLeagueId
           ? { ...current, tradeModelHealth }
+          : current)
+      })
+    }
+    if ((view === 'trade' || view === 'strategy' || view === 'model') && data.assetReturnHealth === undefined) {
+      startOnce('asset-returns', async () => {
+        const assetReturnHealth = await fetchAssetReturnHealth()
+        setData((current) => current?.leagueBundle.league.league_id === activeLeagueId
+          ? { ...current, assetReturnHealth }
           : current)
       })
     }
@@ -738,6 +753,7 @@ function App() {
                     ...data.valueBundle.players.map((player) => player.composite),
                     ...data.valueBundle.picks.map((pick) => pick.composite),
                   ]}
+                  assetReturnHealth={data.assetReturnHealth ?? null}
                 />
               ) : view === 'journal' ? (
                 data.journalLoaded
@@ -746,15 +762,15 @@ function App() {
               ) : view === 'intel' ? (
                 <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth ?? null} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
               ) : view === 'strategy' ? (
-                <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} leagueContext={data.leagueContext} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} journalSyncing={journalSyncing || !data.journalLoaded} onSyncJournal={() => void refreshJournal()} onOpenJournal={() => setView('journal')} />
+                <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} assetReturnHealth={data.assetReturnHealth ?? null} journal={data.journal} preferences={data.preferences} leagueContext={data.leagueContext} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} journalSyncing={journalSyncing || !data.journalLoaded} onSyncJournal={() => void refreshJournal()} onOpenJournal={() => setView('journal')} />
               ) : view === 'rookies' ? (
                 data.rookieBoard === undefined
                   ? <DeferredWorkspace view="rookies" />
                   : <RookieBoardView bundle={data.rookieBoard} leagueContext={data.leagueContext} />
               ) : (
-                data.modelHealth === undefined || data.tradeModelHealth === undefined
+                data.modelHealth === undefined || data.tradeModelHealth === undefined || data.assetReturnHealth === undefined
                   ? <DeferredWorkspace view="model" />
-                  : <ModelView health={data.modelHealth} tradeHealth={data.tradeModelHealth} leagueContext={data.leagueContext} />
+                  : <ModelView health={data.modelHealth} tradeHealth={data.tradeModelHealth} assetReturnHealth={data.assetReturnHealth} leagueContext={data.leagueContext} />
               )}
             </>
           )}

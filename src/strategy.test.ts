@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { findComparablePackages, findTradeFrontier, resolveTeamStrategy } from './strategy'
+import { buildNegotiationLadder, findComparablePackages, findTradeFrontier, resolveTeamStrategy } from './strategy'
+import type { AssetReturnHealthBundle } from './asset-returns'
 import type { Asset, Team } from './types'
 
 function asset(id: string, position: Asset['position'], value: number, overrides: Partial<Asset> = {}): Asset {
@@ -102,6 +103,48 @@ describe('evidence-only strategy inventory', () => {
     expect(first.every((candidate) => !('acceptanceScore' in candidate))).toBe(true)
     expect(first.some((candidate) => candidate.targetAsset.id === 'old-target')).toBe(false)
     expect(neutral.some((candidate) => candidate.targetAsset.id === 'old-target')).toBe(true)
+  })
+
+  it('adds promoted return evidence to a declared rebuild without inventing a score', () => {
+    const mine = team(1, [asset('out', 'WR', 500, { name: 'Out' })])
+    const theirs = team(2, [asset('target', 'WR', 500, { name: 'Target' })])
+    const makeReturnAsset = (sleeperId: string, expectedReturn: number) => ({
+      fantasyCalcId: sleeperId === 'out' ? 1 : 2, sleeperId, name: sleeperId === 'out' ? 'Out' : 'Target', position: 'WR', format: '2qb', currentValue: 500,
+      overallRank: 1, age: 24, tradeFrequency: 1, consensusVariancePercent: 2,
+      risk: { observed30dReturn: 0, observed90dReturn: 0, monthlyVolatility30d: 0.1, maxDrawdown90d: -0.1, maxDrawdown180d: -0.2, observations180d: 180 },
+      horizons: { '30': { status: 'validated', enabled: true, expectedReturn, trackedAssetLower: expectedReturn - 0.1, trackedAssetUpper: expectedReturn + 0.1 }, '90': { status: 'shadow', enabled: false }, '180': { status: 'needs-data', enabled: false }, '365': { status: 'needs-data', enabled: false } },
+    })
+    const health = {
+      sourceAudit: { survivorWarning: 'Tracked assets only.' },
+      models: [],
+      assets: { out: makeReturnAsset('out', -0.1), target: makeReturnAsset('target', 0.1) },
+    } as unknown as AssetReturnHealthBundle
+    const packages = findComparablePackages([mine, theirs], {
+      myRosterId: 1,
+      counterpartRosterId: 2,
+      rosterPositions,
+      targetAssetId: 'target',
+      strategy: { mode: 'rebuilding', horizonYears: 3, flipPriority: 0 },
+      assetReturnHealth: health,
+      numQbs: 2,
+    })
+    expect(packages[0].portfolio?.expectedPnl30).toBeCloseTo(100)
+    expect(packages[0].tradeoffs.join(' ')).toContain('FantasyCalc-value')
+    expect(packages[0]).not.toHaveProperty('score')
+  })
+
+  it('derives negotiation anchors from visible packages without acceptance odds', () => {
+    const mine = team(1, [asset('fair', 'WR', 500), asset('cheap', 'WR', 450), asset('dear', 'WR', 550)])
+    const theirs = team(2, [asset('target', 'RB', 500)])
+    const candidates = findComparablePackages([mine, theirs], { myRosterId: 1, counterpartRosterId: 2, rosterPositions, targetAssetId: 'target' }, 12)
+    const fair = candidates.find((candidate) => candidate.send.some((item) => item.id === 'fair'))!
+    const ladder = buildNegotiationLadder([
+      { ...fair, key: 'cheap', sendValue: 450, marketDistancePercent: 0.1 },
+      fair,
+      { ...fair, key: 'dear', sendValue: 550, marketDistancePercent: 0.1 },
+    ])
+    expect(ladder.map((step) => step.stage)).toEqual(['ambitious-opening', 'fair-target', 'walk-away'])
+    expect(ladder.every((step) => !('acceptanceScore' in step))).toBe(true)
   })
 
 })
