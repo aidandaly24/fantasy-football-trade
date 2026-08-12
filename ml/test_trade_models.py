@@ -1,5 +1,10 @@
 import unittest
+import hashlib
+import json
+import tempfile
 from datetime import date, timedelta
+from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -7,6 +12,9 @@ from ml.trade_models import (
     EXCHANGE_FEATURES,
     History,
     add_outcome_labels,
+    build_training_manifest,
+    import_training_tape,
+    load_all_trades,
     normalize_exchange_trade,
     train_exchange,
     train_outcome,
@@ -39,7 +47,66 @@ def trade() -> dict:
     }
 
 
+def training_tape(trades: list[dict]) -> dict:
+    canonical = json.dumps(trades, ensure_ascii=False, separators=(",", ":"))
+    return {
+        "schemaVersion": 1,
+        "datasetId": f"sha256:{hashlib.sha256(canonical.encode('utf-8')).hexdigest()}",
+        "source": "FantasyCalc completed trades",
+        "exportedAt": "2026-08-12T03:30:00Z",
+        "totalTrades": len(trades),
+        "uniqueLeagues": len({item["leagueId"] for item in trades}),
+        "firstTradeAt": trades[0]["date"],
+        "latestTradeAt": trades[-1]["date"],
+        "trades": trades,
+    }
+
+
 class TradeModelTests(unittest.TestCase):
+    def test_imports_content_addressed_hosted_tape_and_deduplicates_local_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            imports = root / "imports"
+            trades_dir = root / "trades"
+            local_trade = {**trade(), "numTeams": 10}
+            hosted_trade = trade()
+            source = root / "download.json"
+            source.write_text(json.dumps(training_tape([hosted_trade])))
+            (trades_dir / "2026-08-12").mkdir(parents=True)
+            (trades_dir / "2026-08-12" / "1.json").write_text(json.dumps([local_trade]))
+            with patch("ml.trade_models.IMPORTS", imports), patch("ml.trade_models.TRADES", trades_dir):
+                result = import_training_tape(source)
+                loaded = load_all_trades()
+            self.assertEqual(result["datasetId"], training_tape([hosted_trade])["datasetId"])
+            self.assertEqual(len(loaded), 1)
+            self.assertEqual(loaded[0]["numTeams"], 12)
+
+    def test_rejects_tape_when_rows_do_not_match_dataset_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "bad.json"
+            payload = training_tape([trade()])
+            payload["trades"][0]["numTeams"] = 8
+            source.write_text(json.dumps(payload))
+            with patch("ml.trade_models.IMPORTS", root / "imports"):
+                with self.assertRaisesRegex(ValueError, "datasetId"):
+                    import_training_tape(source)
+
+    def test_manifest_records_import_and_point_in_time_coverage(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            imports = Path(temporary)
+            payload = training_tape([trade()])
+            (imports / "tape.json").write_text(json.dumps(payload))
+            histories = {1: {}, 2: {1: history(100), 2: history(65), 3: history(50)}}
+            with patch("ml.trade_models.IMPORTS", imports):
+                manifest = build_training_manifest([trade()], histories)
+            self.assertEqual(manifest["datasetId"], payload["datasetId"])
+            self.assertEqual(manifest["importedTrades"], 1)
+            self.assertEqual(manifest["pointInTimeValuedTrades"], 1)
+            self.assertEqual(manifest["pointInTimeCoverage"], 1)
+            self.assertEqual(manifest["importedPointInTimeValuedTrades"], 1)
+            self.assertEqual(manifest["importedPointInTimeCoverage"], 1)
+
     def test_normalizes_real_one_for_two_premium(self) -> None:
         histories = {1: history(100), 2: history(65), 3: history(50)}
         row = normalize_exchange_trade(trade(), histories, [float(value) for value in range(1, 121)])

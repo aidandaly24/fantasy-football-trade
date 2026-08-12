@@ -1,16 +1,19 @@
 # Trade model health
 
-Generated: `2026-08-12T03:11:33.309465Z`
+Generated: `2026-08-12T04:16:18.582481Z`
+
+Training dataset: `sha256:49ee4d82f6ec22936aba2bdebbfaaf1705c5a020e8f2aa9cf03e9352a3a54368`
+Point-in-time coverage: **1583/1674 trades**
 
 The raw provider total remains unchanged. These models are separate evidence layers.
 
 ## Exchange-premium model
 
 - Status: **needs-data**
-- Eligible completed trades: **267**
-- Unique source leagues: **263**
+- Eligible completed trades: **436**
+- Unique source leagues: **427**
 - Date span: **28 days**
-- Median observed premium: **0.16115470852017943**
+- Median observed premium: **0.16465041832319582**
 
 ## Outcome challengers
 

@@ -34,6 +34,21 @@ An export is still only collected data: until an artifact records the imported
 dataset ID and point-in-time coverage, the Trade Lab labels the hosted tape as
 not connected to that artifact.
 
+Import a downloaded tape before collection/training with:
+
+```sh
+npm run ml:trade-models:import -- /absolute/path/to/rosterlab-trade-tape.json
+npm run ml:trade-models:hydrate
+```
+
+The importer validates the SHA-256 dataset ID, stores the export under the
+ignored raw-data boundary, and deduplicates its trade IDs with local collector
+rows. Training records imported/local counts, point-in-time coverage, history
+series, source date span, and every input dataset ID in `trainingManifest`.
+The hydrate command requests only missing histories for observed trade assets;
+the broader `ml:trade-models` command retains the value-stratified anchor and
+current-universe research pass.
+
 Anchor players are sampled across positions and the full current value range.
 Every completed package is deduplicated by trade ID. Asset history is requested
 for every observed package asset and, when `--history-scope universe` is used,
