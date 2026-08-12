@@ -1,43 +1,56 @@
 import { ArrowLeftRight, BarChart3, BookOpen, CircleGauge, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { fetchEventModelHealth, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchRookieBoard, fetchSleeperPlayers, fetchUserState, fetchValues, saveLeaguePreferences, saveMarketTape, syncJournal } from './api'
-import { buildEdgeBoard, buildTeamDirections, marketTapeAssets } from './edge'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { fetchEventModelHealth, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchRookieBoard, fetchSleeperPlayers, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
+import { buildTeamDirections } from './edge'
 import type { TeamDirection } from './edge'
 import { journalTransactionsForCurrentManagers } from './journal'
-import { isSupportedLeagueId, leagueContext, marketTapeLeagueContext, projectionForLeague, SUPPORTED_LEAGUES } from './league-context'
+import { isSupportedLeagueId, leagueContext, projectionForLeague, SUPPORTED_LEAGUES } from './league-context'
 import type { LeagueContext, SupportedLeagueId } from './league-context'
 import { buildManagerProfiles } from './negotiation'
 import type { ManagerProfile } from './negotiation'
 import { buildTeams } from './rankings'
 import { resolveTeamStrategy } from './strategy'
 import type { RookieBoardBundle } from './rookies'
-import type { EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, RankingMode, Team, UserState, ValueBundle } from './types'
-import { EdgeView } from './views/EdgeView'
-import { IntelView } from './views/IntelView'
-import { ModelView } from './views/ModelView'
+import type { EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, PlayerProjection, RankingMode, Team, UserState, ValueBundle } from './types'
 import { RankingsView } from './views/RankingsView'
-import { RookieBoardView } from './views/RookieBoardView'
-import { TradeJournalView } from './views/TradeJournalView'
-import { TradeView } from './views/TradeView'
 import type { TradeDraft } from './views/types'
 
+const EdgeView = lazy(() => import('./views/EdgeView').then((module) => ({ default: module.EdgeView })))
+const IntelView = lazy(() => import('./views/IntelView').then((module) => ({ default: module.IntelView })))
+const ModelView = lazy(() => import('./views/ModelView').then((module) => ({ default: module.ModelView })))
+const RookieBoardView = lazy(() => import('./views/RookieBoardView').then((module) => ({ default: module.RookieBoardView })))
+const TradeJournalView = lazy(() => import('./views/TradeJournalView').then((module) => ({ default: module.TradeJournalView })))
+const TradeView = lazy(() => import('./views/TradeView').then((module) => ({ default: module.TradeView })))
+
 const DEFAULT_LEAGUE_ID: SupportedLeagueId = SUPPORTED_LEAGUES[0].id
+const LAST_LEAGUE_KEY = 'rosterlab:last-league'
 
 type AppData = {
   leagueBundle: LeagueBundle
   leagueContext: LeagueContext
   valueBundle: ValueBundle
+  playerProjections: Map<string, PlayerProjection>
+  playerMetadataLoaded: boolean
   teams: Team[]
-  modelHealth: ModelHealthBundle | null
-  eventModelHealth: EventModelHealthBundle | null
-  rookieBoard: RookieBoardBundle | null
+  modelHealth: ModelHealthBundle | null | undefined
+  eventModelHealth: EventModelHealthBundle | null | undefined
+  rookieBoard: RookieBoardBundle | null | undefined
   managerProfiles: ManagerProfile[]
   directions: TeamDirection[]
   journal: JournalBundle
+  journalLoaded: boolean
   preferences: LeaguePreferences
 }
 
 type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model'
+
+const EMPTY_JOURNAL: JournalBundle = {
+  trades: [],
+  identities: [],
+  snapshots: [],
+  outcomes: [],
+  sync: null,
+}
 
 function AppHeader({
   view,
@@ -130,6 +143,17 @@ function LoadingState() {
   )
 }
 
+function ViewLoading({ label }: { label: string }) {
+  return (
+    <main className="loading-state">
+      <div className="loading-mark"><span /></div>
+      <span className="eyebrow">Opening this desk</span>
+      <h1>{label}</h1>
+      <div className="loading-lines"><span /><span /><span /></div>
+    </main>
+  )
+}
+
 function ErrorState({ message, onRetry, loading }: {
   message: string
   onRetry: () => void
@@ -160,40 +184,34 @@ function App() {
   const [userState, setUserState] = useState<UserState | null>(null)
   const [tradeDraft, setTradeDraft] = useState<TradeDraft | null>(null)
   const initialLoad = useRef(false)
+  const secondaryLoads = useRef(new Set<string>())
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' })
   }, [view, leagueId])
 
-  const loadLeague = async (id: SupportedLeagueId, stateOverride: UserState | null = userState) => {
+  const loadLeague = async (
+    id: SupportedLeagueId,
+    stateOverride: UserState | null = userState,
+    prefetchedLeague?: Promise<LeagueBundle>,
+  ) => {
     setLoading(true)
     setError(null)
+    ;['rookies', 'model', 'event-model', 'journal', 'players'].forEach((kind) => secondaryLoads.current.delete(`${id}:${kind}`))
     try {
-      const leagueBundle = await fetchLeagueBundle(id)
+      const leagueBundle = await (prefetchedLeague ?? fetchLeagueBundle(id))
       const context = leagueContext(leagueBundle)
       const existingPreference = stateOverride?.preferences.find((item) => item.leagueId === id)
-      const [valueBundle, projectionBundle, modelHealth, eventModelHealth, rookieBoard, storedJournal] = await Promise.all([
+      const [valueBundle, projectionBundle] = await Promise.all([
         fetchValues({
           ...context.marketFormat,
         }),
         fetchProjections(),
-        fetchModelHealth(),
-        fetchEventModelHealth(),
-        fetchRookieBoard().catch(() => null),
-        fetchJournal(id).catch(() => null),
       ])
-      const journalFresh = storedJournal?.sync?.finishedAt
-        && storedJournal.sync.status === 'complete'
-        && Date.now() - Date.parse(storedJournal.sync.finishedAt) < 15 * 60 * 1000
-      const journal = journalFresh
-        ? storedJournal
-        : await syncJournal(id).catch(() => storedJournal ?? { trades: [], identities: [], snapshots: [], outcomes: [], sync: null })
-      const rosterIds = new Set(leagueBundle.rosters.flatMap((roster) => roster.players ?? []))
-      const sleeperPlayers = await fetchSleeperPlayers([...rosterIds])
       const playerProjections = new Map(projectionBundle?.stale ? [] : Object.entries(projectionBundle?.projections ?? {})
         .map(([playerId, projection]) => [playerId, projectionForLeague(projection, context)] as const))
-      const teams = buildTeams(leagueBundle, valueBundle, sleeperPlayers, playerProjections)
-      const transactions = journalTransactionsForCurrentManagers(journal, leagueBundle.league.league_id)
+      const teams = buildTeams(leagueBundle, valueBundle, new Map(), playerProjections)
+      const transactions = journalTransactionsForCurrentManagers(EMPTY_JOURNAL, leagueBundle.league.league_id)
       const directions = buildTeamDirections({
         teams,
         transactions,
@@ -222,53 +240,38 @@ function App() {
           flipPriority: inferred.flipPriority,
         }
       }
-      const saved = await saveLeaguePreferences(basePreference).catch(() => null)
-      const preferences = saved?.preferences ?? basePreference
-      const user = saved?.user ?? stateOverride?.user ?? null
-      if (user) {
-        const nextState: UserState = {
-          user,
-          preferences: [
-            preferences,
-            ...(stateOverride?.preferences ?? []).filter((item) => item.leagueId !== id),
-          ],
-        }
-        setUserState(nextState)
-      }
       setData({
         leagueBundle,
         leagueContext: context,
         valueBundle,
+        playerProjections,
+        playerMetadataLoaded: false,
         teams,
-        modelHealth,
-        eventModelHealth,
-        rookieBoard,
+        modelHealth: undefined,
+        eventModelHealth: undefined,
+        rookieBoard: undefined,
         managerProfiles,
         directions,
-        journal,
-        preferences,
+        journal: EMPTY_JOURNAL,
+        journalLoaded: false,
+        preferences: basePreference,
       })
-      const seedRosterId = preferences.myRosterId ?? teams[0]?.rosterId
-      if (seedRosterId) {
-        const seedTeam = teams.find((team) => team.rosterId === seedRosterId) ?? teams[0]
-        const seedStrategy = resolveTeamStrategy(seedTeam, preferences.settings.teamStrategy)
-        const seedOpportunities = buildEdgeBoard(teams, {
-          myRosterId: seedRosterId,
-          rosterPositions: leagueBundle.league.roster_positions,
-          directions,
-          maxResults: 500,
-        })
-        void saveMarketTape(id, {
-          assets: marketTapeAssets(teams, seedOpportunities, seedStrategy),
-          format: context.marketFormat,
-          leagueContext: marketTapeLeagueContext(context),
-          sourceVersion: valueBundle.meta.generatedAt,
-        }).catch(() => undefined)
-      }
-      setMode(preferences.settings.rankingMode ?? 'overall')
+      setMode(basePreference.settings.rankingMode ?? 'overall')
       setLeagueId(id)
+      try { window.localStorage.setItem(LAST_LEAGUE_KEY, id) } catch { /* Device storage is an optional acceleration only. */ }
       setSelectedId(teams[0]?.rosterId ?? 1)
       setTradeDraft(null)
+
+      void saveLeaguePreferences(basePreference).then((saved) => {
+        setData((current) => current?.leagueBundle.league.league_id === id
+          ? { ...current, preferences: saved.preferences }
+          : current)
+        setUserState((current) => ({
+          user: saved.user,
+          preferences: [saved.preferences, ...(current?.preferences ?? []).filter((item) => item.leagueId !== id)],
+        }))
+      }).catch(() => undefined)
+
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unknown data error')
     } finally {
@@ -280,13 +283,109 @@ function App() {
     if (initialLoad.current) return
     initialLoad.current = true
     void (async () => {
-      const state = await fetchUserState()
+      let localLeague: SupportedLeagueId | null = null
+      try {
+        const storedLeague = window.localStorage.getItem(LAST_LEAGUE_KEY)
+        if (isSupportedLeagueId(storedLeague)) localLeague = storedLeague
+      } catch {
+        // Hosted preferences remain the source of truth when device storage is unavailable.
+      }
+      const statePromise = fetchUserState()
+      const leaguePromise = localLeague ? fetchLeagueBundle(localLeague) : null
+      const state = await statePromise
       setUserState(state)
       const savedLeagueId = state?.preferences.find((item) => isSupportedLeagueId(item.leagueId))?.leagueId
-      const savedLeague = isSupportedLeagueId(savedLeagueId) ? savedLeagueId : DEFAULT_LEAGUE_ID
-      await loadLeague(savedLeague, state)
+      const savedLeague = localLeague ?? (isSupportedLeagueId(savedLeagueId) ? savedLeagueId : DEFAULT_LEAGUE_ID)
+      await loadLeague(savedLeague, state, leaguePromise ?? undefined)
     })()
   }, [])
+
+  useEffect(() => {
+    if (!data) return
+    const activeLeagueId = data.leagueBundle.league.league_id
+    const startOnce = (kind: string, work: () => Promise<void>) => {
+      const key = `${activeLeagueId}:${kind}`
+      if (secondaryLoads.current.has(key)) return
+      secondaryLoads.current.add(key)
+      void work()
+    }
+
+    if (view === 'rookies' && data.rookieBoard === undefined) {
+      startOnce('rookies', async () => {
+        const rookieBoard = await fetchRookieBoard().catch(() => null)
+        setData((current) => current?.leagueBundle.league.league_id === activeLeagueId
+          ? { ...current, rookieBoard }
+          : current)
+      })
+    }
+    if (view === 'model' && data.modelHealth === undefined) {
+      startOnce('model', async () => {
+        const modelHealth = await fetchModelHealth()
+        setData((current) => current?.leagueBundle.league.league_id === activeLeagueId
+          ? { ...current, modelHealth }
+          : current)
+      })
+    }
+    if (view === 'intel' && data.eventModelHealth === undefined) {
+      startOnce('event-model', async () => {
+        const eventModelHealth = await fetchEventModelHealth()
+        setData((current) => current?.leagueBundle.league.league_id === activeLeagueId
+          ? { ...current, eventModelHealth }
+          : current)
+      })
+    }
+    if ((view === 'trade' || view === 'strategy') && !data.playerMetadataLoaded) {
+      startOnce('players', async () => {
+        const rosterIds = data.leagueBundle.rosters.flatMap((roster) => roster.players ?? [])
+        const sleeperPlayers = await fetchSleeperPlayers(rosterIds).catch(() => null)
+        if (!sleeperPlayers) return
+        setData((current) => {
+          if (!current || current.leagueBundle.league.league_id !== activeLeagueId) return current
+          const enrichedTeams = buildTeams(
+            current.leagueBundle,
+            current.valueBundle,
+            sleeperPlayers,
+            current.playerProjections,
+          )
+          const transactions = journalTransactionsForCurrentManagers(current.journal, activeLeagueId)
+          return {
+            ...current,
+            playerMetadataLoaded: true,
+            teams: enrichedTeams,
+            directions: buildTeamDirections({
+              teams: enrichedTeams,
+              transactions,
+              picks: current.valueBundle.picks,
+              overrides: current.preferences.settings.teamDirectionOverrides,
+            }),
+            managerProfiles: buildManagerProfiles(transactions, enrichedTeams, current.valueBundle.players, current.valueBundle.picks),
+          }
+        })
+      })
+    }
+    if ((view === 'journal' || view === 'strategy') && !data.journalLoaded) {
+      startOnce('journal', async () => {
+        const journal = await fetchJournal(activeLeagueId).catch(() => EMPTY_JOURNAL)
+        setData((current) => {
+          if (!current || current.leagueBundle.league.league_id !== activeLeagueId) return current
+          const transactions = journalTransactionsForCurrentManagers(journal, activeLeagueId)
+          const directions = buildTeamDirections({
+            teams: current.teams,
+            transactions,
+            picks: current.valueBundle.picks,
+            overrides: current.preferences.settings.teamDirectionOverrides,
+          })
+          return {
+            ...current,
+            journal,
+            journalLoaded: true,
+            directions,
+            managerProfiles: buildManagerProfiles(transactions, current.teams, current.valueBundle.players, current.valueBundle.picks),
+          }
+        })
+      })
+    }
+  }, [data, view])
 
   const updatePreferences = (patch: Partial<LeaguePreferences>) => {
     if (!data) return
@@ -346,7 +445,7 @@ function App() {
         const transactions = journalTransactionsForCurrentManagers(journal, current.leagueBundle.league.league_id)
         const teams = current.teams
         const directions = buildTeamDirections({ teams, transactions, picks: current.valueBundle.picks, overrides: current.preferences.settings.teamDirectionOverrides })
-        return { ...current, journal, teams, directions, managerProfiles: buildManagerProfiles(transactions, teams, current.valueBundle.players, current.valueBundle.picks) }
+        return { ...current, journal, journalLoaded: true, teams, directions, managerProfiles: buildManagerProfiles(transactions, teams, current.valueBundle.players, current.valueBundle.picks) }
       })
     } catch (syncError) {
       setError(syncError instanceof Error ? syncError.message : 'Journal sync failed')
@@ -381,30 +480,40 @@ function App() {
               setSelectedId={setSelectedId}
               leagueContext={data.leagueContext}
             />
-          ) : view === 'trade' ? (
-            <TradeView
-              key={`trade-${data.leagueBundle.league.league_id}-${tradeDraft?.nonce ?? 'manual'}`}
-              teams={data.teams}
-              rosterPositions={data.leagueBundle.league.roster_positions}
-              leagueContext={data.leagueContext}
-              initialDraft={tradeDraft}
-              strategyRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId}
-              strategy={resolveTeamStrategy(
-                data.teams.find((team) => team.rosterId === (data.preferences.myRosterId ?? data.teams[0].rosterId)) ?? data.teams[0],
-                data.preferences.settings.teamStrategy,
-              )}
-              onStrategyChange={(teamStrategy) => updatePreferences({ settings: { teamStrategy } })}
-            />
-          ) : view === 'journal' ? (
-            <TradeJournalView journal={data.journal} syncing={journalSyncing} onSync={() => void refreshJournal()} leagueContext={data.leagueContext} />
-          ) : view === 'intel' ? (
-            <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
-          ) : view === 'strategy' ? (
-            <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} leagueContext={data.leagueContext} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} journalSyncing={journalSyncing} onSyncJournal={() => void refreshJournal()} onOpenJournal={() => setView('journal')} />
-          ) : view === 'rookies' ? (
-            <RookieBoardView bundle={data.rookieBoard} leagueContext={data.leagueContext} />
           ) : (
-            <ModelView health={data.modelHealth} leagueContext={data.leagueContext} />
+            <Suspense fallback={<ViewLoading label="Loading this workspace…" />}>
+              {view === 'trade' ? (
+                <TradeView
+                  key={`trade-${data.leagueBundle.league.league_id}-${tradeDraft?.nonce ?? 'manual'}`}
+                  teams={data.teams}
+                  rosterPositions={data.leagueBundle.league.roster_positions}
+                  leagueContext={data.leagueContext}
+                  initialDraft={tradeDraft}
+                  strategyRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId}
+                  strategy={resolveTeamStrategy(
+                    data.teams.find((team) => team.rosterId === (data.preferences.myRosterId ?? data.teams[0].rosterId)) ?? data.teams[0],
+                    data.preferences.settings.teamStrategy,
+                  )}
+                  onStrategyChange={(teamStrategy) => updatePreferences({ settings: { teamStrategy } })}
+                />
+              ) : view === 'journal' ? (
+                data.journalLoaded
+                  ? <TradeJournalView journal={data.journal} syncing={journalSyncing} onSync={() => void refreshJournal()} leagueContext={data.leagueContext} />
+                  : <ViewLoading label="Loading the stored trade journal…" />
+              ) : view === 'intel' ? (
+                <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth ?? null} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
+              ) : view === 'strategy' ? (
+                <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} leagueContext={data.leagueContext} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} journalSyncing={journalSyncing || !data.journalLoaded} onSyncJournal={() => void refreshJournal()} onOpenJournal={() => setView('journal')} />
+              ) : view === 'rookies' ? (
+                data.rookieBoard === undefined
+                  ? <ViewLoading label="Loading rookie evidence…" />
+                  : <RookieBoardView bundle={data.rookieBoard} leagueContext={data.leagueContext} />
+              ) : (
+                data.modelHealth === undefined
+                  ? <ViewLoading label="Loading model health…" />
+                  : <ModelView health={data.modelHealth} leagueContext={data.leagueContext} />
+              )}
+            </Suspense>
           )}
           <footer>
             <span>RosterLab <b>·</b> League-relative analysis</span>
