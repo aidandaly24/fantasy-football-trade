@@ -3,6 +3,7 @@ import type { LeagueContext } from '../league-context'
 import type { Asset, ModelHealthBundle } from '../types'
 import { AssetBadge, signedPercent } from '../components/domain-ui'
 import type { TradeModelHealthBundle } from '../trade-models'
+import type { AssetReturnHealthBundle } from '../asset-returns'
 
 const baselineLabels: Record<string, string> = {
   repeatPrior: 'Repeat prior season',
@@ -24,7 +25,7 @@ const sliceLabels: Record<string, string> = {
   gamesObserved14plus: '14+ games observed',
 }
 
-export function ModelView({ health, tradeHealth, leagueContext }: { health: ModelHealthBundle | null; tradeHealth: TradeModelHealthBundle | null; leagueContext: LeagueContext }) {
+export function ModelView({ health, tradeHealth, assetReturnHealth, leagueContext }: { health: ModelHealthBundle | null; tradeHealth: TradeModelHealthBundle | null; assetReturnHealth: AssetReturnHealthBundle | null; leagueContext: LeagueContext }) {
   if (!health) {
     return (
       <main className="page-shell model-page">
@@ -61,6 +62,22 @@ export function ModelView({ health, tradeHealth, leagueContext }: { health: Mode
       </section>
 
       <div className="league-context-note panel"><span><strong>Active output layer · {leagueContext.label}</strong> · {leagueContext.labels.projection}</span><small>The promotion metrics below audit the generic-PPR base model. The deterministic TE bonus is kept outside training so the same validated forecast can serve both fixed leagues without pretending there are two separately validated models.</small></div>
+
+      {assetReturnHealth && <section className="panel asset-return-audit">
+        <div className="panel-heading"><div><span className="eyebrow">V7.4 asset return audit</span><h2>Each horizon earns promotion separately</h2></div><span className="method-note">FantasyCalc value history · {assetReturnHealth.dataAsOf}</span></div>
+        <div className="asset-return-model-grid">
+          {assetReturnHealth.models
+            .filter((model) => model.format === `${leagueContext.marketFormat.numQbs}qb`)
+            .map((model) => <article key={`${model.format}-${model.horizonDays}`} className={model.enabled ? 'enabled' : 'disabled'}>
+              <small>{model.horizonDays}-day return</small>
+              <strong>{model.enabled ? 'Promoted' : model.status}</strong>
+              <span>{model.rows.toLocaleString()} rows · {model.testRows.toLocaleString()} held-out · {model.heldoutAssets} assets</span>
+              <b>{(model.maeImprovement * 100).toFixed(2)}% MAE lift</b>
+              <em>Cross-section rank {model.crossSectionRankCorrelation.toFixed(3)} · interval {(model.interval.heldoutCoverage * 100).toFixed(1)}%</em>
+            </article>)}
+        </div>
+        <div className="model-note scenario-note"><Info size={16} /><span>Only an enabled horizon can enter a portfolio comparison. Today that is 30 days; 90/180/365 remain visible for audit and contribute nothing.</span></div>
+      </section>}
 
       <section className="model-metric-grid" aria-label="Held-out model results">
         <article className="model-metric panel"><span>MAE improvement</span><strong>{signedPercent(health.metrics.maeImprovement)}</strong><small>against {baselineLabels[health.metrics.baselineName] ?? health.metrics.baselineName}</small></article>

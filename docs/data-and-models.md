@@ -332,6 +332,54 @@ exported interval a tracked-asset interval, not a complete downside
 probability. The model never overwrites the current market composite and never
 predicts manager acceptance.
 
+### V7.5 rebuild portfolio objective
+
+`src/asset-returns.ts` joins players by Sleeper ID and draft picks to the exact
+or explicit midpoint FantasyCalc pick bucket. It summarizes the roster before
+and after a trade through separate, unit-bearing facts: current value, pick
+share, concentration HHI, value-weighted age at the declared horizon, promoted
+30-day expected FantasyCalc-value P&L and tracked-asset interval, observed 30/90-day
+movement, 180-day drawdown, trade frequency, and matched age/position cohort
+return. Coverage is reported for every evidence family.
+
+There is no rebuild score. Missing evidence stays null, longer unpromoted
+horizons stay unavailable, and the historical population warning travels with
+every portfolio comparison. V7.7 may use these dimensions in a Pareto
+optimizer; it may not silently collapse them into a grade.
+
+Current Tradyr value and FantasyCalc return P&L remain on their labeled source
+scales. Uncovered assets contribute neither zero return nor extrapolated P&L;
+their missing portfolio weight is reported as return coverage.
+
+### V7.6 exchange-premium validation
+
+The consolidation experiment now compares its challenger against the strongest
+eligible global or structure-segmented median baseline, reports league-balanced
+MAE, reserves transactions from unseen leagues, and audits anchor-sampling
+concentration. It remains disabled: the stored artifact spans only 28 days and
+has no exact historical league-format coverage. An encouraging held-out lift is
+research evidence, not permission to alter a trade price.
+
+### V7.7 return-aware package frontier
+
+For an explicitly saved rebuild or retool objective, target discovery adds only
+the promoted 30-day asset-return evidence to its Pareto comparison. Expected
+FantasyCalc-value P&L, tracked-asset lower P&L, observed drawdown, concentration,
+current Tradyr price, draft capital, horizon age, and covered production remain
+separate dimensions. Missing evidence is omitted from pairwise comparison and
+is displayed as coverage; it is never filled with zero.
+
+Trade Lab shows the same before/after portfolio facts and an incoming-asset
+research memo. The memo’s 30-day reassessment window follows the only promoted
+forecast horizon. It explicitly does not claim a three-year forecast or a
+validated sell trigger.
+
+Negotiation labels are descriptive price anchors over the displayed package
+set: the nearest cheaper package is the ambitious opening, the closest current
+composite is the fair target, and the nearest dearer package is the comparison
+ceiling. They are not acceptance probabilities. There is still no blended
+rebuild score, letter grade, or guaranteed P&L.
+
 ## Trade journal and outcomes
 
 The durable journal follows linked Sleeper league seasons, ingests completed

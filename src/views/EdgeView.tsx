@@ -14,10 +14,12 @@ import { buildIntelSignals } from '../intel'
 import { journalTradeSides, tradePartyNames } from '../journal'
 import type { ManagerProfile } from '../negotiation'
 import type { ResearchPipelineBundle } from '../research'
-import { findComparablePackages, findTradeFrontier, resolveTeamStrategy } from '../strategy'
+import { buildNegotiationLadder, findComparablePackages, findTradeFrontier, resolveTeamStrategy } from '../strategy'
+import type { AssetReturnHealthBundle } from '../asset-returns'
 import { currentSeasonLineup } from '../team-power'
 import type { EdgeStateBundle, IntelFeed, JournalBundle, LeaguePreferences, Team, ValueBundle } from '../types'
 import { AssetBadge, formatResearchGate, formatValue, signedPercent } from '../components/domain-ui'
+import { AssetResearchPanel } from '../components/AssetResearchPanel'
 import { DislocationBoard } from './DislocationBoard'
 import type { TradeDraft } from './types'
 
@@ -49,6 +51,7 @@ export function EdgeView({
   myRosterId,
   rosterPositions,
   valueBundle,
+  assetReturnHealth,
   journal,
   preferences,
   leagueContext,
@@ -64,6 +67,7 @@ export function EdgeView({
   myRosterId: number
   rosterPositions: string[]
   valueBundle: ValueBundle
+  assetReturnHealth: AssetReturnHealthBundle | null
   journal: JournalBundle
   preferences: LeaguePreferences
   leagueContext: LeagueContext
@@ -129,12 +133,19 @@ export function EdgeView({
       rosterPositions,
       targetAssetId: selected.asset.id,
       strategy: teamStrategy,
+      assetReturnHealth,
+      numQbs: leagueContext.marketFormat.numQbs,
     }) : [],
-    [teams, myRosterId, rosterPositions, selected, teamStrategy],
+    [teams, myRosterId, rosterPositions, selected, teamStrategy, assetReturnHealth, leagueContext.marketFormat.numQbs],
+  )
+  const negotiationLadder = useMemo(() => buildNegotiationLadder(comparablePackages), [comparablePackages])
+  const negotiationStages = useMemo(
+    () => new Map(negotiationLadder.map((step) => [step.package.key, step])),
+    [negotiationLadder],
   )
   const allTradeFrontier = useMemo(
-    () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy }, 16),
-    [teams, myRosterId, rosterPositions, teamStrategy],
+    () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy, assetReturnHealth, numQbs: leagueContext.marketFormat.numQbs }, 16),
+    [teams, myRosterId, rosterPositions, teamStrategy, assetReturnHealth, leagueContext.marketFormat.numQbs],
   )
   const tradeFrontier = privateStrategy?.kind === 'power-climb'
     ? currentPowerReady
@@ -385,6 +396,7 @@ export function EdgeView({
                 <span><small>Market distance</small><b>{(candidate.marketDistancePercent * 100).toFixed(1)}%</b></span>
                 <span><small>Current power</small><b>{candidate.currentSeasonPowerDeltaMe === null ? `Guarded · ${candidate.currentSeasonCoveragePercent}%` : `${candidate.currentSeasonPowerDeltaMe >= 0 ? '+' : ''}${candidate.currentSeasonPowerDeltaMe}`}</b></span>
                 <span><small>Pick-value net</small><b>{candidate.draftCapitalNetToMe >= 0 ? '+' : ''}{formatValue(candidate.draftCapitalNetToMe)}</b></span>
+                <span><small>30-day return P&amp;L</small><b>{candidate.portfolio?.expectedPnl30 === null || candidate.portfolio?.expectedPnl30 === undefined ? 'Unavailable' : `${candidate.portfolio.expectedPnl30 >= 0 ? '+' : ''}${candidate.portfolio.expectedPnl30.toFixed(0)} FC`}</b></span>
               </div>
               <button type="button" onClick={() => onOpenTrade({
                 teamAId: myRosterId,
@@ -425,28 +437,30 @@ export function EdgeView({
             <div><small>Age now</small><strong>{selected.asset.age ?? 'Unavailable'}</strong></div>
             <div><small>Age in {teamStrategy.horizonYears} years</small><strong>{selected.asset.age === null || selected.asset.age === undefined ? 'Unavailable' : selected.asset.age + teamStrategy.horizonYears}</strong></div>
           </div>
-          <div className="edge-thesis"><small>Observed market and production</small><p>{selected.thesis}</p><small>Unvalidated news watch</small><p>{selected.catalyst} News does not change this board's order or price.</p><small>Historical return estimate</small><p>Unavailable until the market tape has enough time-separated observations in this league format.</p></div>
+          <div className="edge-thesis"><small>Observed market and production</small><p>{selected.thesis}</p><small>Unvalidated news watch</small><p>{selected.catalyst} News does not change this board's order or price.</p></div>
+          <AssetResearchPanel asset={selected.asset} bundle={assetReturnHealth} numQbs={leagueContext.marketFormat.numQbs} horizonYears={teamStrategy.horizonYears} compact />
           <div className="edge-owner-control">
             <div><small>Owner context</small><strong>{selected.direction.label} · {selected.direction.manual ? 'manual' : 'neutral'}</strong><small>{selectedProfile?.tradeCount ?? 0} completed trades in profile</small></div>
             <select aria-label={`Direction override for ${selected.owner.teamName}`} value={preferences.settings.teamDirectionOverrides?.[String(selected.owner.rosterId)] ?? 'auto'} onChange={(event) => setDirectionOverride(selected.owner.rosterId, event.target.value as 'auto' | TeamDirectionOverride)}>
               <option value="auto">No manager label</option><option value="contender">Manual contender</option><option value="retooling">Manual retooling</option><option value="rebuilding">Manual rebuilding</option>
             </select>
           </div>
-          <div className="model-caveat"><Info size={17} /><span>RosterLab has no calibrated exit value or manager-acceptance model yet. It will not invent one.</span></div>
+          <div className="model-caveat"><Info size={17} /><span>The promoted model estimates only 30-day FantasyCalc return. RosterLab still has no calibrated long-term exit value or manager-acceptance model.</span></div>
         </aside>}
       </section>
 
       {selected && <section className="package-board panel edge-packages" id="target-package-frontier">
         <div className="panel-heading"><div><span className="eyebrow">Target package frontier</span><h2>Concrete packages for {selected.asset.name}</h2></div><span className="method-note">Visible tradeoffs only</span></div>
-        <div className="package-evidence-banner"><Info size={16} /><span>Pareto options come first among the 60 closest packages built from up to your 50 highest-priced assets. Your declared window can protect draft capital and expose older outgoing players, but no learned age curve, news score, or acceptance probability is hidden inside the order.</span></div>
+        <div className="package-evidence-banner"><Info size={16} /><span>Pareto options come first among the 60 closest packages built from up to your 50 highest-priced assets. For rebuild/retool objectives, promoted 30-day return, tracked downside, drawdown, and concentration join current price, picks, age, and production as separate objectives. No blended grade or acceptance probability is hidden inside the order.</span></div>
         {comparablePackages.length ? comparablePackages.map((candidate, index) => {
           const target = candidate.receive[0]
+          const negotiation = negotiationStages.get(candidate.key)
           const horizonAge = target.kind === 'player' && target.age !== null && target.age !== undefined
             ? target.age + teamStrategy.horizonYears
             : null
           return (
             <article className="package-row factual-package" key={candidate.key}>
-              <span className={`stage-label ${candidate.frontier ? 'frontier-stage' : ''}`}>{candidate.frontier ? 'Pareto' : `Compare #${index + 1}`}</span>
+              <span className={`stage-label ${candidate.frontier ? 'frontier-stage' : ''}`}>{negotiation ? negotiation.stage.replaceAll('-', ' ') : candidate.frontier ? 'Pareto' : `Compare #${index + 1}`}</span>
               <div><small>You send · {formatValue(candidate.sendValue)}</small><strong>{candidate.send.map((asset) => asset.name).join(' + ')}</strong></div>
               <ArrowLeftRight size={18} />
               <div><small>You receive · {formatValue(candidate.receiveValue)}</small><strong>{candidate.receive.map((asset) => asset.name).join(' + ')}</strong></div>
@@ -455,8 +469,11 @@ export function EdgeView({
                 <span>Your current power<b>{candidate.currentSeasonPowerDeltaMe === null ? 'Not covered' : `${candidate.currentSeasonPowerDeltaMe >= 0 ? '+' : ''}${candidate.currentSeasonPowerDeltaMe}`}</b></span>
                 <span>Your modeled PPG<b>{candidate.lineupDeltaMe === null ? 'Not covered' : `${candidate.lineupDeltaMe >= 0 ? '+' : ''}${candidate.lineupDeltaMe.toFixed(1)}`}</b></span>
                 <span>Window fact<b>{target.kind === 'pick' ? 'Draft capital' : horizonAge === null ? 'Age unavailable' : `Age ${horizonAge.toFixed(1)}`}</b></span>
+                <span>30-day return P&amp;L<b>{candidate.portfolio?.expectedPnl30 === null || candidate.portfolio?.expectedPnl30 === undefined ? 'Unavailable' : `${candidate.portfolio.expectedPnl30 >= 0 ? '+' : ''}${candidate.portfolio.expectedPnl30.toFixed(0)} FC`}</b></span>
+                <span>Tracked downside P&amp;L<b>{candidate.portfolio?.trackedAssetLowerPnl30 === null || candidate.portfolio?.trackedAssetLowerPnl30 === undefined ? 'Unavailable' : `${candidate.portfolio.trackedAssetLowerPnl30 >= 0 ? '+' : ''}${candidate.portfolio.trackedAssetLowerPnl30.toFixed(0)} FC`}</b></span>
               </div>
               <div className="package-actions">
+                {negotiation && <small className="negotiation-explanation">{negotiation.explanation}</small>}
                 <button type="button" className="compare-package" onClick={() => onOpenTrade({
                   teamAId: myRosterId,
                   teamBId: selected.owner.rosterId,
@@ -467,7 +484,7 @@ export function EdgeView({
             </article>
           )
         }) : <div className="intel-empty"><Target size={22} /><strong>No priced package is available.</strong><span>This target or your outgoing assets are missing current market values.</span></div>}
-        <div className="model-caveat"><Info size={17} /><span>These packages answer “what is close in today’s market?” They do not answer “will the manager accept?” or “will this asset appreciate?” Those remain shadow-model questions until their time-split gates pass.</span></div>
+        <div className="model-caveat"><Info size={17} /><span>The opening/target/walk-away labels are price anchors derived from this displayed package set—not acceptance odds. The return lens is a promoted 30-day estimate with tracked-asset coverage, not a guaranteed appreciation or three-year forecast.</span></div>
       </section>}
 
       <section className="edge-review-grid edge-review-single">

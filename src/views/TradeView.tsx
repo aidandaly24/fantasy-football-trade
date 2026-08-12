@@ -19,6 +19,9 @@ import {
   type WeightedTradeEvidence,
 } from '../trade-models'
 import { AssetBadge, Avatar, formatValue } from '../components/domain-ui'
+import { AssetResearchPanel } from '../components/AssetResearchPanel'
+import { evaluateRebuildPortfolioTrade } from '../asset-returns'
+import type { AssetReturnHealthBundle, PortfolioTradeDelta } from '../asset-returns'
 import type { TradeDraft } from './types'
 
 type TradeEvaluation = ReturnType<typeof evaluateTrade>
@@ -343,9 +346,53 @@ function ScenarioPanel({
       <div className="model-note scenario-note">
         <Info size={16} />
         <span>{objectiveApplies
-          ? `Side A is your saved team, so the ${strategy.mode} objective is shown as explicit horizon facts. No age-decay or resale curve is invented.`
+          ? `Side A is your saved team, so the ${strategy.mode} objective is shown as explicit horizon facts. The separate portfolio memo uses only promoted 30-day resale evidence.`
           : `Your saved strategy belongs to another roster. This deal keeps the ${strategy.horizonYears}-year age facts visible but does not label either side as your rebuild.`}</span>
       </div>
+    </section>
+  )
+}
+
+function RebuildPortfolioPanel({
+  portfolio,
+  team,
+  incoming,
+  bundle,
+  numQbs,
+  horizonYears,
+}: {
+  portfolio: PortfolioTradeDelta
+  team: Team
+  incoming: Asset[]
+  bundle: AssetReturnHealthBundle | null
+  numQbs: 1 | 2
+  horizonYears: number
+}) {
+  const signed = (value: number | null, unit = '', digits = 0) => value === null
+    ? 'Unavailable'
+    : `${value > 0 ? '+' : ''}${value.toFixed(digits)}${unit}`
+  const lowerImproves = (portfolio.trackedAssetLowerPnl30 ?? 0) >= 0
+  return (
+    <section className="rebuild-portfolio panel">
+      <div className="panel-heading">
+        <div><span className="eyebrow">V7.7 rebuild portfolio memo</span><h2>Return, downside, liquidity, and decay stay separate</h2></div>
+        <span className="method-note">{team.teamName} · {horizonYears}-year objective</span>
+      </div>
+      <div className="portfolio-delta-grid">
+        <article><small>Current Tradyr value</small><strong className={portfolio.currentValue >= 0 ? 'positive' : 'negative'}>{signed(portfolio.currentValue)}</strong><span>Today’s composite-price change</span></article>
+        <article><small>Expected 30-day P&amp;L</small><strong className={(portfolio.expectedPnl30 ?? 0) >= 0 ? 'positive' : 'negative'}>{signed(portfolio.expectedPnl30)}</strong><span>FantasyCalc-value units · {Math.round(portfolio.returnCoverage * 100)}% post-trade coverage</span></article>
+        <article><small>Tracked downside P&amp;L</small><strong className={lowerImproves ? 'positive' : 'negative'}>{signed(portfolio.trackedAssetLowerPnl30)}</strong><span>Change in the calibrated tracked-asset lower interval</span></article>
+        <article><small>Draft capital</small><strong className={portfolio.pickValue >= 0 ? 'positive' : 'negative'}>{signed(portfolio.pickValue)}</strong><span>Pick-share change {signed(portfolio.pickValueShare === null ? null : portfolio.pickValueShare * 100, ' pp', 1)}</span></article>
+        <article><small>Concentration</small><strong>{signed(portfolio.concentrationHhi, '', 3)}</strong><span>HHI change · lower is more diversified</span></article>
+        <article><small>Age at your horizon</small><strong>{signed(portfolio.valueWeightedAgeAtHorizon, ' yrs', 1)}</strong><span>Change in value-weighted player age</span></article>
+        <article><small>Historical drawdown</small><strong>{signed(portfolio.maxDrawdown180 === null ? null : portfolio.maxDrawdown180 * 100, ' pp', 1)}</strong><span>Change in weighted 180-day max drawdown · {Math.round(portfolio.historicalRiskCoverage * 100)}% coverage</span></article>
+        <article><small>Market liquidity</small><strong>{signed(portfolio.tradeFrequency, '/day', 1)}</strong><span>Change in weighted FantasyCalc trade frequency</span></article>
+      </div>
+      <div className="portfolio-boundary"><Info size={16} /><span>The 30-day model is promoted for this exact horizon. It does not forecast your three-year roster value, manager acceptance, or a guaranteed flip. Missing assets contribute no assumed return.</span></div>
+      {incoming.length > 0 && <div className="incoming-research-stack">
+        <div className="panel-heading"><div><span className="eyebrow">Incoming asset research</span><h3>Hold and exit evidence</h3></div><span className="method-note">Up to three incoming assets</span></div>
+        {incoming.slice(0, 3).map((asset) => <AssetResearchPanel key={asset.id} asset={asset} bundle={bundle} numQbs={numQbs} horizonYears={horizonYears} compact />)}
+      </div>}
     </section>
   )
 }
@@ -507,6 +554,7 @@ export function TradeView({
   tradeModelWeights,
   onTradeModelWeightsChange,
   marketPopulation,
+  assetReturnHealth,
 }: {
   teams: Team[]
   rosterPositions: string[]
@@ -519,6 +567,7 @@ export function TradeView({
   tradeModelWeights?: TradeModelWeights
   onTradeModelWeightsChange: (weights: TradeModelWeights) => void
   marketPopulation: number[]
+  assetReturnHealth: AssetReturnHealthBundle | null
 }) {
   const [teamAId, setTeamAId] = useState(initialDraft?.teamAId ?? strategyRosterId)
   const [teamBId, setTeamBId] = useState(initialDraft?.teamBId ?? teams[1]?.rosterId ?? teams[0].rosterId)
@@ -566,14 +615,28 @@ export function TradeView({
   const signals = modelSignalsForTrade({ rawMarketPercent, lineupPercent, structure, health: tradeModelHealth, weights })
   const weighted = weightTradeEvidence(signals, weights)
   const privateStrategy = strategyProfileForLeague(leagueContext.id, strategyRosterId)
-  const privatePolicyApplies = teamA.rosterId === strategyRosterId
-  const privateDecision = privateStrategy && privatePolicyApplies && ready
+  const strategyTeam = teamA.rosterId === strategyRosterId ? teamA : teamB.rosterId === strategyRosterId ? teamB : null
+  const strategyOutgoing = strategyTeam?.rosterId === teamA.rosterId ? assetsA : assetsB
+  const strategyIncoming = strategyTeam?.rosterId === teamA.rosterId ? assetsB : assetsA
+  const privateDecision = privateStrategy && strategyTeam && ready
     ? evaluateLeagueTradePolicy(privateStrategy, {
-      marketNetToMe: result.marketNetA,
-      currentSeasonPowerDelta: result.currentSeasonImpactA,
-      outgoing: assetsA,
-      incoming: assetsB,
-    })
+        marketNetToMe: strategyTeam.rosterId === teamA.rosterId ? result.marketNetA : -result.marketNetA,
+        currentSeasonPowerDelta: strategyTeam.rosterId === teamA.rosterId
+          ? result.currentSeasonImpactA
+          : result.currentSeasonImpactB,
+        outgoing: strategyOutgoing,
+        incoming: strategyIncoming,
+      })
+    : null
+  const portfolio = ready && strategyTeam && (strategy.mode === 'rebuilding' || strategy.mode === 'retooling')
+    ? evaluateRebuildPortfolioTrade({
+        team: strategyTeam,
+        outgoing: strategyOutgoing,
+        incoming: strategyIncoming,
+        bundle: assetReturnHealth,
+        numQbs: leagueContext.marketFormat.numQbs,
+        horizonYears: strategy.horizonYears,
+      })
     : null
 
   const toggle = (ids: string[], setIds: (value: string[]) => void, id: string) => {
@@ -623,8 +686,8 @@ export function TradeView({
       <div className="league-context-note panel"><span><strong>{leagueContext.label}</strong> · {leagueContext.labels.format}</span><small>Lineup legality uses {leagueContext.roster.skillStartingSlots} skill starters. Market prices use the broader {leagueContext.labels.market}, so 0.5 and 0.75 TEP are not presented as exact provider distinctions.</small></div>
       {privateStrategy && <div className={`league-context-note power-trade-gate panel policy-${privateDecision?.status ?? 'idle'}`}>
         <span><strong>{privateStrategy.kind === 'power-climb' ? 'Private power gate' : 'BC value-build guard'}</strong> · {privateStrategy.kind === 'power-climb' ? `+${privateStrategy.minimumMeaningfulPowerGain} minimum · +${privateStrategy.idealPowerGain} ideal` : 'market · current power · draft liquidity · live role'}</span>
-        <small>{!privatePolicyApplies
-          ? 'Put your saved roster on Side A to apply its private policy.'
+        <small>{!strategyTeam
+          ? 'Put your saved roster on either side to apply its private policy.'
           : privateDecision
             ? <><b>{privateDecision.title}.</b> {privateDecision.summary} {privateDecision.reasons.join(' ')}</>
             : 'Build both sides to test the package against the declared league policy.'}</small>
@@ -655,6 +718,7 @@ export function TradeView({
       </section>
 
       <RosterImpact teamA={teamA} teamB={teamB} sideA={assetsA} sideB={assetsB} result={result} horizonYears={strategy.horizonYears} />
+      {portfolio && strategyTeam && <RebuildPortfolioPanel portfolio={portfolio} team={strategyTeam} incoming={strategyIncoming} bundle={assetReturnHealth} numQbs={leagueContext.marketFormat.numQbs} horizonYears={strategy.horizonYears} />}
       <PremiumModelPanel structure={structure} health={tradeModelHealth} weights={weights} weighted={weighted} onWeightsChange={setWeights} onWeightsCommit={onTradeModelWeightsChange} tape={tape} tapeRefreshing={tapeRefreshing} tapeError={tapeError} onTapeRefresh={() => void runTapeRefresh()} />
       {ready && <ScenarioPanel result={result} teamA={teamA} strategy={strategy} strategyRosterId={strategyRosterId} />}
     </main>

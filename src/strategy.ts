@@ -1,5 +1,7 @@
 import type { Asset, Team, TeamStrategyProfile } from './types'
 import { evaluateTrade, packageValue } from './rankings'
+import { evaluateRebuildPortfolioTrade } from './asset-returns'
+import type { AssetReturnHealthBundle, PortfolioTradeDelta } from './asset-returns'
 
 export type ComparablePackage = {
   key: string
@@ -24,6 +26,7 @@ export type ComparablePackage = {
   draftCapitalNetToMe: number
   outgoingAverageAgeAtHorizon: number | null
   incomingAverageAgeAtHorizon: number | null
+  portfolio: PortfolioTradeDelta | null
   frontier: boolean
   tradeoffs: string[]
 }
@@ -35,18 +38,30 @@ export type ComparablePackageOptions = {
   targetAssetId?: string
   targetAssetIds?: string[]
   strategy?: ResolvedTeamStrategy
+  assetReturnHealth?: AssetReturnHealthBundle | null
+  numQbs?: 1 | 2
 }
 
 export type TradeFrontierOptions = {
   myRosterId: number
   rosterPositions: string[]
   strategy?: ResolvedTeamStrategy
+  assetReturnHealth?: AssetReturnHealthBundle | null
+  numQbs?: 1 | 2
 }
 
 export type TradeFrontierCandidate = ComparablePackage & {
   counterpartRosterId: number
   counterpartName: string
   targetAsset: Asset
+}
+
+export type NegotiationStage = 'ambitious-opening' | 'fair-target' | 'walk-away'
+
+export type NegotiationStep = {
+  stage: NegotiationStage
+  package: ComparablePackage
+  explanation: string
 }
 
 export type ResolvedTeamStrategy = {
@@ -115,6 +130,20 @@ function dominates(
     if (candidate.incomingAverageAgeAtHorizon !== null && other.incomingAverageAgeAtHorizon !== null) {
       comparisons.push({ mine: candidate.incomingAverageAgeAtHorizon, theirs: other.incomingAverageAgeAtHorizon, higherIsBetter: false })
     }
+    if (candidate.portfolio && other.portfolio) {
+      if (candidate.portfolio.expectedPnl30 !== null && other.portfolio.expectedPnl30 !== null) {
+        comparisons.push({ mine: candidate.portfolio.expectedPnl30, theirs: other.portfolio.expectedPnl30, higherIsBetter: true })
+      }
+      if (candidate.portfolio.trackedAssetLowerPnl30 !== null && other.portfolio.trackedAssetLowerPnl30 !== null) {
+        comparisons.push({ mine: candidate.portfolio.trackedAssetLowerPnl30, theirs: other.portfolio.trackedAssetLowerPnl30, higherIsBetter: true })
+      }
+      if (candidate.portfolio.maxDrawdown180 !== null && other.portfolio.maxDrawdown180 !== null) {
+        comparisons.push({ mine: candidate.portfolio.maxDrawdown180, theirs: other.portfolio.maxDrawdown180, higherIsBetter: true })
+      }
+      if (candidate.portfolio.concentrationHhi !== null && other.portfolio.concentrationHhi !== null) {
+        comparisons.push({ mine: candidate.portfolio.concentrationHhi, theirs: other.portfolio.concentrationHhi, higherIsBetter: false })
+      }
+    }
   }
 
   let strictlyBetter = false
@@ -144,6 +173,8 @@ function toComparablePackage(options: {
   theirs: Team
   rosterPositions: string[]
   strategy: ResolvedTeamStrategy
+  assetReturnHealth?: AssetReturnHealthBundle | null
+  numQbs?: 1 | 2
 }): ComparablePackage {
   const receiveValue = packageValue(options.receive)
   const evidence = evaluateTrade(options.raw.send, options.receive, {
@@ -176,6 +207,22 @@ function toComparablePackage(options: {
       tradeoffs.push(`Outgoing player age ${evidence.packageA.averageAgeAtHorizon.toFixed(1)} at horizon`)
     }
   }
+  const portfolio = (options.strategy.mode === 'rebuilding' || options.strategy.mode === 'retooling')
+    && options.assetReturnHealth && options.numQbs
+    ? evaluateRebuildPortfolioTrade({
+        team: options.mine,
+        outgoing: options.raw.send,
+        incoming: options.receive,
+        bundle: options.assetReturnHealth,
+        numQbs: options.numQbs,
+        horizonYears: options.strategy.horizonYears,
+      })
+    : null
+  if (portfolio) {
+    tradeoffs.push(portfolio.expectedPnl30 === null
+      ? `30-day return evidence unavailable · ${Math.round(portfolio.returnCoverage * 100)}% post-trade coverage`
+      : `${portfolio.expectedPnl30 >= 0 ? '+' : ''}${portfolio.expectedPnl30.toFixed(0)} FantasyCalc-value expected 30-day P&L delta · ${Math.round(portfolio.returnCoverage * 100)}% coverage`)
+  }
 
   return {
     key: `${options.theirs.rosterId}:${options.receive.map((asset) => asset.id).join('+')}:${options.raw.key}`,
@@ -200,14 +247,16 @@ function toComparablePackage(options: {
     draftCapitalNetToMe: evidence.pickValueNetA,
     outgoingAverageAgeAtHorizon: evidence.packageA.averageAgeAtHorizon,
     incomingAverageAgeAtHorizon: evidence.packageB.averageAgeAtHorizon,
+    portfolio,
     frontier: false,
     tradeoffs,
   }
 }
 
 /** Produces an explicit Pareto set among the 60 closest observable
- * current-market packages for one selected basket. It does not use manager
- * tendencies, news, age curves, or an unvalidated return model. */
+ * current-market packages for one selected basket. A supplied, promoted asset
+ * return artifact participates only for a declared rebuild/retool objective.
+ * Manager tendencies, news, and unvalidated horizons are excluded. */
 export function findComparablePackages(
   teams: Team[],
   options: ComparablePackageOptions,
@@ -239,6 +288,8 @@ export function findComparablePackages(
       theirs,
       rosterPositions: options.rosterPositions,
       strategy,
+      assetReturnHealth: options.assetReturnHealth,
+      numQbs: options.numQbs,
     }))
 
   const compared = markParetoFrontier(shortlist, strategy)
@@ -254,10 +305,36 @@ export function findComparablePackages(
     .slice(0, Math.max(1, Math.min(12, limit)))
 }
 
+function nearestPackages(outgoing: RawPackage[], targetValue: number, limit = 4): RawPackage[] {
+  const nearest: RawPackage[] = []
+  outgoing.forEach((candidate) => {
+    nearest.push(candidate)
+    nearest.sort((a, b) => (
+      Math.abs(a.value - targetValue) - Math.abs(b.value - targetValue)
+      || a.send.length - b.send.length
+      || a.key.localeCompare(b.key)
+    ))
+    if (nearest.length > limit) nearest.pop()
+  })
+  return nearest
+}
+
+function rebuildPackageOrder(a: ComparablePackage, b: ComparablePackage): number {
+  return (
+    (b.portfolio?.trackedAssetLowerPnl30 ?? Number.NEGATIVE_INFINITY) - (a.portfolio?.trackedAssetLowerPnl30 ?? Number.NEGATIVE_INFINITY)
+    || (b.portfolio?.expectedPnl30 ?? Number.NEGATIVE_INFINITY) - (a.portfolio?.expectedPnl30 ?? Number.NEGATIVE_INFINITY)
+    || a.marketDistancePercent - b.marketDistancePercent
+    || b.marketNetToMe - a.marketNetToMe
+    || a.send.length - b.send.length
+    || a.key.localeCompare(b.key)
+  )
+}
+
 /** Finds non-dominated single-target deals across the league. Each target is
- * paired with its closest current-value outgoing package, then compared on the
- * visible objectives. Ordering is a deterministic display tie-break, not a
- * hidden recommendation score. */
+ * paired with the best visible Pareto option among its four closest
+ * current-value packages, then compared across the league. The rebuild display
+ * tie-break prioritizes tracked downside and promoted 30-day return before
+ * current-price distance; this declared order is not a hidden score. */
 export function findTradeFrontier(
   teams: Team[],
   options: TradeFrontierOptions,
@@ -274,37 +351,75 @@ export function findTradeFrontier(
     .flatMap((team) => [...team.players, ...team.picks]
       .filter((target) => target.value > 0)
       .map((target): TradeFrontierCandidate => {
-        const closest = outgoing.reduce((best, candidate) => {
-          const candidateGap = Math.abs(candidate.value - target.value)
-          const bestGap = Math.abs(best.value - target.value)
-          if (candidateGap !== bestGap) return candidateGap < bestGap ? candidate : best
-          if (candidate.send.length !== best.send.length) return candidate.send.length < best.send.length ? candidate : best
-          return candidate.key.localeCompare(best.key) < 0 ? candidate : best
-        })
-        return {
+        const variants = nearestPackages(outgoing, target.value).map((raw): TradeFrontierCandidate => ({
           ...toComparablePackage({
-            raw: closest,
+            raw,
             receive: [target],
             mine,
             theirs: team,
             rosterPositions: options.rosterPositions,
             strategy,
+            assetReturnHealth: options.assetReturnHealth,
+            numQbs: options.numQbs,
           }),
           counterpartRosterId: team.rosterId,
           counterpartName: team.teamName,
           targetAsset: target,
-        }
+        }))
+        const localFrontier = markParetoFrontier(variants, strategy).filter((candidate) => candidate.frontier)
+        return localFrontier.sort((a, b) => (
+          strategy.mode === 'rebuilding' || strategy.mode === 'retooling'
+            ? rebuildPackageOrder(a, b)
+            : a.marketDistancePercent - b.marketDistancePercent || b.marketNetToMe - a.marketNetToMe || a.key.localeCompare(b.key)
+        ))[0]
       }))
 
   const frontier = markParetoFrontier(candidates, strategy)
     .filter((candidate) => candidate.frontier)
   return frontier
     .sort((a, b) => (
-      b.marketNetToMe - a.marketNetToMe
+      (strategy.mode === 'rebuilding' || strategy.mode === 'retooling' ? rebuildPackageOrder(a, b) : 0)
+      || b.marketNetToMe - a.marketNetToMe
       || a.marketDistancePercent - b.marketDistancePercent
       || (b.lineupDeltaMe ?? Number.NEGATIVE_INFINITY) - (a.lineupDeltaMe ?? Number.NEGATIVE_INFINITY)
       || b.targetAsset.value - a.targetAsset.value
       || a.key.localeCompare(b.key)
     ))
     .slice(0, Math.max(1, Math.min(16, limit)))
+}
+
+/** Builds negotiation anchors from the actual displayed package set. The
+ * opening is the nearest cheaper package, the target is closest to current
+ * market, and the walk-away is the nearest more expensive package. These are
+ * price anchors, not acceptance predictions or model confidence. */
+export function buildNegotiationLadder(candidates: ComparablePackage[]): NegotiationStep[] {
+  if (!candidates.length) return []
+  const fair = [...candidates].sort((a, b) => (
+    a.marketDistancePercent - b.marketDistancePercent
+    || a.sendValue - b.sendValue
+    || a.key.localeCompare(b.key)
+  ))[0]
+  const cheaper = candidates
+    .filter((candidate) => candidate.sendValue < fair.sendValue)
+    .sort((a, b) => b.sendValue - a.sendValue || a.key.localeCompare(b.key))[0]
+  const dearer = candidates
+    .filter((candidate) => candidate.sendValue > fair.sendValue)
+    .sort((a, b) => a.sendValue - b.sendValue || a.key.localeCompare(b.key))[0]
+  const steps: NegotiationStep[] = []
+  if (cheaper) steps.push({
+    stage: 'ambitious-opening',
+    package: cheaper,
+    explanation: 'Nearest lower-priced package in the displayed evidence set; a deliberate ambitious opening, not an acceptance estimate.',
+  })
+  steps.push({
+    stage: 'fair-target',
+    package: fair,
+    explanation: 'Package closest to the target basket on the current composite scale.',
+  })
+  if (dearer) steps.push({
+    stage: 'walk-away',
+    package: dearer,
+    explanation: 'Next higher-priced evidence anchor. Treat this as the comparison ceiling, not a recommendation to pay it.',
+  })
+  return steps
 }

@@ -781,6 +781,78 @@ def _fit_model(train: pd.DataFrame, test: pd.DataFrame, features: list[str], tar
     }, predictions
 
 
+def _exchange_segment_keys(frame: pd.DataFrame) -> pd.Series:
+    elite_band = pd.cut(
+        frame["elite_percentile"], bins=[0.69, 0.85, 0.95, 1.01], labels=["70-84", "85-94", "95+"]
+    ).astype(str)
+    return (
+        elite_band
+        + "|" + frame["package_size"].round().astype(int).astype(str)
+        + "|" + np.where(frame["num_qbs"] >= 2, "sf", "1qb")
+        + "|" + np.where(frame["pick_count"] > 0, "picks", "players")
+    )
+
+
+def _segmented_median_predictions(train: pd.DataFrame, test: pd.DataFrame) -> np.ndarray:
+    if train.empty or test.empty:
+        return np.zeros(len(test))
+    working = train.copy()
+    working["segment_key"] = _exchange_segment_keys(working)
+    counts = working.groupby("segment_key")["paid_premium"].count()
+    medians = working.groupby("segment_key")["paid_premium"].median()
+    fallback = float(working["paid_premium"].median())
+    keys = _exchange_segment_keys(test)
+    return np.array([
+        float(medians[key]) if key in medians and int(counts[key]) >= 10 else fallback
+        for key in keys
+    ])
+
+
+def _league_balanced_mae(frame: pd.DataFrame, actual: np.ndarray, predicted: np.ndarray) -> float:
+    if frame.empty or not len(actual):
+        return 0.0
+    working = pd.DataFrame({
+        "league_id": frame["league_id"].astype(str).to_numpy(),
+        "error": np.abs(actual - predicted),
+    })
+    return float(working.groupby("league_id")["error"].mean().mean())
+
+
+def build_anchor_sampling_audit(trades: list[dict[str, Any]]) -> dict[str, Any]:
+    """Describe what the bounded anchor queries can and cannot represent."""
+    exposure: dict[str, int] = defaultdict(int)
+    anchor_ids: set[str] = set()
+    query_rows = 0
+    for path in sorted(TRADES.glob("*/*.json")):
+        anchor_ids.add(path.stem)
+        try:
+            payload = json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        for trade in payload if isinstance(payload, list) else []:
+            if not isinstance(trade, dict) or not trade.get("id"):
+                continue
+            query_rows += 1
+            exposure[str(trade["id"])] += 1
+    imported, _ = load_imported_tapes()
+    exposed = list(exposure.values())
+    return {
+        "selection": "position/value-stratified current-player anchors plus the private hosted anchor sample",
+        "anchorQueryFiles": len(list(TRADES.glob("*/*.json"))),
+        "queriedAnchorIds": len(anchor_ids),
+        "queryRows": query_rows,
+        "uniqueQueryTrades": len(exposure),
+        "importedTrades": len(imported),
+        "combinedDeduplicatedTrades": len(trades),
+        "meanAnchorExposure": float(statistics.mean(exposed)) if exposed else 0.0,
+        "maximumAnchorExposure": max(exposed) if exposed else 0,
+        "multiAnchorTradeShare": (
+            sum(value > 1 for value in exposed) / len(exposed) if exposed else 0.0
+        ),
+        "warning": "Anchor discovery is not a probability sample of all trades. Deduplication removes repeated rows but cannot remove selection bias; promotion still requires later independent leagues and exact historical format coverage.",
+    }
+
+
 def _segments(frame: pd.DataFrame) -> list[dict[str, Any]]:
     if frame.empty:
         return []
@@ -816,28 +888,56 @@ def train_exchange(frame: pd.DataFrame) -> dict[str, Any]:
     train, test = _split(frame) if rows >= 2 else (frame, frame.iloc[0:0])
     model = None
     baseline_metrics = {"mae": 0, "rmse": 0}
+    global_baseline_metrics = {"mae": 0, "rmse": 0}
+    segmented_baseline_metrics = {"mae": 0, "rmse": 0}
     model_metrics = {"mae": 0, "rmse": 0}
     improvement = 0.0
+    cluster_improvement = 0.0
+    novel_league_rows = 0
+    novel_league_metrics = {"mae": 0, "rmse": 0}
+    selected_baseline = "global median"
+    test_start = str(test["date"].min()) if len(test) else None
     if len(train) >= 20 and len(test) >= 5:
         baseline_value = float(train["paid_premium"].median())
         actual = test["paid_premium"].to_numpy(float)
-        baseline = np.full(len(test), baseline_value)
+        global_baseline = np.full(len(test), baseline_value)
+        segmented_baseline = _segmented_median_predictions(train, test)
         model, predicted = _fit_model(train, test, EXCHANGE_FEATURES, "paid_premium")
-        baseline_metrics = _metrics(actual, baseline)
+        global_baseline_metrics = _metrics(actual, global_baseline)
+        segmented_baseline_metrics = _metrics(actual, segmented_baseline)
+        if segmented_baseline_metrics["mae"] < global_baseline_metrics["mae"]:
+            selected_baseline = "structure-segmented median"
+            baseline = segmented_baseline
+            baseline_metrics = segmented_baseline_metrics
+        else:
+            baseline = global_baseline
+            baseline_metrics = global_baseline_metrics
         model_metrics = _metrics(actual, predicted)
         improvement = (baseline_metrics["mae"] - model_metrics["mae"]) / baseline_metrics["mae"] if baseline_metrics["mae"] else 0
+        baseline_cluster_mae = _league_balanced_mae(test, actual, baseline)
+        model_cluster_mae = _league_balanced_mae(test, actual, predicted)
+        cluster_improvement = (
+            (baseline_cluster_mae - model_cluster_mae) / baseline_cluster_mae if baseline_cluster_mae else 0.0
+        )
+        train_leagues = set(train["league_id"].astype(str))
+        novel_mask = ~test["league_id"].astype(str).isin(train_leagues)
+        novel_league_rows = int(novel_mask.sum())
+        if novel_league_rows:
+            novel_league_metrics = _metrics(actual[novel_mask.to_numpy()], predicted[novel_mask.to_numpy()])
     format_coverage = float(frame["format_complete"].mean()) if rows else 0
     age_coverage = float(frame["age_complete"].mean()) if rows else 0
     historical_format_coverage = float(frame["historical_format_exact"].mean()) if rows else 0
     gates = [
         _gate("rows", "Eligible accepted trades", rows >= 400, float(rows), ">= 400 deduplicated elite 1-for-2/3 trades"),
         _gate("heldout", "Chronological held-out rows", len(test) >= 80, float(len(test)), ">= 80 later trades"),
+        _gate("novelLeagues", "Held-out rows from unseen leagues", novel_league_rows >= 60, float(novel_league_rows), ">= 60 later trades from leagues absent in training"),
         _gate("leagues", "Independent leagues", unique_leagues >= 100, float(unique_leagues), ">= 100 source leagues"),
         _gate("span", "Historical span", span >= 90, float(span), ">= 90 days"),
         _gate("format", "League-format coverage", format_coverage >= 0.95, format_coverage, ">= 95%"),
         _gate("historicalFormat", "Exact historical value format", historical_format_coverage >= 0.95, historical_format_coverage, ">= 95% exact QB/PPR/TEP/team-count history"),
         _gate("age", "Age coverage", age_coverage >= 0.75, age_coverage, ">= 75%"),
-        _gate("mae", "Held-out MAE beats median", improvement >= 0, improvement, ">= 0% regression"),
+        _gate("mae", "Held-out MAE beats best simple baseline", improvement >= 0.02, improvement, ">= 2% improvement"),
+        _gate("clusterMae", "League-balanced MAE lift", cluster_improvement >= 0.02, cluster_improvement, ">= 2% improvement"),
     ]
     data_ready = all(gate["passed"] for gate in gates[:-1])
     validated = all(gate["passed"] for gate in gates)
@@ -849,12 +949,21 @@ def train_exchange(frame: pd.DataFrame) -> dict[str, Any]:
         "rows": rows,
         "trainingRows": len(train),
         "testRows": len(test),
+        "testStart": test_start,
+        "novelLeagueTestRows": novel_league_rows,
         "dateSpanDays": span,
         "uniqueLeagues": unique_leagues,
         "medianPremium": float(frame["paid_premium"].median()) if rows else None,
         "baseline": baseline_metrics,
+        "baselines": {
+            "selected": selected_baseline,
+            "globalMedian": global_baseline_metrics,
+            "structureSegmentedMedian": segmented_baseline_metrics,
+        },
         "modelMetrics": model_metrics,
         "maeImprovement": improvement,
+        "leagueBalancedMaeImprovement": cluster_improvement,
+        "novelLeagueMetrics": novel_league_metrics,
         "model": model,
         "segments": _segments(frame),
         "gates": gates,
@@ -931,6 +1040,10 @@ def report_markdown(report: dict[str, Any]) -> str:
         f"- Unique source leagues: **{exchange['uniqueLeagues']}**",
         f"- Date span: **{exchange['dateSpanDays']} days**",
         f"- Median observed premium: **{exchange['medianPremium'] if exchange['medianPremium'] is not None else 'unavailable'}**",
+        f"- Best simple baseline: **{exchange.get('baselines', {}).get('selected', 'global median')}**",
+        f"- Later unseen-league rows: **{exchange.get('novelLeagueTestRows', 0)}**",
+        f"- Held-out MAE lift vs best baseline: **{exchange['maeImprovement']:.1%}**",
+        f"- League-balanced MAE lift: **{exchange.get('leagueBalancedMaeImprovement', 0):.1%}**",
         "",
         "## Outcome challengers",
         "",
@@ -977,6 +1090,7 @@ def train() -> dict[str, Any]:
         "rawTradeCount": len(trades),
         "historyAssetCount": len(set(histories_by_qb[1]) | set(histories_by_qb[2])),
         "historySeriesCount": sum(len(histories) for histories in histories_by_qb.values()),
+        "samplingAudit": build_anchor_sampling_audit(trades),
         "exchange": train_exchange(frame),
         "outcomes": [train_outcome(frame, horizon) for horizon in HORIZONS],
         "lineupOutcome": {

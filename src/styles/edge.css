@@ -248,7 +248,7 @@
 .frontier-send strong { overflow: hidden; font-size: 9px; line-height: 1.35; text-overflow: ellipsis; }
 .frontier-target em,
 .frontier-send em { color: var(--ink-soft); font-family: 'DM Mono', monospace; font-size: 7px; font-style: normal; }
-.frontier-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.frontier-facts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
 .frontier-facts span { min-width: 0; padding: 8px; display: grid; gap: 5px; background: #efede6; border-radius: 7px; }
 .frontier-facts b { overflow: hidden; font-family: 'DM Mono', monospace; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
 .trade-frontier-list > article > button { min-height: 36px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: #f3f4ee; background: var(--dark); border: 0; border-radius: 8px; font-size: 7px; font-weight: 900; }
@@ -282,9 +282,10 @@
 .evidence-trade-empty button { margin-top: 4px; }
 .evidence-trade-more { margin: 11px 15px; color: var(--ink); background: #eeece5; border-color: var(--line); }
 .edge-packages .package-row { grid-template-columns: 76px minmax(150px, 1fr) 20px minmax(150px, 1fr) minmax(260px, 1.2fr) 128px; }
-.edge-packages .package-scores { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+.edge-packages .package-scores { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 .edge-packages .package-scores b { white-space: nowrap; }
 .package-actions { display: grid; gap: 6px !important; }
+.negotiation-explanation { color: var(--ink-soft); font-size: 7px; line-height: 1.4; }
 .package-actions button { min-height: 34px; padding: 0 9px; border-radius: 8px; font-size: 7px; font-weight: 900; white-space: nowrap; }
 .compare-package { color: #eef0ea; background: var(--dark); border: 1px solid var(--dark); }
 .compare-package:hover { color: var(--acid); }
