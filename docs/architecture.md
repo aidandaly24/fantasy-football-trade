@@ -46,7 +46,7 @@ Offline training does not run in the request path.
 | `src/rankings.ts` | Team construction, direct rankings, and source-separated trade scenarios |
 | `src/team-power.ts` | Reusable legal-lineup optimizer, redraft power table, coverage, and trade deltas |
 | `src/strategy.ts` | Declared roster strategy, bounded package enumeration, and deterministic Pareto discovery |
-| `src/leagues/` | Fixed-league private decision policies; currently the Emperor Phil top-six power plan |
+| `src/leagues/` | Fixed-league private decision policies; shared dispatch with separate Phil power-climb and BC value-build rules |
 | `src/trade-models.ts` | Portable exchange/outcome model contracts, consolidation features, and user-authored weighting arithmetic |
 | `src/edge.ts` | Evidence-board opportunity construction and market-tape preparation |
 | `src/dislocations.ts` | Current source disagreement, position-relative production divergence, owner-pressure facts, and their evidence-only Pareto frontier |
@@ -95,6 +95,14 @@ All live league views use the current Sleeper roster and traded-pick ledger as
 their single source of ownership truth. RosterLab does not persist or project
 accepted offers during Sleeper's review window because the public API does not
 provide a reliable lifecycle for keeping that private state current.
+
+League policy composes with the shared engines instead of entering them. Both
+private teams use the same legal-lineup optimizer, source-separated trade
+scenario, draft ownership, and Pareto package search. Emperor Phil declares a
+current-power climb policy; BC declares a value-build policy and deterministic
+trade veto. Neither policy changes provider prices, projection outputs, or the
+meaning of Pareto support. A new policy kind must earn a concrete decision rule
+rather than expanding into a general strategy language.
 
 The primary views are league facts, Trade Lab, Journal, News, Evidence, Rookie
 board, and Model. View-local presentation should consume typed domain results

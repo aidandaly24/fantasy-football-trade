@@ -4,7 +4,7 @@ import { fetchTradeTapeState, refreshTradeTape } from '../api'
 import type { LeagueContext } from '../league-context'
 import { assetRoleLabel, evaluateTrade, optimizeLineup, projectedLineupPpg } from '../rankings'
 import type { ResolvedTeamStrategy } from '../strategy'
-import { strategyProfileForLeague } from '../leagues'
+import { evaluateLeagueTradePolicy, strategyProfileForLeague } from '../leagues'
 import type { Asset, Team, TeamStrategyProfile } from '../types'
 import {
   buildConsolidationStructure,
@@ -566,6 +566,15 @@ export function TradeView({
   const signals = modelSignalsForTrade({ rawMarketPercent, lineupPercent, structure, health: tradeModelHealth, weights })
   const weighted = weightTradeEvidence(signals, weights)
   const privateStrategy = strategyProfileForLeague(leagueContext.id, strategyRosterId)
+  const privatePolicyApplies = teamA.rosterId === strategyRosterId
+  const privateDecision = privateStrategy && privatePolicyApplies && ready
+    ? evaluateLeagueTradePolicy(privateStrategy, {
+      marketNetToMe: result.marketNetA,
+      currentSeasonPowerDelta: result.currentSeasonImpactA,
+      outgoing: assetsA,
+      incoming: assetsB,
+    })
+    : null
 
   const toggle = (ids: string[], setIds: (value: string[]) => void, id: string) => {
     setIds(ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id])
@@ -612,7 +621,14 @@ export function TradeView({
       </section>
 
       <div className="league-context-note panel"><span><strong>{leagueContext.label}</strong> · {leagueContext.labels.format}</span><small>Lineup legality uses {leagueContext.roster.skillStartingSlots} skill starters. Market prices use the broader {leagueContext.labels.market}, so 0.5 and 0.75 TEP are not presented as exact provider distinctions.</small></div>
-      {privateStrategy && <div className="league-context-note power-trade-gate panel"><span><strong>Private power gate</strong> · +{privateStrategy.minimumMeaningfulPowerGain} minimum · +{privateStrategy.idealPowerGain} ideal</span><small>{ready && result.currentSeasonImpactA !== null ? `This package changes your current-season lineup power by ${result.currentSeasonImpactA >= 0 ? '+' : ''}${result.currentSeasonImpactA}.` : 'Build both sides to measure the move against the declared lineup-power goal.'}</small></div>}
+      {privateStrategy && <div className={`league-context-note power-trade-gate panel policy-${privateDecision?.status ?? 'idle'}`}>
+        <span><strong>{privateStrategy.kind === 'power-climb' ? 'Private power gate' : 'BC value-build guard'}</strong> · {privateStrategy.kind === 'power-climb' ? `+${privateStrategy.minimumMeaningfulPowerGain} minimum · +${privateStrategy.idealPowerGain} ideal` : 'market · current power · draft liquidity · live role'}</span>
+        <small>{!privatePolicyApplies
+          ? 'Put your saved roster on Side A to apply its private policy.'
+          : privateDecision
+            ? <><b>{privateDecision.title}.</b> {privateDecision.summary} {privateDecision.reasons.join(' ')}</>
+            : 'Build both sides to test the package against the declared league policy.'}</small>
+      </div>}
 
       <section className="trade-builder">
         <TradeSide

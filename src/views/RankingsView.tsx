@@ -2,7 +2,7 @@ import { ChevronRight, Sparkles, Target, TrendingUp, Trophy } from 'lucide-react
 import { useMemo } from 'react'
 import type { LeagueContext } from '../league-context'
 import { strategyProfileForLeague } from '../leagues'
-import { EmperorPhilTeamPowerPlan } from '../leagues/emperor-phil/TeamPowerPlan'
+import { TeamStrategyPlan } from '../leagues/TeamStrategyPlan'
 import { rosterProfile } from '../rankings'
 import type { RankingMode, Team } from '../types'
 import { AssetBadge, Avatar, formatValue, MetricBar } from '../components/domain-ui'
@@ -192,7 +192,7 @@ export function RankingsView({
       </section>
 
       <div className="league-context-note panel"><span><strong>{leagueContext.label}</strong> · {leagueContext.labels.format}</span><small>{leagueContext.labels.roster}</small></div>
-      {strategyProfile && <EmperorPhilTeamPowerPlan teams={teams} rosterPositions={rosterPositions} profile={strategyProfile} />}
+      {strategyProfile && <TeamStrategyPlan teams={teams} rosterPositions={rosterPositions} profile={strategyProfile} />}
       <section className="leader-strip" aria-label="League leaders">
         <div className="leader-card">
           <span className="leader-icon"><Trophy size={19} /></span>

@@ -1,10 +1,11 @@
-import type { LeagueStrategyProfile } from '../types'
+import type { PowerClimbStrategyProfile } from '../types'
 
 export const EMPEROR_PHIL_LEAGUE_ID = '1312112570039037952'
 
 /** A private decision policy for Aidan's roster in Emperor Phil. The numbers
  * are declared goals, not learned thresholds or generic fantasy advice. */
-export const emperorPhilStrategy: LeagueStrategyProfile = {
+export const emperorPhilStrategy: PowerClimbStrategyProfile = {
+  kind: 'power-climb',
   leagueId: EMPEROR_PHIL_LEAGUE_ID,
   rosterId: 5,
   label: 'Patient consolidation',
@@ -15,7 +16,7 @@ export const emperorPhilStrategy: LeagueStrategyProfile = {
   idealPowerGain: 350,
   reassessAfterWeek: 4,
   protectedAssets: [
-    { year: 2027, round: 1, until: 'the Week 4 contender gate is passed' },
+    { label: '2027 first', year: 2027, round: 1, until: 'the Week 4 contender gate is passed' },
   ],
   decisionGates: [
     { ranks: [1, 6], action: 'Buy one established difference-maker and make a title push.' },
