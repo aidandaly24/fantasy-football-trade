@@ -74,7 +74,7 @@ export function TradeJournalView({
   return (
     <main className="page-shell journal-page">
       <section className="journal-hero">
-        <div><span className="eyebrow accent-eyebrow">Automated trade journal · V4.6</span><h1>Every completed deal.<br />No selective memory.</h1><p>{leagueContext.label}: Sleeper facts, season-correct manager identity, immutable value snapshots, and automatic 7/30/90/180-day checkpoints.</p></div>
+        <div><span className="eyebrow accent-eyebrow">Automated trade journal · V4.6</span><h1>Every completed deal.<br />No selective memory.</h1><p>{leagueContext.label}: Sleeper facts, season-correct manager identity, immutable value snapshots, and automatic 7/30/90/180/365-day checkpoints.</p></div>
         <button type="button" className="journal-sync" onClick={onSync} disabled={syncing}><RefreshCw size={17} className={syncing ? 'spin' : ''} /> {syncing ? 'Syncing every season…' : 'Sync journal'}</button>
       </section>
       <section className="journal-stats">

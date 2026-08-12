@@ -1,6 +1,6 @@
 import { ArrowLeftRight, BarChart3, BookOpen, CircleGauge, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchResearchState, fetchRookieBoard, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
+import { fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchResearchState, fetchRookieBoard, fetchTradeModelHealth, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
 import { buildTeamDirections } from './edge'
 import type { TeamDirection } from './edge'
 import { journalTransactionsForCurrentManagers } from './journal'
@@ -11,6 +11,7 @@ import type { ManagerProfile } from './negotiation'
 import { buildTeams } from './rankings'
 import { resolveTeamStrategy } from './strategy'
 import type { RookieBoardBundle } from './rookies'
+import type { TradeModelHealthBundle } from './trade-models'
 import type { EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, PlayerProjection, ProjectionBundle, RankingMode, Team, UserState, ValueBundle } from './types'
 import { EdgeView } from './views/EdgeView'
 import { IntelView } from './views/IntelView'
@@ -34,6 +35,7 @@ type AppData = {
   teams: Team[]
   modelHealth: ModelHealthBundle | null | undefined
   eventModelHealth: EventModelHealthBundle | null | undefined
+  tradeModelHealth: TradeModelHealthBundle | null | undefined
   rookieBoard: RookieBoardBundle | null | undefined
   managerProfiles: ManagerProfile[]
   directions: TeamDirection[]
@@ -349,6 +351,7 @@ function App() {
       teams,
       modelHealth: undefined,
       eventModelHealth: undefined,
+      tradeModelHealth: undefined,
       rookieBoard: undefined,
       managerProfiles: buildManagerProfiles(transactions, teams, cached.valueBundle.players, cached.valueBundle.picks),
       directions: buildTeamDirections({
@@ -430,6 +433,7 @@ function App() {
         teams,
         modelHealth: undefined,
         eventModelHealth: undefined,
+        tradeModelHealth: undefined,
         rookieBoard: undefined,
         managerProfiles,
         directions,
@@ -522,6 +526,9 @@ function App() {
       void fetchModelHealth().then((modelHealth) => {
         setData((current) => current?.leagueBundle.league.league_id === activeLeagueId ? { ...current, modelHealth } : current)
       })
+      void fetchTradeModelHealth().then((tradeModelHealth) => {
+        setData((current) => current?.leagueBundle.league.league_id === activeLeagueId ? { ...current, tradeModelHealth } : current)
+      })
       void fetchEventModelHealth().then((eventModelHealth) => {
         setData((current) => current?.leagueBundle.league.league_id === activeLeagueId ? { ...current, eventModelHealth } : current)
       })
@@ -558,6 +565,14 @@ function App() {
         const modelHealth = await fetchModelHealth()
         setData((current) => current?.leagueBundle.league.league_id === activeLeagueId
           ? { ...current, modelHealth }
+          : current)
+      })
+    }
+    if ((view === 'trade' || view === 'model') && data.tradeModelHealth === undefined) {
+      startOnce('trade-model', async () => {
+        const tradeModelHealth = await fetchTradeModelHealth()
+        setData((current) => current?.leagueBundle.league.league_id === activeLeagueId
+          ? { ...current, tradeModelHealth }
           : current)
       })
     }
@@ -704,6 +719,13 @@ function App() {
                     data.preferences.settings.teamStrategy,
                   )}
                   onStrategyChange={(teamStrategy) => updatePreferences({ settings: { teamStrategy } })}
+                  tradeModelHealth={data.tradeModelHealth ?? null}
+                  tradeModelWeights={data.preferences.settings.tradeModelWeights}
+                  onTradeModelWeightsChange={(tradeModelWeights) => updatePreferences({ settings: { tradeModelWeights } })}
+                  marketPopulation={[
+                    ...data.valueBundle.players.map((player) => player.composite),
+                    ...data.valueBundle.picks.map((pick) => pick.composite),
+                  ]}
                 />
               ) : view === 'journal' ? (
                 data.journalLoaded
@@ -718,9 +740,9 @@ function App() {
                   ? <DeferredWorkspace view="rookies" />
                   : <RookieBoardView bundle={data.rookieBoard} leagueContext={data.leagueContext} />
               ) : (
-                data.modelHealth === undefined
+                data.modelHealth === undefined || data.tradeModelHealth === undefined
                   ? <DeferredWorkspace view="model" />
-                  : <ModelView health={data.modelHealth} leagueContext={data.leagueContext} />
+                  : <ModelView health={data.modelHealth} tradeHealth={data.tradeModelHealth} leagueContext={data.leagueContext} />
               )}
             </>
           )}

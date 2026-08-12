@@ -23,6 +23,7 @@ import type {
 } from './types'
 import type { ResearchPipelineBundle } from './research'
 import type { RookieBoardBundle } from './rookies'
+import type { TradeModelHealthBundle } from './trade-models'
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
@@ -116,6 +117,14 @@ export async function fetchModelHealth(): Promise<ModelHealthBundle | null> {
 export async function fetchEventModelHealth(): Promise<EventModelHealthBundle | null> {
   eventModelHealthRequest ??= fetchJson<EventModelHealthBundle>('/data/event-model-health.json').catch(() => null)
   return eventModelHealthRequest
+}
+
+export async function fetchTradeModelHealth(): Promise<TradeModelHealthBundle | null> {
+  try {
+    return await fetchJson<TradeModelHealthBundle>('/data/trade-model-health.json')
+  } catch {
+    return null
+  }
 }
 
 export async function fetchRookieBoard(): Promise<RookieBoardBundle> {

@@ -45,6 +45,7 @@ Offline training does not run in the request path.
 | `src/types.ts` | Shared browser/domain data contracts |
 | `src/rankings.ts` | Team construction, direct rankings, lineup optimization, and source-separated trade scenarios |
 | `src/strategy.ts` | Declared roster strategy, bounded package enumeration, and deterministic Pareto discovery |
+| `src/trade-models.ts` | Portable exchange/outcome model contracts, consolidation features, and user-authored weighting arithmetic |
 | `src/edge.ts` | Evidence-board opportunity construction and market-tape preparation |
 | `src/dislocations.ts` | Current source disagreement, position-relative production divergence, owner-pressure facts, and their evidence-only Pareto frontier |
 | `src/intel*.ts` | Headline classification and roster-aware intel signals |
@@ -58,7 +59,7 @@ Offline training does not run in the request path.
 | `worker/*-store.ts` | D1 schemas, normalization, persistence, refreshes, and read models by capability |
 | `db/schema.ts` | Drizzle schema used to generate checked-in migrations |
 | `drizzle/` | Ordered D1 migrations shipped with the Sites build |
-| `ml/` | Offline production, rookie, source-audit, and evaluation pipelines |
+| `ml/` | Offline production, rookie, source-audit, historical trade, and evaluation pipelines |
 | `public/data/` | Browser-safe generated artifacts for models intentionally public to the deployed asset layer |
 | `.openai/hosting.json` | Logical Sites project and D1 binding declaration |
 | `build/sites-vite-plugin.ts` | Copies Sites configuration and migrations into the deployment bundle |
@@ -123,7 +124,7 @@ D1 contains several bounded capability groups:
 
 - user league preferences and strategy overrides;
 - linked league seasons, season-specific owner identities, completed trades,
-  trade-value snapshots, and outcome checkpoints;
+  trade-value snapshots, ingestion-time roster contexts, and outcome checkpoints;
 - canonical intel events and per-user alert state;
 - dated market values, learning reports, and historical-source audits;
 - historical league/player/news research tape and its coverage runs.

@@ -12,6 +12,8 @@ changing it safely.
   expectations, and review standards.
 - [Data and models](data-and-models.md) — source provenance, model boundaries,
   leakage controls, promotion gates, and generated artifacts.
+- [Historical trade models](trade-models.md) — exchange-premium and outcome
+  targets, evidence gates, user-controlled weighting, and known tape limits.
 - [Development workflow](development-workflow.md) — local setup, branch and PR
   policy, migrations, validation, and agent coordination.
 - [Design ideas](design-ideas/README.md) — proposed systems and model changes

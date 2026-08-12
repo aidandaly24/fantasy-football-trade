@@ -137,6 +137,19 @@ export const tradeOutcomes = sqliteTable(
   ],
 )
 
+export const tradeRosterContexts = sqliteTable(
+  'trade_roster_contexts',
+  {
+    leagueId: text('league_id').notNull(),
+    transactionId: text('transaction_id').notNull(),
+    rosterId: integer('roster_id').notNull(),
+    capturedAt: text('captured_at').notNull(),
+    contextKind: text('context_kind').notNull(),
+    contextJson: text('context_json').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.leagueId, table.transactionId, table.rosterId] })],
+)
+
 export const intelEvents = sqliteTable(
   'intel_events',
   {

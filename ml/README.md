@@ -51,6 +51,27 @@ The audit deliberately blocks training while any of these remain unresolved:
 - historical articles lack manually verified entity precision or training
   rights.
 
+## Historical exchange premium and outcome models
+
+The completed-package pipeline is separate from the general source audit. It
+collects real FantasyCalc trade packages across a stratified player sample,
+joins daily player and pick values, and evaluates accepted 1-for-2/3 exchange
+premiums. It then compares structure-only and premium-aware market-outcome
+challengers at 90, 180, and 365 days.
+
+```sh
+npm run ml:trade-models
+npm run ml:trade-models:offline
+```
+
+Raw packages and histories remain ignored. The committed health artifacts are
+`ml/reports/trade-model-health.json`,
+`ml/reports/trade-model-health.md`, and
+`public/data/trade-model-health.json`. No result enters the Trade Lab until its
+chronological sample, span, coverage, and held-out performance gates all pass.
+The provider does not expose complete historical rosters, so market outcome
+and lineup outcome remain distinct targets.
+
 ## Run
 
 Create the local environment once:

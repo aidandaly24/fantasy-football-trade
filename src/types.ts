@@ -366,6 +366,7 @@ export type LeaguePreferences = {
     edgeFilter?: 'all' | 'value' | 'flip' | 'points' | 'intel'
     teamDirectionOverrides?: Record<string, 'contender' | 'retooling' | 'rebuilding'>
     teamStrategy?: TeamStrategyProfile
+    tradeModelWeights?: import('./trade-models').TradeModelWeights
   }
   updatedAt?: string
 }

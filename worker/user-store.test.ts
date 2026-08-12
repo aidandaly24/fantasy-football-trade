@@ -110,12 +110,18 @@ describe('private user state', () => {
         rankingMode: 'overall',
         edgeFilter: 'intel',
         teamDirectionOverrides: { '3': 'rebuilding', nope: 'contender', '4': 'invalid' },
+        tradeModelWeights: { market: 50, lineup: 20, exchange: 20, outcome: 10, outcomeHorizon: 180, outcomeVariant: 'premiumAware' },
         pendingTrades: [{ id: 'deprecated-private-state' }],
         unknown: true,
       },
     })
     expect(input.watchlist).toEqual(['11625'])
-    expect(input.settings).toEqual({ rankingMode: 'overall', edgeFilter: 'intel', teamDirectionOverrides: { '3': 'rebuilding' } })
+    expect(input.settings).toEqual({
+      rankingMode: 'overall',
+      edgeFilter: 'intel',
+      teamDirectionOverrides: { '3': 'rebuilding' },
+      tradeModelWeights: { market: 50, lineup: 20, exchange: 20, outcome: 10, outcomeHorizon: 180, outcomeVariant: 'premiumAware' },
+    })
   })
 
 })

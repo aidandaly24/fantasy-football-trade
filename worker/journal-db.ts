@@ -9,7 +9,7 @@ import type { D1Database, D1PreparedStatement } from './user-store'
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
-const CHECKPOINTS = [7, 30, 90, 180] as const
+const CHECKPOINTS = [7, 30, 90, 180, 365] as const
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS league_roots (root_league_id TEXT PRIMARY KEY, name TEXT NOT NULL, sync_status TEXT NOT NULL DEFAULT 'pending', last_sync_at TEXT, created_at TEXT NOT NULL)`,
@@ -23,6 +23,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS trade_snapshots (league_id TEXT NOT NULL, transaction_id TEXT NOT NULL, snapshot_kind TEXT NOT NULL, captured_at TEXT NOT NULL, source TEXT NOT NULL, source_version TEXT NOT NULL, values_json TEXT NOT NULL, is_retrospective INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (league_id, transaction_id, snapshot_kind))`,
   `CREATE TABLE IF NOT EXISTS trade_outcomes (league_id TEXT NOT NULL, transaction_id TEXT NOT NULL, checkpoint_days INTEGER NOT NULL, due_at TEXT NOT NULL, evaluated_at TEXT, status TEXT NOT NULL, grade TEXT, method_version TEXT NOT NULL, result_json TEXT NOT NULL DEFAULT '{}', PRIMARY KEY (league_id, transaction_id, checkpoint_days))`,
   `CREATE INDEX IF NOT EXISTS idx_trade_outcomes_due ON trade_outcomes (status, due_at)`,
+  `CREATE TABLE IF NOT EXISTS trade_roster_contexts (league_id TEXT NOT NULL, transaction_id TEXT NOT NULL, roster_id INTEGER NOT NULL, captured_at TEXT NOT NULL, context_kind TEXT NOT NULL, context_json TEXT NOT NULL, PRIMARY KEY (league_id, transaction_id, roster_id))`,
 ] as const
 
 let schemaReady: Promise<void> | null = null
@@ -170,15 +171,42 @@ VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(league_id) DO UPDATE SET root_league_id
     season.league_id, collection.rootLeagueId, season.season, season.name ?? season.league_id, season.previous_league_id ?? null,
     (season as JournalLeague & { total_rosters?: number }).total_rosters ?? 0, now,
   )))
-  collection.identities.forEach((identity) => statements.push(db.prepare(`INSERT INTO season_rosters (league_id, roster_id, owner_user_id, team_name, avatar, roster_json)
-VALUES (?, ?, ?, ?, NULL, '{}') ON CONFLICT(league_id, roster_id) DO UPDATE SET owner_user_id=excluded.owner_user_id, team_name=excluded.team_name`).bind(
-    identity.leagueId, identity.rosterId, identity.ownerUserId, identity.teamName ?? identity.ownerDisplayName ?? `Roster ${identity.rosterId}`,
-  )))
+  collection.identities.forEach((identity) => {
+    const roster = collection.seasonRosters.find((item) => item.leagueId === identity.leagueId && item.rosterId === identity.rosterId)
+    statements.push(db.prepare(`INSERT INTO season_rosters (league_id, roster_id, owner_user_id, team_name, avatar, roster_json)
+VALUES (?, ?, ?, ?, NULL, ?) ON CONFLICT(league_id, roster_id) DO UPDATE SET owner_user_id=excluded.owner_user_id, team_name=excluded.team_name, roster_json=excluded.roster_json`).bind(
+      identity.leagueId, identity.rosterId, identity.ownerUserId, identity.teamName ?? identity.ownerDisplayName ?? `Roster ${identity.rosterId}`,
+      JSON.stringify(roster ?? {}),
+    ))
+  })
   collection.trades.forEach((trade) => statements.push(db.prepare(`INSERT INTO trades (league_id, transaction_id, root_league_id, season, week, created_at_ms, status_updated_at_ms, creator_user_id, roster_ids_json, raw_json, ingested_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(league_id, transaction_id) DO UPDATE SET status_updated_at_ms=excluded.status_updated_at_ms, roster_ids_json=excluded.roster_ids_json, raw_json=excluded.raw_json`).bind(
     trade.leagueId, trade.transactionId, collection.rootLeagueId, trade.season, trade.week, trade.createdAtMs, trade.statusUpdatedAtMs,
     (trade.raw as JournalTransaction & { creator?: string | null }).creator ?? null, JSON.stringify(trade.rosterIds), JSON.stringify(trade.raw), now,
   )))
+  collection.trades.forEach((trade) => {
+    const ageDays = (Date.now() - trade.createdAtMs) / 86_400_000
+    if (ageDays > 7) return
+    trade.rosterIds.forEach((rosterId) => {
+      const roster = collection.seasonRosters.find((item) => item.leagueId === trade.leagueId && item.rosterId === rosterId)
+      if (!roster) return
+      const received = new Set(trade.assets.filter((asset) => asset.kind === 'player' && asset.toRosterId === rosterId).map((asset) => asset.assetKey))
+      const sent = trade.assets.filter((asset) => asset.kind === 'player' && asset.fromRosterId === rosterId).map((asset) => asset.assetKey)
+      const prePlayers = [...new Set([...roster.players.filter((playerId) => !received.has(playerId)), ...sent])]
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      statements.push(db.prepare(`INSERT INTO trade_roster_contexts (league_id, transaction_id, roster_id, captured_at, context_kind, context_json)
+VALUES (?, ?, ?, ?, 'ingestion', ?) ON CONFLICT(league_id, transaction_id, roster_id) DO NOTHING`).bind(
+        trade.leagueId, trade.transactionId, rosterId, now, JSON.stringify({
+          prePlayers,
+          postPlayers: roster.players,
+          postStarters: roster.starters,
+          reserve: roster.reserve,
+          taxi: roster.taxi,
+          reconstructedPreFromCompletedTrade: true,
+        }),
+      ))
+    })
+  })
   await batchInChunks(db, statements)
   const after = await db.prepare('SELECT COUNT(*) AS count FROM trades WHERE root_league_id = ?').bind(collection.rootLeagueId).first<CountRow>()
   const newCount = Math.max(0, Number(after?.count ?? 0) - Number(before?.count ?? 0))

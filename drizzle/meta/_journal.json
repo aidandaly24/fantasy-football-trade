@@ -43,6 +43,13 @@
       "when": 1786392980060,
       "tag": "0005_first_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1786497879374,
+      "tag": "0006_sour_hulk",
+      "breakpoints": true
     }
   ]
 }

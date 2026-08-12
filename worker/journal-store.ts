@@ -20,6 +20,10 @@ export type JournalUser = {
 export type JournalRoster = {
   roster_id: number
   owner_id: string | null
+  players?: string[] | null
+  starters?: string[] | null
+  reserve?: string[] | null
+  taxi?: string[] | null
 }
 
 export type JournalPick = {
@@ -66,6 +70,16 @@ export type SeasonIdentity = {
   teamName: string | null
 }
 
+export type SeasonRosterSnapshot = {
+  leagueId: string
+  rosterId: number
+  ownerUserId: string | null
+  players: string[]
+  starters: string[]
+  reserve: string[]
+  taxi: string[]
+}
+
 export type JournalAssetLeg = {
   kind: 'player' | 'pick'
   assetKey: string
@@ -92,6 +106,7 @@ export type JournalCollection = {
   rootLeagueId: string
   seasons: JournalLeague[]
   identities: SeasonIdentity[]
+  seasonRosters: SeasonRosterSnapshot[]
   trades: NormalizedTrade[]
   coverage: CoverageTarget[]
   complete: boolean
@@ -160,6 +175,7 @@ export async function collectLeagueJournal(rootLeagueId: string, client: Sleeper
   const coverage: CoverageTarget[] = []
   const seasons: JournalLeague[] = []
   const identities: SeasonIdentity[] = []
+  const seasonRosters: SeasonRosterSnapshot[] = []
   const trades = new Map<string, NormalizedTrade>()
   const visited = new Set<string>()
   let leagueId: string | null = rootLeagueId
@@ -185,6 +201,15 @@ export async function collectLeagueJournal(rootLeagueId: string, client: Sleeper
           ownerDisplayName: user?.display_name ?? null,
           teamName: user?.metadata?.team_name ?? null,
         })
+        seasonRosters.push({
+          leagueId: league.league_id,
+          rosterId: roster.roster_id,
+          ownerUserId: roster.owner_id,
+          players: [...(roster.players ?? [])].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+          starters: [...(roster.starters ?? [])],
+          reserve: [...(roster.reserve ?? [])].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+          taxi: [...(roster.taxi ?? [])].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+        })
       })
     }
 
@@ -207,6 +232,7 @@ export async function collectLeagueJournal(rootLeagueId: string, client: Sleeper
     rootLeagueId,
     seasons,
     identities: identities.sort((a, b) => a.leagueId.localeCompare(b.leagueId) || a.rosterId - b.rosterId),
+    seasonRosters: seasonRosters.sort((a, b) => a.leagueId.localeCompare(b.leagueId) || a.rosterId - b.rosterId),
     trades: [...trades.values()].sort((a, b) => b.createdAtMs - a.createdAtMs || a.leagueId.localeCompare(b.leagueId)),
     coverage,
     complete: coverage.every((target) => target.status === 'complete'),
