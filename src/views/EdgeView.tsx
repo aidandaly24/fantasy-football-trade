@@ -16,6 +16,7 @@ import type { ManagerProfile } from '../negotiation'
 import type { ResearchPipelineBundle } from '../research'
 import { buildActionableTradeBook } from '../actionable-targets'
 import type { ActionableTargetBook } from '../actionable-targets'
+import { buildCounterpartyNegotiationBook } from '../counterparty-utility'
 import { buildNegotiationLadder, buildTradeDiscovery, findComparablePackages, resolveTeamStrategy } from '../strategy'
 import type { AssetReturnHealthBundle } from '../asset-returns'
 import { currentSeasonLineup } from '../team-power'
@@ -150,6 +151,21 @@ export function EdgeView({
   const negotiationStages = useMemo(
     () => new Map(negotiationLadder.map((step) => [step.package.key, step])),
     [negotiationLadder],
+  )
+  const counterpartyBook = useMemo(
+    () => selected ? buildCounterpartyNegotiationBook({
+      teams,
+      myRosterId,
+      counterpartRosterId: selected.owner.rosterId,
+      target: selected.asset,
+      packages: comparablePackages,
+      profile: selectedProfile,
+    }) : null,
+    [teams, myRosterId, selected, comparablePackages, selectedProfile],
+  )
+  const counterpartyStages = useMemo(
+    () => new Map(counterpartyBook?.stages.map((stage) => [stage.package.key, stage]) ?? []),
+    [counterpartyBook],
   )
   const tradeDiscovery = useMemo(
     () => buildTradeDiscovery(teams, { myRosterId, rosterPositions, strategy: teamStrategy, assetReturnHealth, numQbs: leagueContext.marketFormat.numQbs }, 16),
@@ -547,9 +563,20 @@ export function EdgeView({
       {selected && <section className="package-board panel edge-packages" id="target-package-frontier">
         <div className="panel-heading"><div><span className="eyebrow">Target package frontier</span><h2>Concrete packages for {selected.asset.name}</h2></div><span className="method-note">Visible tradeoffs only</span></div>
         <div className="package-evidence-banner"><Info size={16} /><span>Pareto options come first among the 60 closest packages built from up to your 50 highest-priced assets. For rebuild/retool objectives, promoted 30-day return, tracked downside, drawdown, and concentration join current price, picks, age, and production as separate objectives. No blended grade or acceptance probability is hidden inside the order.</span></div>
+        {counterpartyBook && <div className="counterparty-utility-read">
+          <div className="panel-heading"><div><span className="eyebrow">V7.9 counterparty utility</span><h3>Read the seller before changing the price</h3></div><span className="method-note">Whole-roster facts · no acceptance odds</span></div>
+          <div className="counterparty-roster-facts">
+            <article><small>League-below-median positions</small><strong>{counterpartyBook.seller.needPositions.join(' · ') || 'None'}</strong><span>Derived from current dynasty value by position</span></article>
+            <article><small>League-above-median positions</small><strong>{counterpartyBook.seller.surplusPositions.join(' · ') || 'None'}</strong><span>{selected.asset.kind === 'player' && counterpartyBook.seller.surplusPositions.includes(selected.asset.position as 'QB' | 'RB' | 'WR' | 'TE') ? `${selected.asset.name} comes from one` : 'The target is not assumed expendable'}</span></article>
+            <article><small>Pick inventory</small><strong>{(counterpartyBook.seller.pickValueShare * 100).toFixed(1)}% of roster value</strong><span>League median {(counterpartyBook.seller.leagueMedianPickValueShare * 100).toFixed(1)}%</span></article>
+            <article><small>Completed-trade sample</small><strong>{counterpartyBook.seller.completedTradeEvidence?.tradeCount ?? 0}</strong><span>{counterpartyBook.seller.completedTradeEvidence ? `${counterpartyBook.seller.completedTradeEvidence.receivedPlayers} players · ${counterpartyBook.seller.completedTradeEvidence.receivedPicks} picks received` : 'No profile loaded'}</span></article>
+          </div>
+          <p>{counterpartyBook.method}</p>
+        </div>}
         {comparablePackages.length ? comparablePackages.map((candidate, index) => {
           const target = candidate.receive[0]
           const negotiation = negotiationStages.get(candidate.key)
+          const utility = counterpartyStages.get(candidate.key)
           const horizonAge = target.kind === 'player' && target.age !== null && target.age !== undefined
             ? target.age + teamStrategy.horizonYears
             : null
@@ -569,6 +596,12 @@ export function EdgeView({
               </div>
               <div className="package-actions">
                 {negotiation && <small className="negotiation-explanation">{negotiation.explanation}</small>}
+                {utility && <details className="seller-utility-details"><summary>Seller-side read</summary><div>
+                  <strong>Why they might consider it</strong>
+                  {utility.whyTheyMightConsider.length ? <ul>{utility.whyTheyMightConsider.map((reason) => <li key={reason}>{reason}</li>)}</ul> : <p>No positive current-roster fit is visible.</p>}
+                  <strong>Objections to expect</strong>
+                  {utility.blockers.length ? <ul>{utility.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul> : <p>No factual roster-fit blocker is visible.</p>}
+                </div></details>}
                 <button type="button" className="compare-package" onClick={() => onOpenTrade({
                   teamAId: myRosterId,
                   teamBId: selected.owner.rosterId,
@@ -579,6 +612,16 @@ export function EdgeView({
             </article>
           )
         }) : <div className="intel-empty"><Target size={22} /><strong>No priced package is available.</strong><span>This target or your outgoing assets are missing current market values.</span></div>}
+        {counterpartyBook?.threeWayBridges.length ? <div className="three-way-bridges">
+          <div className="panel-heading"><div><span className="eyebrow">Bounded three-way escape hatch</span><h3>Direct packages miss the seller’s visible utility</h3></div><span className="method-note">Top {counterpartyBook.threeWayBridges.length} nearest ledgers</span></div>
+          {counterpartyBook.threeWayBridges.map((bridge) => <article key={bridge.key}>
+            <strong>You receive {bridge.target.name}</strong>
+            <span>{selected.owner.teamName} receives {bridge.bridgeToSeller.name}</span>
+            <span>{teams.find((team) => team.rosterId === bridge.thirdRosterId)?.teamName} receives {bridge.assetToThird.name}</span>
+            <div>{bridge.marketLedger.map((row) => <small key={row.rosterId}>{row.teamName}: {row.net >= 0 ? '+' : ''}{formatValue(row.net)}</small>)}</div>
+            <p>{bridge.evidence.join(' ')} {bridge.caveat}</p>
+          </article>)}
+        </div> : null}
         <div className="model-caveat"><Info size={17} /><span>The opening/target/walk-away labels are price anchors derived from this displayed package set—not acceptance odds. The return lens is a promoted 30-day estimate with tracked-asset coverage, not a guaranteed appreciation or three-year forecast.</span></div>
       </section>}
 

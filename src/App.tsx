@@ -569,7 +569,7 @@ function App() {
       void work()
     }
 
-    if (view === 'rookies' && data.rookieBoard === undefined) {
+    if ((view === 'rookies' || view === 'trade') && data.rookieBoard === undefined) {
       startOnce('rookies', async () => {
         const rookieBoard = await fetchRookieBoard().catch(() => null)
         setData((current) => current?.leagueBundle.league.league_id === activeLeagueId
@@ -601,7 +601,7 @@ function App() {
           : current)
       })
     }
-    if (view === 'intel' && data.eventModelHealth === undefined) {
+    if ((view === 'intel' || view === 'trade') && data.eventModelHealth === undefined) {
       startOnce('event-model', async () => {
         const eventModelHealth = await fetchEventModelHealth()
         setData((current) => current?.leagueBundle.league.league_id === activeLeagueId
@@ -737,6 +737,7 @@ function App() {
                 <TradeView
                   key={`trade-${data.leagueBundle.league.league_id}-${tradeDraft?.nonce ?? 'manual'}`}
                   teams={data.teams}
+                  leagueId={data.leagueBundle.league.league_id}
                   rosterPositions={data.leagueBundle.league.roster_positions}
                   leagueContext={data.leagueContext}
                   initialDraft={tradeDraft}
@@ -753,7 +754,11 @@ function App() {
                     ...data.valueBundle.players.map((player) => player.composite),
                     ...data.valueBundle.picks.map((pick) => pick.composite),
                   ]}
+                  marketVersion={data.valueBundle.meta.generatedAt}
+                  valuePlayers={data.valueBundle.players}
                   assetReturnHealth={data.assetReturnHealth ?? null}
+                  eventModelHealth={data.eventModelHealth ?? null}
+                  rookieBoard={data.rookieBoard ?? null}
                 />
               ) : view === 'journal' ? (
                 data.journalLoaded

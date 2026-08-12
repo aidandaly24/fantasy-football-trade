@@ -11,8 +11,8 @@ interchangeable.
 | Tradyr composite | Attributed current dynasty market comparison | Player/pick market values and trade comparison |
 | Tradyr redraft composite | Same-format current-season market consensus | Best-legal-lineup power index and trade power delta |
 | NFL production model | Expected next-season PPR points per NFL team game | Projected lineup impact when its gate passes |
-| Rookie production model | Expected position-relative rookie-season PPR production | Offline validated rookie research; not yet integrated into the site |
-| Future rookie-class tape | Same-horizon prospect population and source coverage | V6.4 historical evidence only; no model or application consumer |
+| Rookie production model | Expected position-relative rookie-season PPR production | Current-class board plus advisory exact-slot opportunity baskets; never pick price or profit |
+| Future rookie-class tape | Same-horizon prospect population and source coverage | Private block-status evidence only; no future pick valuation while its pinned source is missing |
 | News and trends | Time-sensitive factual catalyst evidence | Advisory signals and watchlist alerts |
 | Completed-trade journal | Factual league transaction ledger | Historical manager context and outcome tracking |
 | Historical market tape | Dated market observations | Calibration and shadow learning research |
@@ -147,6 +147,35 @@ The actionable book is a selection policy, not a new trained model. It adds no
 collector, storage, scheduled process, acceptance probability, or long-term
 return claim. Its holding period and exit condition are decision rules for the
 thesis, not forecasts.
+
+V7.9 decorates the existing ambitious/fair/walk-away price ladder with a
+counterparty read. Position value, optimized starters, pick-value share, and
+completed-trade counts are current factual inputs. Need and surplus mean only
+below or above the loaded league median; they are not psychological labels.
+When every direct package misses those visible utility facts, the client may
+show at most two market-balanced three-way bridge candidates. The ledger must
+sum to zero, and the candidate remains a research lead rather than an
+acceptance prediction.
+
+V8.0 stores a private decision journal record before negotiation. The record
+captures the exact asset IDs and displayed values, current market net, covered
+lineup and power deltas, provider comparisons, pick flow, promoted 30-day
+return evidence, strategy horizon, model versions, dated catalysts, thesis,
+hold period, exit condition, and lifecycle status. This is first-party outcome
+instrumentation; it does not reconstruct offers or intent from Sleeper.
+
+V8.1 joins current reports for incoming players to descriptive 30-day private
+event cohorts. The production-event model and the market-return event model
+retain independent gates. Because the present market artifact does not isolate
+incremental event lift, catalyst timing cannot reorder targets or change price.
+
+V8.2 keeps draft-pick price and rookie opportunity separate. For an exact
+current-class slot, the pipeline publishes a bounded candidate union under its
+declared availability rules together with position-relative expected rookie
+production. The failed exact 1.12 richer-model gate remains visible, so this is
+advisory. An unresolved current pick has no candidate basket. Future classes
+return only their pipeline-derived readiness or block reason; missing
+same-horizon evidence never becomes a hand-authored ranking.
 
 The private Emperor Phil profile adds a declared top-six objective and explicit
 move, timing, and protected-pick gates. The BC profile instead declares a

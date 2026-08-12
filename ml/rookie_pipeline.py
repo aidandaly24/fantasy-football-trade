@@ -936,6 +936,7 @@ def build_browser_rookie_bundle(report: dict[str, Any]) -> dict[str, Any]:
             "classResults": class_results,
         },
         "board": board,
+        "pickOpportunity": build_pick_opportunity_browser_bundle(report),
         "promotionBlockers": report["promotionBlockers"],
     })
 
@@ -969,6 +970,83 @@ def _current_pick_order(
             player["name"],
         ))
     raise ValueError(f"Unknown current pick ordering rule: {rule}")
+
+
+def build_pick_opportunity_browser_bundle(report: dict[str, Any]) -> dict[str, Any]:
+    """Derive advisory production candidates for exact slots 1-24."""
+    evaluation = report["knownPickEvaluation"]
+    board = list(report["currentDraftBoard"])
+    availability_rules = [item["id"] for item in evaluation["availabilityRules"]]
+    slots = []
+    for slot in range(1, 25):
+        available_by_rule: dict[str, list[dict[str, Any]]] = {}
+        candidate_ids: list[str] = []
+        for rule in availability_rules:
+            unavailable_ids = {
+                str(player["fpId"])
+                for player in _current_pick_order(board, rule)[:slot - 1]
+            }
+            available = [
+                player for player in board
+                if str(player["fpId"]) not in unavailable_ids
+            ]
+            available_by_rule[rule] = available
+            for player in _current_pick_order(available, "learnedMarketPlusCapital")[:4]:
+                fp_id = str(player["fpId"])
+                if fp_id not in candidate_ids:
+                    candidate_ids.append(fp_id)
+        by_id = {str(player["fpId"]): player for player in board}
+        candidates = []
+        for fp_id in candidate_ids:
+            player = by_id[fp_id]
+            candidates.append({
+                "sleeperId": player.get("sleeperId"),
+                "name": player["name"],
+                "position": player["position"],
+                "team": player.get("team"),
+                "college": player.get("college"),
+                "rookieMarketRank": player["rookieMarketRank"],
+                "nflDraftOverall": player["evidence"].get("nflDraftOverall"),
+                "availableByRule": {
+                    rule: any(str(item["fpId"]) == fp_id for item in available)
+                    for rule, available in available_by_rule.items()
+                },
+                "expectedProductionPercentile": player[
+                    "learnedMarketPlusCapitalExpectedProductionPercentile"
+                ],
+                "historicalResidualBand80": player[
+                    "learnedMarketPlusCapitalResidualBand80"
+                ],
+            })
+        slots.append({
+            "slot": slot,
+            "label": f"{((slot - 1) // 12) + 1}.{((slot - 1) % 12) + 1:02d}",
+            "candidates": candidates,
+        })
+
+    exact_gate = evaluation["knownPick"]["extraFeatureFamiliesGate"]
+    return {
+        "class": int(str(report["generatedAt"])[:4]),
+        "status": "advisory",
+        "advisoryOnly": True,
+        "availabilityMeaning": "Union of the top four learned market-plus-capital production candidates remaining under market order, NFL draft order, and learned market-plus-capital order.",
+        "availabilityRules": availability_rules,
+        "targetMeaning": "position-relative rookie regular-season PPR percentile",
+        "exactSlotPromotion": False,
+        "exact112Gate": {
+            "passed": exact_gate["passed"],
+            "eligibleClasses": exact_gate["eligibleClasses"],
+            "primaryAvailabilityClassWins": exact_gate["primaryAvailabilityClassWins"],
+            "exactOneSidedSignPValue": exact_gate["exactOneSidedSignPValue"],
+            "requirement": exact_gate["requirement"],
+        },
+        "slots": slots,
+        "boundary": [
+            "Candidate baskets model plausible production choices under simulated availability, not who will actually remain on the board.",
+            "No exact slot is promoted as a dynasty-value, trade-return, or profit estimate.",
+            "The richer full model failed its exact 1.12 incremental gate and cannot move the candidate order.",
+        ],
+    }
 
 
 def build_known_pick_artifact(report: dict[str, Any]) -> dict[str, Any]:

@@ -24,6 +24,7 @@ import type {
 } from './types'
 import type { ResearchPipelineBundle } from './research'
 import type { RookieBoardBundle } from './rookies'
+import type { TradeDecision, TradeDecisionBundle, TradeDecisionDraft, TradeDecisionStatus } from './decision-journal'
 import type { TradeModelHealthBundle, TradeTapeRefreshState } from './trade-models'
 import type { AssetReturnHealthBundle } from './asset-returns'
 
@@ -250,6 +251,31 @@ export async function syncJournal(leagueId: string): Promise<JournalBundle> {
   return request.catch((error) => {
     journalRequests.delete(leagueId)
     throw error
+  })
+}
+
+export async function fetchTradeDecisions(leagueId: string): Promise<TradeDecisionBundle> {
+  return fetchJson<TradeDecisionBundle>(`/api/decisions?leagueId=${encodeURIComponent(leagueId)}`)
+}
+
+export async function saveTradeDecision(draft: TradeDecisionDraft): Promise<TradeDecision> {
+  const result = await fetchJson<{ decision: TradeDecision }>(`/api/decisions?leagueId=${encodeURIComponent(draft.leagueId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(draft),
+  })
+  return result.decision
+}
+
+export async function updateTradeDecision(
+  leagueId: string,
+  id: string,
+  status: TradeDecisionStatus,
+): Promise<TradeDecisionBundle> {
+  return fetchJson<TradeDecisionBundle>(`/api/decisions?leagueId=${encodeURIComponent(leagueId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, status }),
   })
 }
 

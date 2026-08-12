@@ -10,6 +10,7 @@ from ml.rookie_pipeline import (
     REPORT_JSON,
     ROOKIE_BOARD_JSON,
     build_browser_rookie_bundle,
+    build_pick_opportunity_browser_bundle,
     build_known_pick_artifact,
     build_class_rows,
     normalize_market_snapshot,
@@ -43,6 +44,11 @@ class RookiePipelineTests(unittest.TestCase):
             "sources",
         ):
             self.assertNotIn(forbidden, serialized)
+        opportunity = build_pick_opportunity_browser_bundle(report)
+        self.assertEqual(len(opportunity["slots"]), 24)
+        self.assertFalse(opportunity["exactSlotPromotion"])
+        self.assertFalse(opportunity["exact112Gate"]["passed"])
+        self.assertTrue(opportunity["slots"][11]["candidates"])
 
     def test_parses_old_and_new_market_schemas_into_the_same_contract(self) -> None:
         old = "\ufeffmergename,pos,age,dyno2QBECR,draft_year\nAlpha Back,RB,21.2,40.5,2019\nBeta Wide,WR,22.0,90.0,2019\n"

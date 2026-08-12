@@ -41,6 +41,7 @@ PROCESSED_ROOT = ROOT / "data" / "processed" / "future-rookies-v6.4"
 REPORT_ROOT = ROOT / "ml" / "reports"
 REPORT_JSON = REPORT_ROOT / "future-rookie-evidence-v6.4.json"
 REPORT_MARKDOWN = REPORT_ROOT / "future-rookie-evidence-v6.4.md"
+FUTURE_STATUS_JSON = ROOT / "worker" / "generated" / "future-rookie-status.json"
 TAPE_PATH = PROCESSED_ROOT / "same-horizon-tape.csv"
 
 VERSION = "future-rookie-evidence-v6.4"
@@ -362,6 +363,25 @@ def render_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def build_browser_status(report: dict[str, Any]) -> dict[str, Any]:
+    """Expose only the future-class readiness boundary, never the raw tape."""
+    return {
+        "version": report["version"],
+        "generatedAt": report["generatedAt"],
+        "targetDraftYear": report["currentClass"]["targetDraftYear"],
+        "status": report["currentClass"]["status"],
+        "reason": report["currentClass"]["reason"],
+        "trainingEnabled": report["decision"]["trainingEnabled"],
+        "downstreamEnabled": report["decision"]["downstreamEnabled"],
+        "phasePassed": report["decision"]["phasePassed"],
+        "evaluableDraftYears": report["tape"]["evaluableDraftYears"],
+        "boundary": [
+            "V6.4 validates historical evidence construction only; it does not value a future pick.",
+            "No future-class player ranking is shown until a pinned same-horizon roster snapshot and a later model gate pass.",
+        ],
+    }
+
+
 def build_and_audit(*, refresh: bool, offline: bool) -> dict[str, Any]:
     manifest = collect_future_rookie_sources(
         RAW_ROOT, refresh=refresh, offline=offline
@@ -379,6 +399,8 @@ def build_and_audit(*, refresh: bool, offline: bool) -> dict[str, Any]:
     REPORT_ROOT.mkdir(parents=True, exist_ok=True)
     REPORT_JSON.write_text(json.dumps(report, indent=2) + "\n")
     REPORT_MARKDOWN.write_text(render_markdown(report))
+    FUTURE_STATUS_JSON.parent.mkdir(parents=True, exist_ok=True)
+    FUTURE_STATUS_JSON.write_text(json.dumps(build_browser_status(report), indent=2) + "\n")
     return report
 
 
@@ -403,6 +425,7 @@ def main() -> int:
     print(f"Wrote {TAPE_PATH}")
     print(f"Wrote {REPORT_JSON}")
     print(f"Wrote {REPORT_MARKDOWN}")
+    print(f"Wrote {FUTURE_STATUS_JSON}")
     print(f"V6.4 phase passed: {report['decision']['phasePassed']}")
     return 0 if report["decision"]["phasePassed"] else 1
 

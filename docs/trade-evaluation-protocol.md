@@ -15,6 +15,9 @@ Evaluate every proposed trade through separate lanes:
 | Exchange premium | What premium has the market paid for this package structure? | The exchange model passes all gates and this trade matches its eligible structure. |
 | Future outcome | Did similar premium decisions preserve value after 90/180/365 days? | That exact horizon and challenger pass every chronological holdout gate. |
 | Asset return | What same-source market return and tracked-asset downside are supported for each asset? | That exact horizon and QB-format model passes every embargoed holdout gate. |
+| Counterparty utility | What current roster need, surplus, lineup effect, and completed-trade facts make an offer relevant to the other manager? | Always as an inspectable negotiation read; never as acceptance probability or a change to price. |
+| Catalyst timing | Is there a dated current report and matching historical event cohort? | Only after a separate chronological market-event challenger proves incremental held-out lift. Current cohorts are advisory. |
+| Rookie opportunity cost | Which current-class prospects might still be available at an exact pick? | Only as an advisory candidate basket under declared availability rules. Production percentile never becomes pick price, and a failed exact-slot gate remains visible. |
 
 Do not combine the lanes into a hidden grade. The user may weight promoted
 signals, and uncovered weight must remain visible rather than being silently
@@ -54,7 +57,31 @@ For any trade recommendation, report:
 - promoted asset-return evidence at its exact horizon, while keeping the
   source's incomplete disappearance/failure boundary visible;
 - for negotiation, an ambitious opening offer, a fair target, and a hard
-  walk-away price based on declared evidence.
+  walk-away price based on declared evidence;
+- seller-side roster needs, surplus, current-season effect, and factual trade
+  history beside those price anchors, without acceptance odds;
+- current rookie candidate baskets and future-class block reasons beside the
+  provider pick range, never blended into a pick value;
+- dated catalyst evidence and model-gate state, never headline-driven price;
+- a saved private decision record containing the exact offer, evidence
+  snapshot, thesis, intended hold period, exit condition, and later status.
+
+## Decision workflow
+
+1. Select the exact incoming and outgoing assets in Trade Lab.
+2. Read the direct current-price comparison and each promoted evidence lane.
+3. Inspect the counterparty's whole-roster needs and blockers. Use the
+   ambitious/fair/walk-away ladder as price anchors; do not reinterpret roster
+   fit as a predicted acceptance rate.
+4. For picks, compare the provider price range with the separate rookie
+   opportunity set. A blocked or unresolved class supplies no invented player
+   ranking.
+5. Read current catalysts only as timing context unless the market-event gate
+   is enabled.
+6. Before contacting the manager, save the proposal and write the thesis, hold
+   period, and exit/failure condition. Update the record when it is offered,
+   countered, accepted, rejected, or withdrawn so future evaluation has real
+   decision labels rather than reconstructed intent.
 
 RosterLab's saved strategy is a long rebuild unless the user changes it. Older
 production assets need an explicit near-term flip thesis and an exit condition;

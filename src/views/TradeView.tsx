@@ -1,11 +1,11 @@
-import { AlertTriangle, ArrowLeftRight, Check, Info, RefreshCw, Search, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, BookOpen, Check, GraduationCap, Info, Newspaper, RefreshCw, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { fetchTradeTapeState, refreshTradeTape } from '../api'
+import { fetchEdgeState, fetchIntel, fetchTradeTapeState, refreshTradeTape, saveTradeDecision } from '../api'
 import type { LeagueContext } from '../league-context'
 import { assetRoleLabel, evaluateTrade, optimizeLineup, projectedLineupPpg } from '../rankings'
 import type { ResolvedTeamStrategy } from '../strategy'
 import { evaluateLeagueTradePolicy, strategyProfileForLeague } from '../leagues'
-import type { Asset, Team, TeamStrategyProfile } from '../types'
+import type { Asset, EdgeStateBundle, EventModelHealthBundle, IntelFeed, Team, TeamStrategyProfile, TradyrPlayer } from '../types'
 import {
   buildConsolidationStructure,
   buildHistoricalTradeEvidenceStages,
@@ -23,6 +23,14 @@ import { AssetResearchPanel } from '../components/AssetResearchPanel'
 import { evaluateRebuildPortfolioTrade } from '../asset-returns'
 import type { AssetReturnHealthBundle, PortfolioTradeDelta } from '../asset-returns'
 import type { TradeDraft } from './types'
+import { buildIntelSignals } from '../intel'
+import { buildCatalystTimingRead } from '../catalyst-timing'
+import type { CatalystTimingRead } from '../catalyst-timing'
+import { toDecisionAsset } from '../decision-journal'
+import type { TradeDecisionDraft, TradeDecisionStatus } from '../decision-journal'
+import { buildPickOpportunityRead } from '../pick-opportunity'
+import type { PickOpportunityRead } from '../pick-opportunity'
+import type { RookieBoardBundle } from '../rookies'
 
 type TradeEvaluation = ReturnType<typeof evaluateTrade>
 
@@ -397,6 +405,79 @@ function RebuildPortfolioPanel({
   )
 }
 
+function CatalystTimingPanel({ read }: { read: CatalystTimingRead }) {
+  return (
+    <section className="catalyst-timing-panel panel">
+      <div className="panel-heading">
+        <div><span className="eyebrow">V8.1 catalyst experiment</span><h2>News can time a thesis only after proving incremental lift</h2></div>
+        <span className={`method-note ${read.timingInfluenceEnabled ? 'positive' : ''}`}>{read.timingInfluenceEnabled ? 'Timing evidence promoted' : 'Advisory only'}</span>
+      </div>
+      <div className="catalyst-gates">
+        <article><small>Production event model</small><strong>{read.productionEventModelEnabled ? 'Enabled' : 'Blocked'}</strong><span>{read.productionChecksPassed}/{read.productionChecksTotal} held-out checks passed</span></article>
+        <article><small>Market event model</small><strong>{read.marketEventModelEnabled ? 'Enabled' : 'Not validated'}</strong><span>{read.marketStatus} generic return model; no incremental event challenger</span></article>
+        <article><small>Trade influence</small><strong>{read.timingInfluenceEnabled ? 'Allowed' : 'None'}</strong><span>Target order and price remain unchanged</span></article>
+      </div>
+      {read.events.length ? <div className="catalyst-event-list">{read.events.slice(0, 6).map((event) => <article key={`${event.playerId}:${event.article.id}`}>
+        <Newspaper size={16} />
+        <div><strong>{event.playerName}: {event.article.title}</strong><span>{event.article.source} · {new Date(event.article.publishedAt).toLocaleString()} · {event.article.eventType ?? 'general'} event</span></div>
+        <div><small>Observed matching 30-day cohort</small><b>{event.marketCohort ? `${event.marketCohort.actualReturn >= 0 ? '+' : ''}${(event.marketCohort.actualReturn * 100).toFixed(1)}% · n=${event.marketCohort.sampleSize}` : 'No private cohort yet'}</b></div>
+      </article>)}</div> : <div className="intel-empty compact"><Newspaper size={20} /><strong>No linked current report for the incoming players.</strong><span>Absence of a report is not a negative signal.</span></div>}
+      <div className="model-note"><Info size={16} /><span>{read.method}</span></div>
+    </section>
+  )
+}
+
+function PickOpportunityPanel({ reads }: { reads: PickOpportunityRead[] }) {
+  if (!reads.length) return null
+  return (
+    <section className="pick-opportunity-panel panel">
+      <div className="panel-heading"><div><span className="eyebrow">V8.2 rookie opportunity cost</span><h2>Price the pick and inspect the possible players separately</h2></div><span className="method-note">No prospect percentile becomes pick value</span></div>
+      <div className="pick-opportunity-list">{reads.map((read) => <article key={read.asset.id}>
+        <header><GraduationCap size={18} /><div><strong>{read.asset.name}</strong><span>{read.title}</span></div><b>{formatValue(read.priceRange.low)}–{formatValue(read.priceRange.high)}</b></header>
+        {read.candidates.length ? <div className="pick-candidate-grid">{read.candidates.map((candidate) => <span key={`${read.asset.id}:${candidate.sleeperId ?? candidate.name}`}><AssetBadge position={candidate.position} /><strong>{candidate.name}</strong><small>Market #{candidate.rookieMarketRank} · production {(candidate.expectedProductionPercentile * 100).toFixed(0)}%</small><em>{Object.values(candidate.availableByRule).filter(Boolean).length}/{Object.keys(candidate.availableByRule).length} availability rules</em></span>)}</div> : <p>{read.evidence.join(' ')}</p>}
+        {read.candidates.length > 0 && <p>{read.evidence.join(' ')}</p>}
+        <details><summary>Model boundary</summary><ul>{read.boundary.map((boundary) => <li key={boundary}>{boundary}</li>)}</ul></details>
+      </article>)}</div>
+    </section>
+  )
+}
+
+function DecisionJournalPanel({ draft }: { draft: TradeDecisionDraft }) {
+  const [status, setStatus] = useState<TradeDecisionStatus>(draft.status)
+  const [thesis, setThesis] = useState(draft.thesis)
+  const [holdPeriod, setHoldPeriod] = useState(draft.holdPeriod)
+  const [exitCondition, setExitCondition] = useState(draft.exitCondition)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const save = async () => {
+    if (saving) return
+    setSaving(true)
+    setError(null)
+    try {
+      const decision = await saveTradeDecision({ ...draft, status, thesis, holdPeriod, exitCondition })
+      setSaved(decision.id)
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Decision could not be saved')
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <section className="decision-journal-panel panel">
+      <div className="panel-heading"><div><span className="eyebrow">V8.0 private decision journal</span><h2>Save the offer, thesis, hold period, and exit before negotiating</h2></div><span className="method-note">Private account + league record</span></div>
+      <div className="decision-journal-form">
+        <label><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value as TradeDecisionStatus)}><option value="researching">Researching</option><option value="offered">Offered</option><option value="countered">Countered</option><option value="accepted">Accepted</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></label>
+        <label className="wide"><span>Decision thesis</span><textarea value={thesis} onChange={(event) => setThesis(event.target.value)} rows={3} /></label>
+        <label><span>Intended hold period</span><input value={holdPeriod} onChange={(event) => setHoldPeriod(event.target.value)} /></label>
+        <label><span>Exit / failure condition</span><input value={exitCondition} onChange={(event) => setExitCondition(event.target.value)} /></label>
+      </div>
+      <div className="decision-journal-actions"><span>{draft.catalysts.length} current catalyst{draft.catalysts.length === 1 ? '' : 's'} attached · exact evaluation snapshot saved</span><button type="button" onClick={() => void save()} disabled={saving || !thesis.trim() || !holdPeriod.trim() || !exitCondition.trim()}><BookOpen size={15} /> {saving ? 'Saving…' : saved ? 'Saved to journal' : 'Save decision'}</button></div>
+      {error && <div className="intel-error">{error}</div>}
+    </section>
+  )
+}
+
 function PremiumModelPanel({
   structure,
   health,
@@ -544,6 +625,7 @@ function PremiumModelPanel({
 
 export function TradeView({
   teams,
+  leagueId,
   rosterPositions,
   leagueContext,
   initialDraft,
@@ -554,9 +636,14 @@ export function TradeView({
   tradeModelWeights,
   onTradeModelWeightsChange,
   marketPopulation,
+  marketVersion,
+  valuePlayers,
   assetReturnHealth,
+  eventModelHealth,
+  rookieBoard,
 }: {
   teams: Team[]
+  leagueId: string
   rosterPositions: string[]
   leagueContext: LeagueContext
   initialDraft?: TradeDraft | null
@@ -567,7 +654,11 @@ export function TradeView({
   tradeModelWeights?: TradeModelWeights
   onTradeModelWeightsChange: (weights: TradeModelWeights) => void
   marketPopulation: number[]
+  marketVersion: string
+  valuePlayers: TradyrPlayer[]
   assetReturnHealth: AssetReturnHealthBundle | null
+  eventModelHealth: EventModelHealthBundle | null
+  rookieBoard: RookieBoardBundle | null
 }) {
   const [teamAId, setTeamAId] = useState(initialDraft?.teamAId ?? strategyRosterId)
   const [teamBId, setTeamBId] = useState(initialDraft?.teamBId ?? teams[1]?.rosterId ?? teams[0].rosterId)
@@ -579,6 +670,8 @@ export function TradeView({
   const [tape, setTape] = useState<TradeTapeRefreshState | null>(null)
   const [tapeRefreshing, setTapeRefreshing] = useState(false)
   const [tapeError, setTapeError] = useState<string | null>(null)
+  const [intelFeed, setIntelFeed] = useState<IntelFeed | null>(null)
+  const [tradeEdgeState, setTradeEdgeState] = useState<EdgeStateBundle | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -589,6 +682,18 @@ export function TradeView({
     })
     return () => { cancelled = true }
   }, [])
+  useEffect(() => {
+    let cancelled = false
+    void Promise.all([
+      fetchIntel().catch(() => null),
+      fetchEdgeState(leagueId).catch(() => null),
+    ]).then(([feed, edge]) => {
+      if (cancelled) return
+      setIntelFeed(feed)
+      setTradeEdgeState(edge)
+    })
+    return () => { cancelled = true }
+  }, [leagueId])
   const teamA = teams.find((team) => team.rosterId === teamAId) ?? teams[0]
   const teamB = teams.find((team) => team.rosterId === teamBId) ?? teams[1] ?? teams[0]
   const assetsA = [...teamA.players, ...teamA.picks].filter((asset) => selectedA.includes(asset.id))
@@ -618,6 +723,17 @@ export function TradeView({
   const strategyTeam = teamA.rosterId === strategyRosterId ? teamA : teamB.rosterId === strategyRosterId ? teamB : null
   const strategyOutgoing = strategyTeam?.rosterId === teamA.rosterId ? assetsA : assetsB
   const strategyIncoming = strategyTeam?.rosterId === teamA.rosterId ? assetsB : assetsA
+  const intelSignals = useMemo(
+    () => intelFeed ? buildIntelSignals(intelFeed, valuePlayers, teams, strategyRosterId) : [],
+    [intelFeed, valuePlayers, teams, strategyRosterId],
+  )
+  const catalystRead = useMemo(() => buildCatalystTimingRead({
+    incoming: strategyIncoming ?? [],
+    signals: intelSignals,
+    eventHealth: eventModelHealth,
+    calibration: tradeEdgeState?.calibration ?? [],
+    shadowModel: tradeEdgeState?.shadowModel ?? null,
+  }), [strategyIncoming, intelSignals, eventModelHealth, tradeEdgeState])
   const privateDecision = privateStrategy && strategyTeam && ready
     ? evaluateLeagueTradePolicy(privateStrategy, {
         marketNetToMe: strategyTeam.rosterId === teamA.rosterId ? result.marketNetA : -result.marketNetA,
@@ -638,6 +754,69 @@ export function TradeView({
         horizonYears: strategy.horizonYears,
       })
     : null
+  const pickOpportunityReads = useMemo(
+    () => ready && strategyTeam
+      ? [...strategyOutgoing, ...strategyIncoming]
+        .flatMap((asset) => {
+          const read = buildPickOpportunityRead(asset, rookieBoard)
+          return read ? [read] : []
+        })
+      : [],
+    [ready, strategyTeam, strategyOutgoing, strategyIncoming, rookieBoard],
+  )
+  const decisionDraft = ready && strategyTeam ? (() => {
+    const myIsA = strategyTeam.rosterId === teamA.rosterId
+    const counterpart = myIsA ? teamB : teamA
+    const marketNetToMe = myIsA ? result.marketNetA : -result.marketNetA
+    const currentSeasonPowerDelta = myIsA ? result.currentSeasonImpactA : result.currentSeasonImpactB
+    const lineupPpgDelta = myIsA ? result.lineupImpactA : result.lineupImpactB
+    const providerNetToMe = myIsA
+      ? result.providerNetA
+      : {
+          ktc: result.providerNetA.ktc === null ? null : -result.providerNetA.ktc,
+          fantasycalc: result.providerNetA.fantasycalc === null ? null : -result.providerNetA.fantasycalc,
+        }
+    const catalysts = catalystRead.events.slice(0, 10).map((event) => ({
+      id: event.article.id,
+      title: event.article.title,
+      url: event.article.url,
+      source: event.article.source,
+      publishedAt: event.article.publishedAt,
+      eventType: event.article.eventType,
+      eventDirection: event.article.eventDirection,
+      playerId: event.playerId,
+      playerName: event.playerName,
+    }))
+    return {
+      leagueId,
+      status: 'researching' as const,
+      myRosterId: strategyTeam.rosterId,
+      counterpartRosterId: counterpart.rosterId,
+      send: strategyOutgoing.map(toDecisionAsset),
+      receive: strategyIncoming.map(toDecisionAsset),
+      snapshot: {
+        capturedAt: new Date().toISOString(),
+        marketNetToMe,
+        currentSeasonPowerDelta,
+        lineupPpgDelta,
+        providerNetToMe,
+        pickValueNetToMe: myIsA ? result.pickValueNetA : -result.pickValueNetA,
+        expectedPnl30: portfolio?.expectedPnl30 ?? null,
+        trackedAssetLowerPnl30: portfolio?.trackedAssetLowerPnl30 ?? null,
+        returnCoverage: portfolio?.returnCoverage ?? null,
+        strategy: { mode: strategy.mode, horizonYears: strategy.horizonYears },
+        evidenceVersions: {
+          market: marketVersion,
+          assetReturn: assetReturnHealth?.generatedAt ?? null,
+          eventModel: eventModelHealth?.generatedAt ?? null,
+        },
+      },
+      thesis: `Acquire ${strategyIncoming.map((asset) => asset.name).join(' + ')} for ${strategyOutgoing.map((asset) => asset.name).join(' + ')}. Current composite net is ${marketNetToMe >= 0 ? '+' : ''}${marketNetToMe.toFixed(0)}; the ${strategy.horizonYears}-year ${strategy.mode} facts and every missing evidence lane are preserved in this snapshot.`,
+      holdPeriod: portfolio?.expectedPnl30 === null || portfolio?.expectedPnl30 === undefined ? 'Reassess at 30, 90, and 180 days.' : '30–90 days for the promoted return thesis; reassess before treating it as a long-term hold.',
+      exitCondition: 'Exit or reprice if role, liquidity, downside, or the declared rebuild-window thesis breaks.',
+      catalysts,
+    } satisfies TradeDecisionDraft
+  })() : null
 
   const toggle = (ids: string[], setIds: (value: string[]) => void, id: string) => {
     setIds(ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id])
@@ -719,6 +898,9 @@ export function TradeView({
 
       <RosterImpact teamA={teamA} teamB={teamB} sideA={assetsA} sideB={assetsB} result={result} horizonYears={strategy.horizonYears} />
       {portfolio && strategyTeam && <RebuildPortfolioPanel portfolio={portfolio} team={strategyTeam} incoming={strategyIncoming} bundle={assetReturnHealth} numQbs={leagueContext.marketFormat.numQbs} horizonYears={strategy.horizonYears} />}
+      {ready && strategyTeam && <CatalystTimingPanel read={catalystRead} />}
+      <PickOpportunityPanel reads={pickOpportunityReads} />
+      {decisionDraft && <DecisionJournalPanel key={`${decisionDraft.counterpartRosterId}:${decisionDraft.send.map((asset) => asset.id).join('+')}:${decisionDraft.receive.map((asset) => asset.id).join('+')}`} draft={decisionDraft} />}
       <PremiumModelPanel structure={structure} health={tradeModelHealth} weights={weights} weighted={weighted} onWeightsChange={setWeights} onWeightsCommit={onTradeModelWeightsChange} tape={tape} tapeRefreshing={tapeRefreshing} tapeError={tapeError} onTapeRefresh={() => void runTapeRefresh()} />
       {ready && <ScenarioPanel result={result} teamA={teamA} strategy={strategy} strategyRosterId={strategyRosterId} />}
     </main>

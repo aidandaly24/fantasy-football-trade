@@ -46,6 +46,10 @@ Offline training does not run in the request path.
 | `src/rankings.ts` | Team construction, direct rankings, and source-separated trade scenarios |
 | `src/team-power.ts` | Reusable legal-lineup optimizer, redraft power table, coverage, and trade deltas |
 | `src/strategy.ts` | Declared roster strategy, bounded package enumeration, and deterministic Pareto discovery |
+| `src/counterparty-utility.ts` | League-relative seller roster facts and bounded three-way bridge candidates, kept separate from price and acceptance |
+| `src/catalyst-timing.ts` | Current report-to-player joins and descriptive event cohorts with a hard model-promotion gate |
+| `src/pick-opportunity.ts` | Pick price-range and pipeline-derived rookie opportunity read without converting prospect production to value |
+| `src/decision-journal.ts` | Portable private proposal, evidence-snapshot, thesis, hold, exit, and status contracts |
 | `src/leagues/` | Fixed-league private decision policies; shared dispatch with separate Phil power-climb and BC value-build rules |
 | `src/trade-models.ts` | Portable exchange/outcome model contracts, consolidation features, and user-authored weighting arithmetic |
 | `src/edge.ts` | Evidence-board opportunity construction and market-tape preparation |
@@ -118,6 +122,7 @@ instead of reimplementing ranking or valuation rules in JSX.
 | `/api/edge` | `GET`, `POST` | D1 | Requires identity; stores and reads private market tape and learning state |
 | `/api/research` | `GET`, `POST` | D1 | Requires identity; syncs and reads historical evidence |
 | `/api/trade-tape` | `GET`, `POST` | D1 | Requires identity; POST refreshes the bounded FantasyCalc tape; `GET ?format=training` downloads the sanitized content-addressed tape |
+| `/api/decisions` | `GET`, `POST`, `PATCH` | D1 | Requires identity; stores and updates the user's private pre-trade decision record and exact evidence snapshot |
 | `/api/intel` | `GET` | None | Requires identity; generic feed is cached privately for five minutes |
 | `/api/rookies` | `GET` | None | Requires identity; returns the checked-in sanitized rookie-production artifact with no-store caching |
 
@@ -142,6 +147,8 @@ D1 contains several bounded capability groups:
 - dated market values, learning reports, and historical-source audits;
 - the deduplicated FantasyCalc completed-trade tape and observable refresh runs;
 - historical league/player/news research tape and its coverage runs.
+- private proposed-trade decisions, immutable captured evidence JSON, written
+  thesis/hold/exit conditions, and lifecycle status.
 
 Historical roster IDs are scoped to a Sleeper league season. Never resolve an
 old roster ID through the current season without mapping the historical

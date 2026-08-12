@@ -57,6 +57,13 @@
       "when": 1786504129555,
       "tag": "0007_yellow_norman_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1786555879941,
+      "tag": "0008_far_wendigo",
+      "breakpoints": true
     }
   ]
 }

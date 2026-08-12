@@ -7,6 +7,7 @@ import { preferencesResponse } from './routes/preferences'
 import { researchResponse } from './routes/research'
 import { rookieResponse } from './routes/rookies'
 import { tradeTapeResponse } from './routes/trade-tape'
+import { decisionsResponse } from './routes/decisions'
 
 const routes: Record<string, (request: Request, env: Env) => Promise<Response>> = {
   '/api/alerts': alertsResponse,
@@ -17,6 +18,7 @@ const routes: Record<string, (request: Request, env: Env) => Promise<Response>> 
   '/api/research': researchResponse,
   '/api/rookies': rookieResponse,
   '/api/trade-tape': tradeTapeResponse,
+  '/api/decisions': decisionsResponse,
 }
 
 const worker = {

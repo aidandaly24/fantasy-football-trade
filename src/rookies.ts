@@ -40,6 +40,51 @@ export type RookieClassResult = {
   lift: number
 }
 
+export type RookiePickOpportunityCandidate = {
+  sleeperId: string | null
+  name: string
+  position: RookiePosition
+  team: string | null
+  college: string | null
+  rookieMarketRank: number
+  nflDraftOverall: number | null
+  availableByRule: Record<string, boolean>
+  expectedProductionPercentile: number
+  historicalResidualBand80: { lower: number; upper: number; meaning: string }
+}
+
+export type RookiePickOpportunity = {
+  class: number
+  status: 'advisory'
+  advisoryOnly: true
+  availabilityMeaning: string
+  availabilityRules: string[]
+  targetMeaning: string
+  exactSlotPromotion: false
+  exact112Gate: {
+    passed: boolean
+    eligibleClasses: number
+    primaryAvailabilityClassWins: number
+    exactOneSidedSignPValue: number
+    requirement: string
+  }
+  slots: Array<{ slot: number; label: string; candidates: RookiePickOpportunityCandidate[] }>
+  boundary: string[]
+}
+
+export type FutureRookieClassOpportunity = {
+  version: string
+  generatedAt: string
+  targetDraftYear: number
+  status: 'blocked' | 'shadow' | 'ready'
+  reason: string
+  trainingEnabled: boolean
+  downstreamEnabled: boolean
+  phasePassed: boolean
+  evaluableDraftYears: number[]
+  boundary: string[]
+}
+
 export type RookieBoardBundle = {
   version: string
   generatedAt: string
@@ -72,6 +117,8 @@ export type RookieBoardBundle = {
     classResults: RookieClassResult[]
   }
   board: RookieBoardPlayer[]
+  pickOpportunity: RookiePickOpportunity
+  futureClassOpportunity: FutureRookieClassOpportunity
   promotionBlockers: string[]
 }
 

@@ -1,0 +1,22 @@
+{
+  "version": "future-rookie-evidence-v6.4",
+  "generatedAt": "2026-08-11T15:54:34.666548Z",
+  "targetDraftYear": 2027,
+  "status": "blocked",
+  "reason": "No version-pinned 2026 roster snapshot is available in the selected public archive.",
+  "trainingEnabled": false,
+  "downstreamEnabled": false,
+  "phasePassed": true,
+  "evaluableDraftYears": [
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "boundary": [
+    "V6.4 validates historical evidence construction only; it does not value a future pick.",
+    "No future-class player ranking is shown until a pinned same-horizon roster snapshot and a later model gate pass."
+  ]
+}

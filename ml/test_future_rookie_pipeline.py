@@ -8,7 +8,7 @@ from ml.future_rookie_data import (
     LAST_ARCHIVED_ROSTER_SEASON,
     LAST_COLLEGE_STATS_SEASON,
 )
-from ml.future_rookie_pipeline import build_report, render_markdown
+from ml.future_rookie_pipeline import build_browser_status, build_report, render_markdown
 
 
 def synthetic_evidence() -> tuple[pd.DataFrame, pd.DataFrame, dict[str, object]]:
@@ -91,6 +91,10 @@ class FutureRookiePipelineTests(unittest.TestCase):
         self.assertFalse(report["decision"]["downstreamEnabled"])
         self.assertEqual(report["currentClass"]["status"], "blocked")
         self.assertEqual(len(report["tape"]["classes"]), 6)
+        status = build_browser_status(report)
+        self.assertFalse(status["trainingEnabled"])
+        self.assertFalse(status["downstreamEnabled"])
+        self.assertEqual(status["status"], "blocked")
 
     def test_report_is_deterministic_with_fixed_timestamp(self) -> None:
         tape, identities, manifest = synthetic_evidence()
