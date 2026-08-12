@@ -1590,6 +1590,31 @@ footer a {
   animation: scan 1.35s ease-in-out infinite alternate;
 }
 
+.deferred-view-status {
+  min-width: 230px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+  background: var(--acid);
+  border-radius: 13px;
+}
+
+.deferred-view-status span {
+  display: grid;
+  gap: 4px;
+}
+
+.deferred-view-status strong {
+  font-size: 10px;
+}
+
+.deferred-view-status small {
+  font-family: 'DM Mono', monospace;
+  font-size: 7px;
+}
+
 .loading-lines span:nth-child(2)::after { animation-delay: 140ms; }
 .loading-lines span:nth-child(3)::after { animation-delay: 280ms; }
 

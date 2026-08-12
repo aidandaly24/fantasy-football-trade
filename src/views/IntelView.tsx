@@ -38,11 +38,11 @@ export function IntelView({
     }
   }, [preferences.myRosterId, teams])
 
-  const loadIntel = async () => {
+  const loadIntel = async (fresh = false) => {
     setLoading(true)
     setError(null)
     try {
-      setFeed(await fetchIntel())
+      setFeed(await fetchIntel({ fresh }))
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Intel feed unavailable')
     } finally {
@@ -128,7 +128,7 @@ export function IntelView({
             </button>
           ))}
         </div>
-        <button type="button" className="intel-refresh" onClick={() => void loadIntel()} disabled={loading}>
+        <button type="button" className="intel-refresh" onClick={() => void loadIntel(true)} disabled={loading}>
           <RefreshCw size={16} className={loading ? 'spin' : ''} /> Refresh signals
         </button>
       </section>

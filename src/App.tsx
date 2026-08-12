@@ -1,6 +1,6 @@
 import { ArrowLeftRight, BarChart3, BookOpen, CircleGauge, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { fetchEventModelHealth, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchRookieBoard, fetchSleeperPlayers, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
+import { useEffect, useRef, useState } from 'react'
+import { fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchResearchState, fetchRookieBoard, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
 import { buildTeamDirections } from './edge'
 import type { TeamDirection } from './edge'
 import { journalTransactionsForCurrentManagers } from './journal'
@@ -12,15 +12,14 @@ import { buildTeams } from './rankings'
 import { resolveTeamStrategy } from './strategy'
 import type { RookieBoardBundle } from './rookies'
 import type { EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, PlayerProjection, RankingMode, Team, UserState, ValueBundle } from './types'
+import { EdgeView } from './views/EdgeView'
+import { IntelView } from './views/IntelView'
+import { ModelView } from './views/ModelView'
 import { RankingsView } from './views/RankingsView'
+import { RookieBoardView } from './views/RookieBoardView'
+import { TradeJournalView } from './views/TradeJournalView'
+import { TradeView } from './views/TradeView'
 import type { TradeDraft } from './views/types'
-
-const EdgeView = lazy(() => import('./views/EdgeView').then((module) => ({ default: module.EdgeView })))
-const IntelView = lazy(() => import('./views/IntelView').then((module) => ({ default: module.IntelView })))
-const ModelView = lazy(() => import('./views/ModelView').then((module) => ({ default: module.ModelView })))
-const RookieBoardView = lazy(() => import('./views/RookieBoardView').then((module) => ({ default: module.RookieBoardView })))
-const TradeJournalView = lazy(() => import('./views/TradeJournalView').then((module) => ({ default: module.TradeJournalView })))
-const TradeView = lazy(() => import('./views/TradeView').then((module) => ({ default: module.TradeView })))
 
 const DEFAULT_LEAGUE_ID: SupportedLeagueId = SUPPORTED_LEAGUES[0].id
 const LAST_LEAGUE_KEY = 'rosterlab:last-league'
@@ -30,7 +29,6 @@ type AppData = {
   leagueContext: LeagueContext
   valueBundle: ValueBundle
   playerProjections: Map<string, PlayerProjection>
-  playerMetadataLoaded: boolean
   teams: Team[]
   modelHealth: ModelHealthBundle | null | undefined
   eventModelHealth: EventModelHealthBundle | null | undefined
@@ -143,13 +141,46 @@ function LoadingState() {
   )
 }
 
-function ViewLoading({ label }: { label: string }) {
+function DeferredWorkspace({ view }: { view: 'journal' | 'rookies' | 'model' }) {
+  const content = view === 'journal'
+    ? {
+        pageClass: 'journal-page',
+        heroClass: 'journal-hero',
+        eyebrow: 'Automated trade journal',
+        title: 'Every completed deal. No selective memory.',
+        description: 'The journal workspace is ready. Loading the latest saved league ledger now.',
+        status: 'Loading saved trades…',
+      }
+    : view === 'rookies'
+      ? {
+          pageClass: 'rookie-page',
+          heroClass: 'rookie-hero panel',
+          eyebrow: 'Private rookie research',
+          title: 'Production evidence, not a trade promise.',
+          description: 'The rookie workspace is ready. Loading the validated evidence artifact now.',
+          status: 'Loading rookie evidence…',
+        }
+      : {
+          pageClass: 'model-page',
+          heroClass: 'model-hero panel',
+          eyebrow: 'Model audit',
+          title: 'Trust is earned one gate at a time.',
+          description: 'The model workspace is ready. Loading the latest promotion and calibration results now.',
+          status: 'Loading model health…',
+        }
   return (
-    <main className="loading-state">
-      <div className="loading-mark"><span /></div>
-      <span className="eyebrow">Opening this desk</span>
-      <h1>{label}</h1>
-      <div className="loading-lines"><span /><span /><span /></div>
+    <main className={`page-shell ${content.pageClass}`}>
+      <section className={content.heroClass}>
+        <div>
+          <span className="eyebrow accent-eyebrow">{content.eyebrow}</span>
+          <h1>{content.title}</h1>
+          <p>{content.description}</p>
+        </div>
+        <div className="deferred-view-status">
+          <RefreshCw className="spin" size={18} />
+          <span><strong>{content.status}</strong><small>The rest of the screen is already interactive.</small></span>
+        </div>
+      </section>
     </main>
   )
 }
@@ -197,7 +228,7 @@ function App() {
   ) => {
     setLoading(true)
     setError(null)
-    ;['rookies', 'model', 'event-model', 'journal', 'players'].forEach((kind) => secondaryLoads.current.delete(`${id}:${kind}`))
+    ;['rookies', 'model', 'event-model', 'journal'].forEach((kind) => secondaryLoads.current.delete(`${id}:${kind}`))
     try {
       const leagueBundle = await (prefetchedLeague ?? fetchLeagueBundle(id))
       const context = leagueContext(leagueBundle)
@@ -245,7 +276,6 @@ function App() {
         leagueContext: context,
         valueBundle,
         playerProjections,
-        playerMetadataLoaded: false,
         teams,
         modelHealth: undefined,
         eventModelHealth: undefined,
@@ -262,15 +292,17 @@ function App() {
       setSelectedId(teams[0]?.rosterId ?? 1)
       setTradeDraft(null)
 
-      void saveLeaguePreferences(basePreference).then((saved) => {
-        setData((current) => current?.leagueBundle.league.league_id === id
-          ? { ...current, preferences: saved.preferences }
-          : current)
-        setUserState((current) => ({
-          user: saved.user,
-          preferences: [saved.preferences, ...(current?.preferences ?? []).filter((item) => item.leagueId !== id)],
-        }))
-      }).catch(() => undefined)
+      if (stateOverride) {
+        void saveLeaguePreferences(basePreference).then((saved) => {
+          setData((current) => current?.leagueBundle.league.league_id === id
+            ? { ...current, preferences: saved.preferences }
+            : current)
+          setUserState((current) => ({
+            user: saved.user,
+            preferences: [saved.preferences, ...(current?.preferences ?? []).filter((item) => item.leagueId !== id)],
+          }))
+        }).catch(() => undefined)
+      }
 
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unknown data error')
@@ -290,15 +322,59 @@ function App() {
       } catch {
         // Hosted preferences remain the source of truth when device storage is unavailable.
       }
+      const initialLeague = localLeague ?? DEFAULT_LEAGUE_ID
       const statePromise = fetchUserState()
-      const leaguePromise = localLeague ? fetchLeagueBundle(localLeague) : null
+      const leaguePromise = fetchLeagueBundle(initialLeague)
       const state = await statePromise
       setUserState(state)
       const savedLeagueId = state?.preferences.find((item) => isSupportedLeagueId(item.leagueId))?.leagueId
-      const savedLeague = localLeague ?? (isSupportedLeagueId(savedLeagueId) ? savedLeagueId : DEFAULT_LEAGUE_ID)
-      await loadLeague(savedLeague, state, leaguePromise ?? undefined)
+      const savedLeague = localLeague ?? (isSupportedLeagueId(savedLeagueId) ? savedLeagueId : initialLeague)
+      await loadLeague(savedLeague, state, savedLeague === initialLeague ? leaguePromise : undefined)
     })()
   }, [])
+
+  useEffect(() => {
+    if (!data) return
+    const activeLeagueId = data.leagueBundle.league.league_id
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      if (cancelled) return
+      void fetchJournal(activeLeagueId).then((journal) => {
+        setData((current) => {
+          if (!current || current.leagueBundle.league.league_id !== activeLeagueId) return current
+          const transactions = journalTransactionsForCurrentManagers(journal, activeLeagueId)
+          return {
+            ...current,
+            journal,
+            journalLoaded: true,
+            directions: buildTeamDirections({
+              teams: current.teams,
+              transactions,
+              picks: current.valueBundle.picks,
+              overrides: current.preferences.settings.teamDirectionOverrides,
+            }),
+            managerProfiles: buildManagerProfiles(transactions, current.teams, current.valueBundle.players, current.valueBundle.picks),
+          }
+        })
+      }).catch(() => undefined)
+      void fetchRookieBoard().then((rookieBoard) => {
+        setData((current) => current?.leagueBundle.league.league_id === activeLeagueId ? { ...current, rookieBoard } : current)
+      }).catch(() => undefined)
+      void fetchModelHealth().then((modelHealth) => {
+        setData((current) => current?.leagueBundle.league.league_id === activeLeagueId ? { ...current, modelHealth } : current)
+      })
+      void fetchEventModelHealth().then((eventModelHealth) => {
+        setData((current) => current?.leagueBundle.league.league_id === activeLeagueId ? { ...current, eventModelHealth } : current)
+      })
+      void fetchIntel().catch(() => undefined)
+      void fetchEdgeState(activeLeagueId).catch(() => undefined)
+      void fetchResearchState(activeLeagueId, false).catch(() => undefined)
+    }, 250)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [data?.leagueBundle.league.league_id])
 
   useEffect(() => {
     if (!data) return
@@ -332,35 +408,6 @@ function App() {
         setData((current) => current?.leagueBundle.league.league_id === activeLeagueId
           ? { ...current, eventModelHealth }
           : current)
-      })
-    }
-    if ((view === 'trade' || view === 'strategy') && !data.playerMetadataLoaded) {
-      startOnce('players', async () => {
-        const rosterIds = data.leagueBundle.rosters.flatMap((roster) => roster.players ?? [])
-        const sleeperPlayers = await fetchSleeperPlayers(rosterIds).catch(() => null)
-        if (!sleeperPlayers) return
-        setData((current) => {
-          if (!current || current.leagueBundle.league.league_id !== activeLeagueId) return current
-          const enrichedTeams = buildTeams(
-            current.leagueBundle,
-            current.valueBundle,
-            sleeperPlayers,
-            current.playerProjections,
-          )
-          const transactions = journalTransactionsForCurrentManagers(current.journal, activeLeagueId)
-          return {
-            ...current,
-            playerMetadataLoaded: true,
-            teams: enrichedTeams,
-            directions: buildTeamDirections({
-              teams: enrichedTeams,
-              transactions,
-              picks: current.valueBundle.picks,
-              overrides: current.preferences.settings.teamDirectionOverrides,
-            }),
-            managerProfiles: buildManagerProfiles(transactions, enrichedTeams, current.valueBundle.players, current.valueBundle.picks),
-          }
-        })
       })
     }
     if ((view === 'journal' || view === 'strategy') && !data.journalLoaded) {
@@ -481,7 +528,7 @@ function App() {
               leagueContext={data.leagueContext}
             />
           ) : (
-            <Suspense fallback={<ViewLoading label="Loading this workspace…" />}>
+            <>
               {view === 'trade' ? (
                 <TradeView
                   key={`trade-${data.leagueBundle.league.league_id}-${tradeDraft?.nonce ?? 'manual'}`}
@@ -499,21 +546,21 @@ function App() {
               ) : view === 'journal' ? (
                 data.journalLoaded
                   ? <TradeJournalView journal={data.journal} syncing={journalSyncing} onSync={() => void refreshJournal()} leagueContext={data.leagueContext} />
-                  : <ViewLoading label="Loading the stored trade journal…" />
+                  : <DeferredWorkspace view="journal" />
               ) : view === 'intel' ? (
                 <IntelView key={`intel-${data.leagueBundle.league.league_id}`} teams={data.teams} valueBundle={data.valueBundle} eventHealth={data.eventModelHealth ?? null} preferences={data.preferences} onUpdatePreferences={updatePreferences} />
               ) : view === 'strategy' ? (
                 <EdgeView key={`edge-${data.leagueBundle.league.league_id}`} teams={data.teams} profiles={data.managerProfiles} directions={data.directions} myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId} rosterPositions={data.leagueBundle.league.roster_positions} valueBundle={data.valueBundle} journal={data.journal} preferences={data.preferences} leagueContext={data.leagueContext} onUpdatePreferences={updatePreferences} onOpenTrade={openTradeDraft} journalSyncing={journalSyncing || !data.journalLoaded} onSyncJournal={() => void refreshJournal()} onOpenJournal={() => setView('journal')} />
               ) : view === 'rookies' ? (
                 data.rookieBoard === undefined
-                  ? <ViewLoading label="Loading rookie evidence…" />
+                  ? <DeferredWorkspace view="rookies" />
                   : <RookieBoardView bundle={data.rookieBoard} leagueContext={data.leagueContext} />
               ) : (
                 data.modelHealth === undefined
-                  ? <ViewLoading label="Loading model health…" />
+                  ? <DeferredWorkspace view="model" />
                   : <ModelView health={data.modelHealth} leagueContext={data.leagueContext} />
               )}
-            </Suspense>
+            </>
           )}
           <footer>
             <span>RosterLab <b>·</b> League-relative analysis</span>
