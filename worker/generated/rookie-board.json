@@ -4452,6 +4452,3477 @@
       }
     }
   ],
+  "pickOpportunity": {
+    "class": 2026,
+    "status": "advisory",
+    "advisoryOnly": true,
+    "availabilityMeaning": "Union of the top four learned market-plus-capital production candidates remaining under market order, NFL draft order, and learned market-plus-capital order.",
+    "availabilityRules": [
+      "marketOrder",
+      "nflDraftOrder",
+      "learnedMarketPlusCapital"
+    ],
+    "targetMeaning": "position-relative rookie regular-season PPR percentile",
+    "exactSlotPromotion": false,
+    "exact112Gate": {
+      "passed": false,
+      "eligibleClasses": 5,
+      "primaryAvailabilityClassWins": 1,
+      "exactOneSidedSignPValue": 0.96875,
+      "requirement": "full model must beat learned market-plus-capital at 1.12 in every eligible rolling class with exact one-sided p <= 0.05, positive minimum class lift, and positive mean lift under every declared availability rule"
+    },
+    "slots": [
+      {
+        "slot": 1,
+        "label": "1.01",
+        "candidates": [
+          {
+            "sleeperId": "13281",
+            "name": "Jordyn Tyson",
+            "position": "WR",
+            "team": "NOS",
+            "college": "Arizona State",
+            "rookieMarketRank": 3,
+            "nflDraftOverall": 8,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9476027862205572,
+            "historicalResidualBand80": {
+              "lower": 0.7166821714903936,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13279",
+            "name": "Carnell Tate",
+            "position": "WR",
+            "team": "TEN",
+            "college": "Ohio State",
+            "rookieMarketRank": 2,
+            "nflDraftOverall": 4,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9454313494529565,
+            "historicalResidualBand80": {
+              "lower": 0.7145107347227929,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13287",
+            "name": "Jeremiyah Love",
+            "position": "RB",
+            "team": "ARI",
+            "college": "Notre Dame",
+            "rookieMarketRank": 1,
+            "nflDraftOverall": 3,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9399409194372084,
+            "historicalResidualBand80": {
+              "lower": 0.7090203047070448,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13330",
+            "name": "Kenyon Sadiq",
+            "position": "TE",
+            "team": "NYJ",
+            "college": "Oregon",
+            "rookieMarketRank": 8,
+            "nflDraftOverall": 16,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9354850500982248,
+            "historicalResidualBand80": {
+              "lower": 0.7045644353680612,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 2,
+        "label": "1.02",
+        "candidates": [
+          {
+            "sleeperId": "13281",
+            "name": "Jordyn Tyson",
+            "position": "WR",
+            "team": "NOS",
+            "college": "Arizona State",
+            "rookieMarketRank": 3,
+            "nflDraftOverall": 8,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9476027862205572,
+            "historicalResidualBand80": {
+              "lower": 0.7166821714903936,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13279",
+            "name": "Carnell Tate",
+            "position": "WR",
+            "team": "TEN",
+            "college": "Ohio State",
+            "rookieMarketRank": 2,
+            "nflDraftOverall": 4,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9454313494529565,
+            "historicalResidualBand80": {
+              "lower": 0.7145107347227929,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13330",
+            "name": "Kenyon Sadiq",
+            "position": "TE",
+            "team": "NYJ",
+            "college": "Oregon",
+            "rookieMarketRank": 8,
+            "nflDraftOverall": 16,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9354850500982248,
+            "historicalResidualBand80": {
+              "lower": 0.7045644353680612,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13276",
+            "name": "Omar Cooper Jr.",
+            "position": "WR",
+            "team": "NYJ",
+            "college": "Indiana",
+            "rookieMarketRank": 10,
+            "nflDraftOverall": 30,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9270487633903635,
+            "historicalResidualBand80": {
+              "lower": 0.6961281486601999,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13287",
+            "name": "Jeremiyah Love",
+            "position": "RB",
+            "team": "ARI",
+            "college": "Notre Dame",
+            "rookieMarketRank": 1,
+            "nflDraftOverall": 3,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9399409194372084,
+            "historicalResidualBand80": {
+              "lower": 0.7090203047070448,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 3,
+        "label": "1.03",
+        "candidates": [
+          {
+            "sleeperId": "13281",
+            "name": "Jordyn Tyson",
+            "position": "WR",
+            "team": "NOS",
+            "college": "Arizona State",
+            "rookieMarketRank": 3,
+            "nflDraftOverall": 8,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9476027862205572,
+            "historicalResidualBand80": {
+              "lower": 0.7166821714903936,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13330",
+            "name": "Kenyon Sadiq",
+            "position": "TE",
+            "team": "NYJ",
+            "college": "Oregon",
+            "rookieMarketRank": 8,
+            "nflDraftOverall": 16,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9354850500982248,
+            "historicalResidualBand80": {
+              "lower": 0.7045644353680612,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13276",
+            "name": "Omar Cooper Jr.",
+            "position": "WR",
+            "team": "NYJ",
+            "college": "Indiana",
+            "rookieMarketRank": 10,
+            "nflDraftOverall": 30,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9270487633903635,
+            "historicalResidualBand80": {
+              "lower": 0.6961281486601999,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13286",
+            "name": "Jadarian Price",
+            "position": "RB",
+            "team": "SEA",
+            "college": "Notre Dame",
+            "rookieMarketRank": 6,
+            "nflDraftOverall": 32,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9233069304275892,
+            "historicalResidualBand80": {
+              "lower": 0.6923863156974256,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13279",
+            "name": "Carnell Tate",
+            "position": "WR",
+            "team": "TEN",
+            "college": "Ohio State",
+            "rookieMarketRank": 2,
+            "nflDraftOverall": 4,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9454313494529565,
+            "historicalResidualBand80": {
+              "lower": 0.7145107347227929,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13287",
+            "name": "Jeremiyah Love",
+            "position": "RB",
+            "team": "ARI",
+            "college": "Notre Dame",
+            "rookieMarketRank": 1,
+            "nflDraftOverall": 3,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9399409194372084,
+            "historicalResidualBand80": {
+              "lower": 0.7090203047070448,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 4,
+        "label": "1.04",
+        "candidates": [
+          {
+            "sleeperId": "13330",
+            "name": "Kenyon Sadiq",
+            "position": "TE",
+            "team": "NYJ",
+            "college": "Oregon",
+            "rookieMarketRank": 8,
+            "nflDraftOverall": 16,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9354850500982248,
+            "historicalResidualBand80": {
+              "lower": 0.7045644353680612,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13276",
+            "name": "Omar Cooper Jr.",
+            "position": "WR",
+            "team": "NYJ",
+            "college": "Indiana",
+            "rookieMarketRank": 10,
+            "nflDraftOverall": 30,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9270487633903635,
+            "historicalResidualBand80": {
+              "lower": 0.6961281486601999,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13286",
+            "name": "Jadarian Price",
+            "position": "RB",
+            "team": "SEA",
+            "college": "Notre Dame",
+            "rookieMarketRank": 6,
+            "nflDraftOverall": 32,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9233069304275892,
+            "historicalResidualBand80": {
+              "lower": 0.6923863156974256,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13417",
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "team": "SFO",
+            "college": "Mississippi",
+            "rookieMarketRank": 15,
+            "nflDraftOverall": 33,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9218295520248041,
+            "historicalResidualBand80": {
+              "lower": 0.6909089372946405,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13281",
+            "name": "Jordyn Tyson",
+            "position": "WR",
+            "team": "NOS",
+            "college": "Arizona State",
+            "rookieMarketRank": 3,
+            "nflDraftOverall": 8,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9476027862205572,
+            "historicalResidualBand80": {
+              "lower": 0.7166821714903936,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 5,
+        "label": "1.05",
+        "candidates": [
+          {
+            "sleeperId": "13330",
+            "name": "Kenyon Sadiq",
+            "position": "TE",
+            "team": "NYJ",
+            "college": "Oregon",
+            "rookieMarketRank": 8,
+            "nflDraftOverall": 16,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9354850500982248,
+            "historicalResidualBand80": {
+              "lower": 0.7045644353680612,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13276",
+            "name": "Omar Cooper Jr.",
+            "position": "WR",
+            "team": "NYJ",
+            "college": "Indiana",
+            "rookieMarketRank": 10,
+            "nflDraftOverall": 30,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9270487633903635,
+            "historicalResidualBand80": {
+              "lower": 0.6961281486601999,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13286",
+            "name": "Jadarian Price",
+            "position": "RB",
+            "team": "SEA",
+            "college": "Notre Dame",
+            "rookieMarketRank": 6,
+            "nflDraftOverall": 32,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9233069304275892,
+            "historicalResidualBand80": {
+              "lower": 0.6923863156974256,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13417",
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "team": "SFO",
+            "college": "Mississippi",
+            "rookieMarketRank": 15,
+            "nflDraftOverall": 33,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9218295520248041,
+            "historicalResidualBand80": {
+              "lower": 0.6909089372946405,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13275",
+            "name": "Ty Simpson",
+            "position": "QB",
+            "team": "LAR",
+            "college": "Alabama",
+            "rookieMarketRank": 11,
+            "nflDraftOverall": 13,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9207573025684817,
+            "historicalResidualBand80": {
+              "lower": 0.6898366878383181,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 6,
+        "label": "1.06",
+        "candidates": [
+          {
+            "sleeperId": "13330",
+            "name": "Kenyon Sadiq",
+            "position": "TE",
+            "team": "NYJ",
+            "college": "Oregon",
+            "rookieMarketRank": 8,
+            "nflDraftOverall": 16,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9354850500982248,
+            "historicalResidualBand80": {
+              "lower": 0.7045644353680612,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13276",
+            "name": "Omar Cooper Jr.",
+            "position": "WR",
+            "team": "NYJ",
+            "college": "Indiana",
+            "rookieMarketRank": 10,
+            "nflDraftOverall": 30,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9270487633903635,
+            "historicalResidualBand80": {
+              "lower": 0.6961281486601999,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13286",
+            "name": "Jadarian Price",
+            "position": "RB",
+            "team": "SEA",
+            "college": "Notre Dame",
+            "rookieMarketRank": 6,
+            "nflDraftOverall": 32,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9233069304275892,
+            "historicalResidualBand80": {
+              "lower": 0.6923863156974256,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13417",
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "team": "SFO",
+            "college": "Mississippi",
+            "rookieMarketRank": 15,
+            "nflDraftOverall": 33,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9218295520248041,
+            "historicalResidualBand80": {
+              "lower": 0.6909089372946405,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13275",
+            "name": "Ty Simpson",
+            "position": "QB",
+            "team": "LAR",
+            "college": "Alabama",
+            "rookieMarketRank": 11,
+            "nflDraftOverall": 13,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9207573025684817,
+            "historicalResidualBand80": {
+              "lower": 0.6898366878383181,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13294",
+            "name": "Makai Lemon",
+            "position": "WR",
+            "team": "PHI",
+            "college": "USC",
+            "rookieMarketRank": 5,
+            "nflDraftOverall": 20,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9207390107073582,
+            "historicalResidualBand80": {
+              "lower": 0.6898183959771946,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 7,
+        "label": "1.07",
+        "candidates": [
+          {
+            "sleeperId": "13330",
+            "name": "Kenyon Sadiq",
+            "position": "TE",
+            "team": "NYJ",
+            "college": "Oregon",
+            "rookieMarketRank": 8,
+            "nflDraftOverall": 16,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9354850500982248,
+            "historicalResidualBand80": {
+              "lower": 0.7045644353680612,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13276",
+            "name": "Omar Cooper Jr.",
+            "position": "WR",
+            "team": "NYJ",
+            "college": "Indiana",
+            "rookieMarketRank": 10,
+            "nflDraftOverall": 30,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9270487633903635,
+            "historicalResidualBand80": {
+              "lower": 0.6961281486601999,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13417",
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "team": "SFO",
+            "college": "Mississippi",
+            "rookieMarketRank": 15,
+            "nflDraftOverall": 33,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9218295520248041,
+            "historicalResidualBand80": {
+              "lower": 0.6909089372946405,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13275",
+            "name": "Ty Simpson",
+            "position": "QB",
+            "team": "LAR",
+            "college": "Alabama",
+            "rookieMarketRank": 11,
+            "nflDraftOverall": 13,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9207573025684817,
+            "historicalResidualBand80": {
+              "lower": 0.6898366878383181,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13286",
+            "name": "Jadarian Price",
+            "position": "RB",
+            "team": "SEA",
+            "college": "Notre Dame",
+            "rookieMarketRank": 6,
+            "nflDraftOverall": 32,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9233069304275892,
+            "historicalResidualBand80": {
+              "lower": 0.6923863156974256,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13294",
+            "name": "Makai Lemon",
+            "position": "WR",
+            "team": "PHI",
+            "college": "USC",
+            "rookieMarketRank": 5,
+            "nflDraftOverall": 20,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9207390107073582,
+            "historicalResidualBand80": {
+              "lower": 0.6898183959771946,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13346",
+            "name": "Denzel Boston",
+            "position": "WR",
+            "team": "CLE",
+            "college": "Washington",
+            "rookieMarketRank": 12,
+            "nflDraftOverall": 39,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9205252735130955,
+            "historicalResidualBand80": {
+              "lower": 0.689604658782932,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 8,
+        "label": "1.08",
+        "candidates": [
+          {
+            "sleeperId": "13330",
+            "name": "Kenyon Sadiq",
+            "position": "TE",
+            "team": "NYJ",
+            "college": "Oregon",
+            "rookieMarketRank": 8,
+            "nflDraftOverall": 16,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9354850500982248,
+            "historicalResidualBand80": {
+              "lower": 0.7045644353680612,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13276",
+            "name": "Omar Cooper Jr.",
+            "position": "WR",
+            "team": "NYJ",
+            "college": "Indiana",
+            "rookieMarketRank": 10,
+            "nflDraftOverall": 30,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9270487633903635,
+            "historicalResidualBand80": {
+              "lower": 0.6961281486601999,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13417",
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "team": "SFO",
+            "college": "Mississippi",
+            "rookieMarketRank": 15,
+            "nflDraftOverall": 33,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9218295520248041,
+            "historicalResidualBand80": {
+              "lower": 0.6909089372946405,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13275",
+            "name": "Ty Simpson",
+            "position": "QB",
+            "team": "LAR",
+            "college": "Alabama",
+            "rookieMarketRank": 11,
+            "nflDraftOverall": 13,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9207573025684817,
+            "historicalResidualBand80": {
+              "lower": 0.6898366878383181,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13286",
+            "name": "Jadarian Price",
+            "position": "RB",
+            "team": "SEA",
+            "college": "Notre Dame",
+            "rookieMarketRank": 6,
+            "nflDraftOverall": 32,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9233069304275892,
+            "historicalResidualBand80": {
+              "lower": 0.6923863156974256,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13346",
+            "name": "Denzel Boston",
+            "position": "WR",
+            "team": "CLE",
+            "college": "Washington",
+            "rookieMarketRank": 12,
+            "nflDraftOverall": 39,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9205252735130955,
+            "historicalResidualBand80": {
+              "lower": 0.689604658782932,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13294",
+            "name": "Makai Lemon",
+            "position": "WR",
+            "team": "PHI",
+            "college": "USC",
+            "rookieMarketRank": 5,
+            "nflDraftOverall": 20,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9207390107073582,
+            "historicalResidualBand80": {
+              "lower": 0.6898183959771946,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13269",
+            "name": "Fernando Mendoza",
+            "position": "QB",
+            "team": "LVR",
+            "college": "Indiana",
+            "rookieMarketRank": 4,
+            "nflDraftOverall": 1,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.917647663866506,
+            "historicalResidualBand80": {
+              "lower": 0.6867270491363424,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 9,
+        "label": "1.09",
+        "candidates": [
+          {
+            "sleeperId": "13276",
+            "name": "Omar Cooper Jr.",
+            "position": "WR",
+            "team": "NYJ",
+            "college": "Indiana",
+            "rookieMarketRank": 10,
+            "nflDraftOverall": 30,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9270487633903635,
+            "historicalResidualBand80": {
+              "lower": 0.6961281486601999,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13417",
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "team": "SFO",
+            "college": "Mississippi",
+            "rookieMarketRank": 15,
+            "nflDraftOverall": 33,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9218295520248041,
+            "historicalResidualBand80": {
+              "lower": 0.6909089372946405,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13275",
+            "name": "Ty Simpson",
+            "position": "QB",
+            "team": "LAR",
+            "college": "Alabama",
+            "rookieMarketRank": 11,
+            "nflDraftOverall": 13,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9207573025684817,
+            "historicalResidualBand80": {
+              "lower": 0.6898366878383181,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13346",
+            "name": "Denzel Boston",
+            "position": "WR",
+            "team": "CLE",
+            "college": "Washington",
+            "rookieMarketRank": 12,
+            "nflDraftOverall": 39,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9205252735130955,
+            "historicalResidualBand80": {
+              "lower": 0.689604658782932,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13286",
+            "name": "Jadarian Price",
+            "position": "RB",
+            "team": "SEA",
+            "college": "Notre Dame",
+            "rookieMarketRank": 6,
+            "nflDraftOverall": 32,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9233069304275892,
+            "historicalResidualBand80": {
+              "lower": 0.6923863156974256,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13294",
+            "name": "Makai Lemon",
+            "position": "WR",
+            "team": "PHI",
+            "college": "USC",
+            "rookieMarketRank": 5,
+            "nflDraftOverall": 20,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9207390107073582,
+            "historicalResidualBand80": {
+              "lower": 0.6898183959771946,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13269",
+            "name": "Fernando Mendoza",
+            "position": "QB",
+            "team": "LVR",
+            "college": "Indiana",
+            "rookieMarketRank": 4,
+            "nflDraftOverall": 1,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.917647663866506,
+            "historicalResidualBand80": {
+              "lower": 0.6867270491363424,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13298",
+            "name": "KC Concepcion",
+            "position": "WR",
+            "team": "CLE",
+            "college": "Texas A&M",
+            "rookieMarketRank": 7,
+            "nflDraftOverall": 24,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9162326803114069,
+            "historicalResidualBand80": {
+              "lower": 0.6853120655812434,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 10,
+        "label": "1.10",
+        "candidates": [
+          {
+            "sleeperId": "13276",
+            "name": "Omar Cooper Jr.",
+            "position": "WR",
+            "team": "NYJ",
+            "college": "Indiana",
+            "rookieMarketRank": 10,
+            "nflDraftOverall": 30,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9270487633903635,
+            "historicalResidualBand80": {
+              "lower": 0.6961281486601999,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13417",
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "team": "SFO",
+            "college": "Mississippi",
+            "rookieMarketRank": 15,
+            "nflDraftOverall": 33,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9218295520248041,
+            "historicalResidualBand80": {
+              "lower": 0.6909089372946405,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13275",
+            "name": "Ty Simpson",
+            "position": "QB",
+            "team": "LAR",
+            "college": "Alabama",
+            "rookieMarketRank": 11,
+            "nflDraftOverall": 13,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9207573025684817,
+            "historicalResidualBand80": {
+              "lower": 0.6898366878383181,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13346",
+            "name": "Denzel Boston",
+            "position": "WR",
+            "team": "CLE",
+            "college": "Washington",
+            "rookieMarketRank": 12,
+            "nflDraftOverall": 39,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9205252735130955,
+            "historicalResidualBand80": {
+              "lower": 0.689604658782932,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13286",
+            "name": "Jadarian Price",
+            "position": "RB",
+            "team": "SEA",
+            "college": "Notre Dame",
+            "rookieMarketRank": 6,
+            "nflDraftOverall": 32,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9233069304275892,
+            "historicalResidualBand80": {
+              "lower": 0.6923863156974256,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13274",
+            "name": "Germie Bernard",
+            "position": "WR",
+            "team": "PIT",
+            "college": "Alabama",
+            "rookieMarketRank": 17,
+            "nflDraftOverall": 47,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8970662142266688,
+            "historicalResidualBand80": {
+              "lower": 0.6661455994965052,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13269",
+            "name": "Fernando Mendoza",
+            "position": "QB",
+            "team": "LVR",
+            "college": "Indiana",
+            "rookieMarketRank": 4,
+            "nflDraftOverall": 1,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.917647663866506,
+            "historicalResidualBand80": {
+              "lower": 0.6867270491363424,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13298",
+            "name": "KC Concepcion",
+            "position": "WR",
+            "team": "CLE",
+            "college": "Texas A&M",
+            "rookieMarketRank": 7,
+            "nflDraftOverall": 24,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9162326803114069,
+            "historicalResidualBand80": {
+              "lower": 0.6853120655812434,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 11,
+        "label": "1.11",
+        "candidates": [
+          {
+            "sleeperId": "13417",
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "team": "SFO",
+            "college": "Mississippi",
+            "rookieMarketRank": 15,
+            "nflDraftOverall": 33,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9218295520248041,
+            "historicalResidualBand80": {
+              "lower": 0.6909089372946405,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13275",
+            "name": "Ty Simpson",
+            "position": "QB",
+            "team": "LAR",
+            "college": "Alabama",
+            "rookieMarketRank": 11,
+            "nflDraftOverall": 13,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9207573025684817,
+            "historicalResidualBand80": {
+              "lower": 0.6898366878383181,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13346",
+            "name": "Denzel Boston",
+            "position": "WR",
+            "team": "CLE",
+            "college": "Washington",
+            "rookieMarketRank": 12,
+            "nflDraftOverall": 39,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9205252735130955,
+            "historicalResidualBand80": {
+              "lower": 0.689604658782932,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13274",
+            "name": "Germie Bernard",
+            "position": "WR",
+            "team": "PIT",
+            "college": "Alabama",
+            "rookieMarketRank": 17,
+            "nflDraftOverall": 47,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8970662142266688,
+            "historicalResidualBand80": {
+              "lower": 0.6661455994965052,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13349",
+            "name": "Eli Stowers",
+            "position": "TE",
+            "team": "PHI",
+            "college": "Vanderbilt",
+            "rookieMarketRank": 9,
+            "nflDraftOverall": 54,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8760703215971354,
+            "historicalResidualBand80": {
+              "lower": 0.6451497068669718,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13269",
+            "name": "Fernando Mendoza",
+            "position": "QB",
+            "team": "LVR",
+            "college": "Indiana",
+            "rookieMarketRank": 4,
+            "nflDraftOverall": 1,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.917647663866506,
+            "historicalResidualBand80": {
+              "lower": 0.6867270491363424,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13298",
+            "name": "KC Concepcion",
+            "position": "WR",
+            "team": "CLE",
+            "college": "Texas A&M",
+            "rookieMarketRank": 7,
+            "nflDraftOverall": 24,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9162326803114069,
+            "historicalResidualBand80": {
+              "lower": 0.6853120655812434,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 12,
+        "label": "1.12",
+        "candidates": [
+          {
+            "sleeperId": "13417",
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "team": "SFO",
+            "college": "Mississippi",
+            "rookieMarketRank": 15,
+            "nflDraftOverall": 33,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9218295520248041,
+            "historicalResidualBand80": {
+              "lower": 0.6909089372946405,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13346",
+            "name": "Denzel Boston",
+            "position": "WR",
+            "team": "CLE",
+            "college": "Washington",
+            "rookieMarketRank": 12,
+            "nflDraftOverall": 39,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9205252735130955,
+            "historicalResidualBand80": {
+              "lower": 0.689604658782932,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13274",
+            "name": "Germie Bernard",
+            "position": "WR",
+            "team": "PIT",
+            "college": "Alabama",
+            "rookieMarketRank": 17,
+            "nflDraftOverall": 47,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8970662142266688,
+            "historicalResidualBand80": {
+              "lower": 0.6661455994965052,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13301",
+            "name": "Antonio Williams",
+            "position": "WR",
+            "team": "WAS",
+            "college": "Clemson",
+            "rookieMarketRank": 13,
+            "nflDraftOverall": 71,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8443786488166634,
+            "historicalResidualBand80": {
+              "lower": 0.6134580340864998,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13349",
+            "name": "Eli Stowers",
+            "position": "TE",
+            "team": "PHI",
+            "college": "Vanderbilt",
+            "rookieMarketRank": 9,
+            "nflDraftOverall": 54,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8760703215971354,
+            "historicalResidualBand80": {
+              "lower": 0.6451497068669718,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13298",
+            "name": "KC Concepcion",
+            "position": "WR",
+            "team": "CLE",
+            "college": "Texas A&M",
+            "rookieMarketRank": 7,
+            "nflDraftOverall": 24,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.9162326803114069,
+            "historicalResidualBand80": {
+              "lower": 0.6853120655812434,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 13,
+        "label": "2.01",
+        "candidates": [
+          {
+            "sleeperId": "13417",
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "team": "SFO",
+            "college": "Mississippi",
+            "rookieMarketRank": 15,
+            "nflDraftOverall": 33,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9218295520248041,
+            "historicalResidualBand80": {
+              "lower": 0.6909089372946405,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13274",
+            "name": "Germie Bernard",
+            "position": "WR",
+            "team": "PIT",
+            "college": "Alabama",
+            "rookieMarketRank": 17,
+            "nflDraftOverall": 47,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8970662142266688,
+            "historicalResidualBand80": {
+              "lower": 0.6661455994965052,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13301",
+            "name": "Antonio Williams",
+            "position": "WR",
+            "team": "WAS",
+            "college": "Clemson",
+            "rookieMarketRank": 13,
+            "nflDraftOverall": 71,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8443786488166634,
+            "historicalResidualBand80": {
+              "lower": 0.6134580340864998,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13400",
+            "name": "Justin Joly",
+            "position": "TE",
+            "team": "DEN",
+            "college": "NC State",
+            "rookieMarketRank": 37,
+            "nflDraftOverall": 152,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8191723422302749,
+            "historicalResidualBand80": {
+              "lower": 0.5882517275001113,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13349",
+            "name": "Eli Stowers",
+            "position": "TE",
+            "team": "PHI",
+            "college": "Vanderbilt",
+            "rookieMarketRank": 9,
+            "nflDraftOverall": 54,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8760703215971354,
+            "historicalResidualBand80": {
+              "lower": 0.6451497068669718,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 14,
+        "label": "2.02",
+        "candidates": [
+          {
+            "sleeperId": "13417",
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "team": "SFO",
+            "college": "Mississippi",
+            "rookieMarketRank": 15,
+            "nflDraftOverall": 33,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9218295520248041,
+            "historicalResidualBand80": {
+              "lower": 0.6909089372946405,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13274",
+            "name": "Germie Bernard",
+            "position": "WR",
+            "team": "PIT",
+            "college": "Alabama",
+            "rookieMarketRank": 17,
+            "nflDraftOverall": 47,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8970662142266688,
+            "historicalResidualBand80": {
+              "lower": 0.6661455994965052,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13400",
+            "name": "Justin Joly",
+            "position": "TE",
+            "team": "DEN",
+            "college": "NC State",
+            "rookieMarketRank": 37,
+            "nflDraftOverall": 152,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8191723422302749,
+            "historicalResidualBand80": {
+              "lower": 0.5882517275001113,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13311",
+            "name": "Chris Bell",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Louisville",
+            "rookieMarketRank": 14,
+            "nflDraftOverall": 94,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7943115322926244,
+            "historicalResidualBand80": {
+              "lower": 0.5633909175624608,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13349",
+            "name": "Eli Stowers",
+            "position": "TE",
+            "team": "PHI",
+            "college": "Vanderbilt",
+            "rookieMarketRank": 9,
+            "nflDraftOverall": 54,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8760703215971354,
+            "historicalResidualBand80": {
+              "lower": 0.6451497068669718,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13301",
+            "name": "Antonio Williams",
+            "position": "WR",
+            "team": "WAS",
+            "college": "Clemson",
+            "rookieMarketRank": 13,
+            "nflDraftOverall": 71,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8443786488166634,
+            "historicalResidualBand80": {
+              "lower": 0.6134580340864998,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 15,
+        "label": "2.03",
+        "candidates": [
+          {
+            "sleeperId": "13417",
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "team": "SFO",
+            "college": "Mississippi",
+            "rookieMarketRank": 15,
+            "nflDraftOverall": 33,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.9218295520248041,
+            "historicalResidualBand80": {
+              "lower": 0.6909089372946405,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13274",
+            "name": "Germie Bernard",
+            "position": "WR",
+            "team": "PIT",
+            "college": "Alabama",
+            "rookieMarketRank": 17,
+            "nflDraftOverall": 47,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8970662142266688,
+            "historicalResidualBand80": {
+              "lower": 0.6661455994965052,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13400",
+            "name": "Justin Joly",
+            "position": "TE",
+            "team": "DEN",
+            "college": "NC State",
+            "rookieMarketRank": 37,
+            "nflDraftOverall": 152,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8191723422302749,
+            "historicalResidualBand80": {
+              "lower": 0.5882517275001113,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13320",
+            "name": "Zachariah Branch",
+            "position": "WR",
+            "team": "ATL",
+            "college": "Georgia",
+            "rookieMarketRank": 22,
+            "nflDraftOverall": 79,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7833040746425651,
+            "historicalResidualBand80": {
+              "lower": 0.5523834599124016,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13349",
+            "name": "Eli Stowers",
+            "position": "TE",
+            "team": "PHI",
+            "college": "Vanderbilt",
+            "rookieMarketRank": 9,
+            "nflDraftOverall": 54,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8760703215971354,
+            "historicalResidualBand80": {
+              "lower": 0.6451497068669718,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13301",
+            "name": "Antonio Williams",
+            "position": "WR",
+            "team": "WAS",
+            "college": "Clemson",
+            "rookieMarketRank": 13,
+            "nflDraftOverall": 71,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8443786488166634,
+            "historicalResidualBand80": {
+              "lower": 0.6134580340864998,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13311",
+            "name": "Chris Bell",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Louisville",
+            "rookieMarketRank": 14,
+            "nflDraftOverall": 94,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7943115322926244,
+            "historicalResidualBand80": {
+              "lower": 0.5633909175624608,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 16,
+        "label": "2.04",
+        "candidates": [
+          {
+            "sleeperId": "13274",
+            "name": "Germie Bernard",
+            "position": "WR",
+            "team": "PIT",
+            "college": "Alabama",
+            "rookieMarketRank": 17,
+            "nflDraftOverall": 47,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8970662142266688,
+            "historicalResidualBand80": {
+              "lower": 0.6661455994965052,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13400",
+            "name": "Justin Joly",
+            "position": "TE",
+            "team": "DEN",
+            "college": "NC State",
+            "rookieMarketRank": 37,
+            "nflDraftOverall": 152,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.8191723422302749,
+            "historicalResidualBand80": {
+              "lower": 0.5882517275001113,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13320",
+            "name": "Zachariah Branch",
+            "position": "WR",
+            "team": "ATL",
+            "college": "Georgia",
+            "rookieMarketRank": 22,
+            "nflDraftOverall": 79,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7833040746425651,
+            "historicalResidualBand80": {
+              "lower": 0.5523834599124016,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13317",
+            "name": "Ted Hurst",
+            "position": "WR",
+            "team": "TBB",
+            "college": "Georgia State",
+            "rookieMarketRank": 19,
+            "nflDraftOverall": 84,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7741795800046183,
+            "historicalResidualBand80": {
+              "lower": 0.5432589652744547,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13301",
+            "name": "Antonio Williams",
+            "position": "WR",
+            "team": "WAS",
+            "college": "Clemson",
+            "rookieMarketRank": 13,
+            "nflDraftOverall": 71,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8443786488166634,
+            "historicalResidualBand80": {
+              "lower": 0.6134580340864998,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13311",
+            "name": "Chris Bell",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Louisville",
+            "rookieMarketRank": 14,
+            "nflDraftOverall": 94,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7943115322926244,
+            "historicalResidualBand80": {
+              "lower": 0.5633909175624608,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 17,
+        "label": "2.05",
+        "candidates": [
+          {
+            "sleeperId": "13274",
+            "name": "Germie Bernard",
+            "position": "WR",
+            "team": "PIT",
+            "college": "Alabama",
+            "rookieMarketRank": 17,
+            "nflDraftOverall": 47,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8970662142266688,
+            "historicalResidualBand80": {
+              "lower": 0.6661455994965052,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13400",
+            "name": "Justin Joly",
+            "position": "TE",
+            "team": "DEN",
+            "college": "NC State",
+            "rookieMarketRank": 37,
+            "nflDraftOverall": 152,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8191723422302749,
+            "historicalResidualBand80": {
+              "lower": 0.5882517275001113,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13320",
+            "name": "Zachariah Branch",
+            "position": "WR",
+            "team": "ATL",
+            "college": "Georgia",
+            "rookieMarketRank": 22,
+            "nflDraftOverall": 79,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7833040746425651,
+            "historicalResidualBand80": {
+              "lower": 0.5523834599124016,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13317",
+            "name": "Ted Hurst",
+            "position": "WR",
+            "team": "TBB",
+            "college": "Georgia State",
+            "rookieMarketRank": 19,
+            "nflDraftOverall": 84,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7741795800046183,
+            "historicalResidualBand80": {
+              "lower": 0.5432589652744547,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13301",
+            "name": "Antonio Williams",
+            "position": "WR",
+            "team": "WAS",
+            "college": "Clemson",
+            "rookieMarketRank": 13,
+            "nflDraftOverall": 71,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8443786488166634,
+            "historicalResidualBand80": {
+              "lower": 0.6134580340864998,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13311",
+            "name": "Chris Bell",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Louisville",
+            "rookieMarketRank": 14,
+            "nflDraftOverall": 94,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7943115322926244,
+            "historicalResidualBand80": {
+              "lower": 0.5633909175624608,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13345",
+            "name": "Jonah Coleman",
+            "position": "RB",
+            "team": "DEN",
+            "college": "Washington",
+            "rookieMarketRank": 16,
+            "nflDraftOverall": 108,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7725909617465911,
+            "historicalResidualBand80": {
+              "lower": 0.5416703470164276,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 18,
+        "label": "2.06",
+        "candidates": [
+          {
+            "sleeperId": "13400",
+            "name": "Justin Joly",
+            "position": "TE",
+            "team": "DEN",
+            "college": "NC State",
+            "rookieMarketRank": 37,
+            "nflDraftOverall": 152,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8191723422302749,
+            "historicalResidualBand80": {
+              "lower": 0.5882517275001113,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13320",
+            "name": "Zachariah Branch",
+            "position": "WR",
+            "team": "ATL",
+            "college": "Georgia",
+            "rookieMarketRank": 22,
+            "nflDraftOverall": 79,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7833040746425651,
+            "historicalResidualBand80": {
+              "lower": 0.5523834599124016,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13317",
+            "name": "Ted Hurst",
+            "position": "WR",
+            "team": "TBB",
+            "college": "Georgia State",
+            "rookieMarketRank": 19,
+            "nflDraftOverall": 84,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7741795800046183,
+            "historicalResidualBand80": {
+              "lower": 0.5432589652744547,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13305",
+            "name": "Mike Washington Jr.",
+            "position": "RB",
+            "team": "LVR",
+            "college": "Arkansas",
+            "rookieMarketRank": 32,
+            "nflDraftOverall": 53,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7668079249385841,
+            "historicalResidualBand80": {
+              "lower": 0.5358873102084205,
+              "upper": 0.9977285396687476,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13301",
+            "name": "Antonio Williams",
+            "position": "WR",
+            "team": "WAS",
+            "college": "Clemson",
+            "rookieMarketRank": 13,
+            "nflDraftOverall": 71,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8443786488166634,
+            "historicalResidualBand80": {
+              "lower": 0.6134580340864998,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13311",
+            "name": "Chris Bell",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Louisville",
+            "rookieMarketRank": 14,
+            "nflDraftOverall": 94,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7943115322926244,
+            "historicalResidualBand80": {
+              "lower": 0.5633909175624608,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13345",
+            "name": "Jonah Coleman",
+            "position": "RB",
+            "team": "DEN",
+            "college": "Washington",
+            "rookieMarketRank": 16,
+            "nflDraftOverall": 108,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7725909617465911,
+            "historicalResidualBand80": {
+              "lower": 0.5416703470164276,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 19,
+        "label": "2.07",
+        "candidates": [
+          {
+            "sleeperId": "13400",
+            "name": "Justin Joly",
+            "position": "TE",
+            "team": "DEN",
+            "college": "NC State",
+            "rookieMarketRank": 37,
+            "nflDraftOverall": 152,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8191723422302749,
+            "historicalResidualBand80": {
+              "lower": 0.5882517275001113,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13320",
+            "name": "Zachariah Branch",
+            "position": "WR",
+            "team": "ATL",
+            "college": "Georgia",
+            "rookieMarketRank": 22,
+            "nflDraftOverall": 79,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7833040746425651,
+            "historicalResidualBand80": {
+              "lower": 0.5523834599124016,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13317",
+            "name": "Ted Hurst",
+            "position": "WR",
+            "team": "TBB",
+            "college": "Georgia State",
+            "rookieMarketRank": 19,
+            "nflDraftOverall": 84,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7741795800046183,
+            "historicalResidualBand80": {
+              "lower": 0.5432589652744547,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13305",
+            "name": "Mike Washington Jr.",
+            "position": "RB",
+            "team": "LVR",
+            "college": "Arkansas",
+            "rookieMarketRank": 32,
+            "nflDraftOverall": 53,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7668079249385841,
+            "historicalResidualBand80": {
+              "lower": 0.5358873102084205,
+              "upper": 0.9977285396687476,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13301",
+            "name": "Antonio Williams",
+            "position": "WR",
+            "team": "WAS",
+            "college": "Clemson",
+            "rookieMarketRank": 13,
+            "nflDraftOverall": 71,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8443786488166634,
+            "historicalResidualBand80": {
+              "lower": 0.6134580340864998,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13311",
+            "name": "Chris Bell",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Louisville",
+            "rookieMarketRank": 14,
+            "nflDraftOverall": 94,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7943115322926244,
+            "historicalResidualBand80": {
+              "lower": 0.5633909175624608,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13345",
+            "name": "Jonah Coleman",
+            "position": "RB",
+            "team": "DEN",
+            "college": "Washington",
+            "rookieMarketRank": 16,
+            "nflDraftOverall": 108,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7725909617465911,
+            "historicalResidualBand80": {
+              "lower": 0.5416703470164276,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13288",
+            "name": "Nicholas Singleton",
+            "position": "RB",
+            "team": "TEN",
+            "college": "Penn State",
+            "rookieMarketRank": 21,
+            "nflDraftOverall": 165,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7566299629866025,
+            "historicalResidualBand80": {
+              "lower": 0.5257093482564389,
+              "upper": 0.987550577716766,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 20,
+        "label": "2.08",
+        "candidates": [
+          {
+            "sleeperId": "13400",
+            "name": "Justin Joly",
+            "position": "TE",
+            "team": "DEN",
+            "college": "NC State",
+            "rookieMarketRank": 37,
+            "nflDraftOverall": 152,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8191723422302749,
+            "historicalResidualBand80": {
+              "lower": 0.5882517275001113,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13320",
+            "name": "Zachariah Branch",
+            "position": "WR",
+            "team": "ATL",
+            "college": "Georgia",
+            "rookieMarketRank": 22,
+            "nflDraftOverall": 79,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7833040746425651,
+            "historicalResidualBand80": {
+              "lower": 0.5523834599124016,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13305",
+            "name": "Mike Washington Jr.",
+            "position": "RB",
+            "team": "LVR",
+            "college": "Arkansas",
+            "rookieMarketRank": 32,
+            "nflDraftOverall": 53,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7668079249385841,
+            "historicalResidualBand80": {
+              "lower": 0.5358873102084205,
+              "upper": 0.9977285396687476,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13288",
+            "name": "Nicholas Singleton",
+            "position": "RB",
+            "team": "TEN",
+            "college": "Penn State",
+            "rookieMarketRank": 21,
+            "nflDraftOverall": 165,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7566299629866025,
+            "historicalResidualBand80": {
+              "lower": 0.5257093482564389,
+              "upper": 0.987550577716766,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13301",
+            "name": "Antonio Williams",
+            "position": "WR",
+            "team": "WAS",
+            "college": "Clemson",
+            "rookieMarketRank": 13,
+            "nflDraftOverall": 71,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8443786488166634,
+            "historicalResidualBand80": {
+              "lower": 0.6134580340864998,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13311",
+            "name": "Chris Bell",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Louisville",
+            "rookieMarketRank": 14,
+            "nflDraftOverall": 94,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7943115322926244,
+            "historicalResidualBand80": {
+              "lower": 0.5633909175624608,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13345",
+            "name": "Jonah Coleman",
+            "position": "RB",
+            "team": "DEN",
+            "college": "Washington",
+            "rookieMarketRank": 16,
+            "nflDraftOverall": 108,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7725909617465911,
+            "historicalResidualBand80": {
+              "lower": 0.5416703470164276,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13293",
+            "name": "Ja'Kobi Lane",
+            "position": "WR",
+            "team": "BAL",
+            "college": "USC",
+            "rookieMarketRank": 30,
+            "nflDraftOverall": 80,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7530373024246404,
+            "historicalResidualBand80": {
+              "lower": 0.5221166876944768,
+              "upper": 0.983957917154804,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 21,
+        "label": "2.09",
+        "candidates": [
+          {
+            "sleeperId": "13400",
+            "name": "Justin Joly",
+            "position": "TE",
+            "team": "DEN",
+            "college": "NC State",
+            "rookieMarketRank": 37,
+            "nflDraftOverall": 152,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8191723422302749,
+            "historicalResidualBand80": {
+              "lower": 0.5882517275001113,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13320",
+            "name": "Zachariah Branch",
+            "position": "WR",
+            "team": "ATL",
+            "college": "Georgia",
+            "rookieMarketRank": 22,
+            "nflDraftOverall": 79,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7833040746425651,
+            "historicalResidualBand80": {
+              "lower": 0.5523834599124016,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13305",
+            "name": "Mike Washington Jr.",
+            "position": "RB",
+            "team": "LVR",
+            "college": "Arkansas",
+            "rookieMarketRank": 32,
+            "nflDraftOverall": 53,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7668079249385841,
+            "historicalResidualBand80": {
+              "lower": 0.5358873102084205,
+              "upper": 0.9977285396687476,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13288",
+            "name": "Nicholas Singleton",
+            "position": "RB",
+            "team": "TEN",
+            "college": "Penn State",
+            "rookieMarketRank": 21,
+            "nflDraftOverall": 165,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7566299629866025,
+            "historicalResidualBand80": {
+              "lower": 0.5257093482564389,
+              "upper": 0.987550577716766,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13301",
+            "name": "Antonio Williams",
+            "position": "WR",
+            "team": "WAS",
+            "college": "Clemson",
+            "rookieMarketRank": 13,
+            "nflDraftOverall": 71,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8443786488166634,
+            "historicalResidualBand80": {
+              "lower": 0.6134580340864998,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13311",
+            "name": "Chris Bell",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Louisville",
+            "rookieMarketRank": 14,
+            "nflDraftOverall": 94,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7943115322926244,
+            "historicalResidualBand80": {
+              "lower": 0.5633909175624608,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13293",
+            "name": "Ja'Kobi Lane",
+            "position": "WR",
+            "team": "BAL",
+            "college": "USC",
+            "rookieMarketRank": 30,
+            "nflDraftOverall": 80,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7530373024246404,
+            "historicalResidualBand80": {
+              "lower": 0.5221166876944768,
+              "upper": 0.983957917154804,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13296",
+            "name": "Caleb Douglas",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Texas Tech",
+            "rookieMarketRank": 41,
+            "nflDraftOverall": 75,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7479165022656409,
+            "historicalResidualBand80": {
+              "lower": 0.5169958875354773,
+              "upper": 0.9788371169958044,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 22,
+        "label": "2.10",
+        "candidates": [
+          {
+            "sleeperId": "13400",
+            "name": "Justin Joly",
+            "position": "TE",
+            "team": "DEN",
+            "college": "NC State",
+            "rookieMarketRank": 37,
+            "nflDraftOverall": 152,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8191723422302749,
+            "historicalResidualBand80": {
+              "lower": 0.5882517275001113,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13320",
+            "name": "Zachariah Branch",
+            "position": "WR",
+            "team": "ATL",
+            "college": "Georgia",
+            "rookieMarketRank": 22,
+            "nflDraftOverall": 79,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7833040746425651,
+            "historicalResidualBand80": {
+              "lower": 0.5523834599124016,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13305",
+            "name": "Mike Washington Jr.",
+            "position": "RB",
+            "team": "LVR",
+            "college": "Arkansas",
+            "rookieMarketRank": 32,
+            "nflDraftOverall": 53,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7668079249385841,
+            "historicalResidualBand80": {
+              "lower": 0.5358873102084205,
+              "upper": 0.9977285396687476,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13293",
+            "name": "Ja'Kobi Lane",
+            "position": "WR",
+            "team": "BAL",
+            "college": "USC",
+            "rookieMarketRank": 30,
+            "nflDraftOverall": 80,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7530373024246404,
+            "historicalResidualBand80": {
+              "lower": 0.5221166876944768,
+              "upper": 0.983957917154804,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13311",
+            "name": "Chris Bell",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Louisville",
+            "rookieMarketRank": 14,
+            "nflDraftOverall": 94,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7943115322926244,
+            "historicalResidualBand80": {
+              "lower": 0.5633909175624608,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13317",
+            "name": "Ted Hurst",
+            "position": "WR",
+            "team": "TBB",
+            "college": "Georgia State",
+            "rookieMarketRank": 19,
+            "nflDraftOverall": 84,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7741795800046183,
+            "historicalResidualBand80": {
+              "lower": 0.5432589652744547,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13288",
+            "name": "Nicholas Singleton",
+            "position": "RB",
+            "team": "TEN",
+            "college": "Penn State",
+            "rookieMarketRank": 21,
+            "nflDraftOverall": 165,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7566299629866025,
+            "historicalResidualBand80": {
+              "lower": 0.5257093482564389,
+              "upper": 0.987550577716766,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13296",
+            "name": "Caleb Douglas",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Texas Tech",
+            "rookieMarketRank": 41,
+            "nflDraftOverall": 75,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7479165022656409,
+            "historicalResidualBand80": {
+              "lower": 0.5169958875354773,
+              "upper": 0.9788371169958044,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13421",
+            "name": "Eli Raridon",
+            "position": "TE",
+            "team": "NEP",
+            "college": "Notre Dame",
+            "rookieMarketRank": 27,
+            "nflDraftOverall": 95,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7421470133047156,
+            "historicalResidualBand80": {
+              "lower": 0.511226398574552,
+              "upper": 0.9730676280348791,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 23,
+        "label": "2.11",
+        "candidates": [
+          {
+            "sleeperId": "13400",
+            "name": "Justin Joly",
+            "position": "TE",
+            "team": "DEN",
+            "college": "NC State",
+            "rookieMarketRank": 37,
+            "nflDraftOverall": 152,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8191723422302749,
+            "historicalResidualBand80": {
+              "lower": 0.5882517275001113,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13305",
+            "name": "Mike Washington Jr.",
+            "position": "RB",
+            "team": "LVR",
+            "college": "Arkansas",
+            "rookieMarketRank": 32,
+            "nflDraftOverall": 53,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7668079249385841,
+            "historicalResidualBand80": {
+              "lower": 0.5358873102084205,
+              "upper": 0.9977285396687476,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13293",
+            "name": "Ja'Kobi Lane",
+            "position": "WR",
+            "team": "BAL",
+            "college": "USC",
+            "rookieMarketRank": 30,
+            "nflDraftOverall": 80,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7530373024246404,
+            "historicalResidualBand80": {
+              "lower": 0.5221166876944768,
+              "upper": 0.983957917154804,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13296",
+            "name": "Caleb Douglas",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Texas Tech",
+            "rookieMarketRank": 41,
+            "nflDraftOverall": 75,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7479165022656409,
+            "historicalResidualBand80": {
+              "lower": 0.5169958875354773,
+              "upper": 0.9788371169958044,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13311",
+            "name": "Chris Bell",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Louisville",
+            "rookieMarketRank": 14,
+            "nflDraftOverall": 94,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7943115322926244,
+            "historicalResidualBand80": {
+              "lower": 0.5633909175624608,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13320",
+            "name": "Zachariah Branch",
+            "position": "WR",
+            "team": "ATL",
+            "college": "Georgia",
+            "rookieMarketRank": 22,
+            "nflDraftOverall": 79,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7833040746425651,
+            "historicalResidualBand80": {
+              "lower": 0.5523834599124016,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13317",
+            "name": "Ted Hurst",
+            "position": "WR",
+            "team": "TBB",
+            "college": "Georgia State",
+            "rookieMarketRank": 19,
+            "nflDraftOverall": 84,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7741795800046183,
+            "historicalResidualBand80": {
+              "lower": 0.5432589652744547,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13421",
+            "name": "Eli Raridon",
+            "position": "TE",
+            "team": "NEP",
+            "college": "Notre Dame",
+            "rookieMarketRank": 27,
+            "nflDraftOverall": 95,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7421470133047156,
+            "historicalResidualBand80": {
+              "lower": 0.511226398574552,
+              "upper": 0.9730676280348791,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13337",
+            "name": "Emmett Johnson",
+            "position": "RB",
+            "team": "KCC",
+            "college": "Nebraska",
+            "rookieMarketRank": 23,
+            "nflDraftOverall": 161,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.741391796877954,
+            "historicalResidualBand80": {
+              "lower": 0.5104711821477904,
+              "upper": 0.9723124116081175,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      },
+      {
+        "slot": 24,
+        "label": "2.12",
+        "candidates": [
+          {
+            "sleeperId": "13400",
+            "name": "Justin Joly",
+            "position": "TE",
+            "team": "DEN",
+            "college": "NC State",
+            "rookieMarketRank": 37,
+            "nflDraftOverall": 152,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.8191723422302749,
+            "historicalResidualBand80": {
+              "lower": 0.5882517275001113,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13305",
+            "name": "Mike Washington Jr.",
+            "position": "RB",
+            "team": "LVR",
+            "college": "Arkansas",
+            "rookieMarketRank": 32,
+            "nflDraftOverall": 53,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": false,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7668079249385841,
+            "historicalResidualBand80": {
+              "lower": 0.5358873102084205,
+              "upper": 0.9977285396687476,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13293",
+            "name": "Ja'Kobi Lane",
+            "position": "WR",
+            "team": "BAL",
+            "college": "USC",
+            "rookieMarketRank": 30,
+            "nflDraftOverall": 80,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7530373024246404,
+            "historicalResidualBand80": {
+              "lower": 0.5221166876944768,
+              "upper": 0.983957917154804,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13296",
+            "name": "Caleb Douglas",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Texas Tech",
+            "rookieMarketRank": 41,
+            "nflDraftOverall": 75,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7479165022656409,
+            "historicalResidualBand80": {
+              "lower": 0.5169958875354773,
+              "upper": 0.9788371169958044,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13311",
+            "name": "Chris Bell",
+            "position": "WR",
+            "team": "MIA",
+            "college": "Louisville",
+            "rookieMarketRank": 14,
+            "nflDraftOverall": 94,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7943115322926244,
+            "historicalResidualBand80": {
+              "lower": 0.5633909175624608,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13320",
+            "name": "Zachariah Branch",
+            "position": "WR",
+            "team": "ATL",
+            "college": "Georgia",
+            "rookieMarketRank": 22,
+            "nflDraftOverall": 79,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7833040746425651,
+            "historicalResidualBand80": {
+              "lower": 0.5523834599124016,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13317",
+            "name": "Ted Hurst",
+            "position": "WR",
+            "team": "TBB",
+            "college": "Georgia State",
+            "rookieMarketRank": 19,
+            "nflDraftOverall": 84,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": false
+            },
+            "expectedProductionPercentile": 0.7741795800046183,
+            "historicalResidualBand80": {
+              "lower": 0.5432589652744547,
+              "upper": 1.0,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13421",
+            "name": "Eli Raridon",
+            "position": "TE",
+            "team": "NEP",
+            "college": "Notre Dame",
+            "rookieMarketRank": 27,
+            "nflDraftOverall": 95,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7421470133047156,
+            "historicalResidualBand80": {
+              "lower": 0.511226398574552,
+              "upper": 0.9730676280348791,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13337",
+            "name": "Emmett Johnson",
+            "position": "RB",
+            "team": "KCC",
+            "college": "Nebraska",
+            "rookieMarketRank": 23,
+            "nflDraftOverall": 161,
+            "availableByRule": {
+              "marketOrder": false,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.741391796877954,
+            "historicalResidualBand80": {
+              "lower": 0.5104711821477904,
+              "upper": 0.9723124116081175,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          },
+          {
+            "sleeperId": "13420",
+            "name": "Bryce Lance",
+            "position": "WR",
+            "team": "NOS",
+            "college": "North Dakota State",
+            "rookieMarketRank": 36,
+            "nflDraftOverall": 136,
+            "availableByRule": {
+              "marketOrder": true,
+              "nflDraftOrder": true,
+              "learnedMarketPlusCapital": true
+            },
+            "expectedProductionPercentile": 0.7379117445713848,
+            "historicalResidualBand80": {
+              "lower": 0.5069911298412212,
+              "upper": 0.9688323593015483,
+              "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+            }
+          }
+        ]
+      }
+    ],
+    "boundary": [
+      "Candidate baskets model plausible production choices under simulated availability, not who will actually remain on the board.",
+      "No exact slot is promoted as a dynasty-value, trade-return, or profit estimate.",
+      "The richer full model failed its exact 1.12 incremental gate and cannot move the candidate order."
+    ]
+  },
   "promotionBlockers": [
     "The market-return head still uses expert consensus rather than a complete historical completed-trade tape.",
     "Current Sleeper add/drop counts lack historical point-in-time counterparts and therefore do not change forecasts.",

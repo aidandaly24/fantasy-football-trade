@@ -297,6 +297,33 @@ export const userTradeOffers = sqliteTable(
   ],
 )
 
+export const tradeDecisions = sqliteTable(
+  'trade_decisions',
+  {
+    userId: text('user_id').notNull(),
+    leagueId: text('league_id').notNull(),
+    decisionId: text('decision_id').notNull(),
+    status: text('status').notNull(),
+    myRosterId: integer('my_roster_id').notNull(),
+    counterpartRosterId: integer('counterpart_roster_id').notNull(),
+    sendAssetsJson: text('send_assets_json').notNull(),
+    receiveAssetsJson: text('receive_assets_json').notNull(),
+    snapshotJson: text('snapshot_json').notNull(),
+    thesis: text('thesis').notNull(),
+    holdPeriod: text('hold_period').notNull(),
+    exitCondition: text('exit_condition').notNull(),
+    catalystsJson: text('catalysts_json').notNull().default('[]'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+    offeredAt: text('offered_at'),
+    resolvedAt: text('resolved_at'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.leagueId, table.decisionId] }),
+    index('idx_trade_decisions_user_league').on(table.userId, table.leagueId, table.updatedAt),
+  ],
+)
+
 export const marketValueSnapshots = sqliteTable(
   'market_value_snapshots',
   {

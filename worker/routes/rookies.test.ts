@@ -20,6 +20,8 @@ describe('private rookie board route', () => {
     expect(response.headers.get('cache-control')).toBe('private, no-store')
     expect(body.tradeReturnForecastEnabled).toBe(false)
     expect(Array.isArray(body.board)).toBe(true)
+    expect((body.pickOpportunity as Record<string, unknown>).exactSlotPromotion).toBe(false)
+    expect((body.futureClassOpportunity as Record<string, unknown>).downstreamEnabled).toBe(false)
     expect(JSON.stringify(body)).not.toContain('currentShadowBoard')
   })
 

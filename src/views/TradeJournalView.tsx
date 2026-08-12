@@ -1,5 +1,7 @@
 import { AlertTriangle, BookOpen, Info, RefreshCw } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { fetchTradeDecisions, updateTradeDecision } from '../api'
+import type { TradeDecision, TradeDecisionStatus } from '../decision-journal'
 import { timeAgo } from '../intel'
 import { tradePartyNames } from '../journal'
 import type { LeagueContext } from '../league-context'
@@ -19,6 +21,29 @@ export function TradeJournalView({
 }) {
   const seasons = [...new Set(journal.trades.map((trade) => trade.season))]
   const [season, setSeason] = useState('all')
+  const [decisions, setDecisions] = useState<TradeDecision[]>([])
+  const [decisionError, setDecisionError] = useState<string | null>(null)
+  const [updatingDecision, setUpdatingDecision] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void fetchTradeDecisions(leagueContext.id).then((bundle) => {
+      if (!cancelled) setDecisions(bundle.decisions)
+    }).catch((error) => {
+      if (!cancelled) setDecisionError(error instanceof Error ? error.message : 'Decision journal unavailable')
+    })
+    return () => { cancelled = true }
+  }, [leagueContext.id])
+  const setDecisionStatus = async (id: string, status: TradeDecisionStatus) => {
+    setUpdatingDecision(id)
+    setDecisionError(null)
+    try {
+      setDecisions((await updateTradeDecision(leagueContext.id, id, status)).decisions)
+    } catch (error) {
+      setDecisionError(error instanceof Error ? error.message : 'Decision status could not be saved')
+    } finally {
+      setUpdatingDecision(null)
+    }
+  }
   const visibleTrades = journal.trades.filter((trade) => season === 'all' || trade.season === season)
   const completedOutcomes = journal.outcomes.filter((outcome) => outcome.status === 'complete').length
   const pendingOutcomes = journal.outcomes.filter((outcome) => outcome.status === 'pending' || outcome.status === 'due').length
@@ -74,7 +99,7 @@ export function TradeJournalView({
   return (
     <main className="page-shell journal-page">
       <section className="journal-hero">
-        <div><span className="eyebrow accent-eyebrow">Automated trade journal · V4.6</span><h1>Every completed deal.<br />No selective memory.</h1><p>{leagueContext.label}: Sleeper facts, season-correct manager identity, immutable value snapshots, and automatic 7/30/90/180/365-day checkpoints.</p></div>
+        <div><span className="eyebrow accent-eyebrow">Private decision + completed trade journal · V8.0</span><h1>Offers and outcomes.<br />No selective memory.</h1><p>{leagueContext.label}: your saved offers, counters, rejections, and theses sit beside Sleeper-completed trades and immutable outcome snapshots.</p></div>
         <button type="button" className="journal-sync" onClick={onSync} disabled={syncing}><RefreshCw size={17} className={syncing ? 'spin' : ''} /> {syncing ? 'Syncing every season…' : 'Sync journal'}</button>
       </section>
       <section className="journal-stats">
@@ -84,6 +109,15 @@ export function TradeJournalView({
         <article className="panel"><small>Last completed</small><strong>{journal.sync?.finishedAt ? timeAgo(journal.sync.finishedAt) : 'Never'}</strong><span>manual refresh on demand</span></article>
       </section>
       {journal.sync?.status === 'partial' && <div className="journal-warning"><AlertTriangle size={17} /> Some Sleeper requests failed. The journal preserved prior data and exposes the incomplete coverage instead of treating it as zero trades.</div>}
+      {decisionError && <div className="journal-warning"><AlertTriangle size={17} /> {decisionError}</div>}
+      <section className="decision-ledger panel">
+        <div className="panel-heading"><div><span className="eyebrow">V8.0 private negotiation labels</span><h2>Researching, offered, countered, and rejected packages</h2></div><span className="method-note">{decisions.length} saved decisions</span></div>
+        {decisions.length ? <div className="decision-ledger-list">{decisions.map((decision) => <article key={decision.id}>
+          <header><div><small>{new Date(decision.updatedAt).toLocaleString()}</small><strong>{decision.receive.map((asset) => asset.name).join(' + ')}</strong><span>for {decision.send.map((asset) => asset.name).join(' + ')}</span></div><select aria-label={`Status for ${decision.receive.map((asset) => asset.name).join(' + ')}`} value={decision.status} disabled={updatingDecision === decision.id} onChange={(event) => void setDecisionStatus(decision.id, event.target.value as TradeDecisionStatus)}><option value="researching">Researching</option><option value="offered">Offered</option><option value="countered">Countered</option><option value="accepted">Accepted</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></header>
+          <div className="decision-snapshot-facts"><span><small>Saved market net</small><b className={decision.snapshot.marketNetToMe >= 0 ? 'positive' : 'negative'}>{decision.snapshot.marketNetToMe >= 0 ? '+' : ''}{formatValue(decision.snapshot.marketNetToMe)}</b></span><span><small>30-day P&amp;L</small><b>{decision.snapshot.expectedPnl30 === null ? 'Unavailable' : `${decision.snapshot.expectedPnl30 >= 0 ? '+' : ''}${decision.snapshot.expectedPnl30.toFixed(0)} FC`}</b></span><span><small>Tracked downside</small><b>{decision.snapshot.trackedAssetLowerPnl30 === null ? 'Unavailable' : `${decision.snapshot.trackedAssetLowerPnl30 >= 0 ? '+' : ''}${decision.snapshot.trackedAssetLowerPnl30.toFixed(0)} FC`}</b></span><span><small>Catalysts attached</small><b>{decision.catalysts.length}</b></span></div>
+          <p><strong>Thesis:</strong> {decision.thesis}</p><p><strong>Hold:</strong> {decision.holdPeriod} <strong>Exit:</strong> {decision.exitCondition}</p>
+        </article>)}</div> : <div className="journal-empty"><BookOpen size={22} /><strong>No negotiation decisions saved yet.</strong><span>Build a package in Trade Lab and save the thesis before sending it.</span></div>}
+      </section>
       <section className="journal-toolbar panel">
         <label><small>Season</small><select value={season} onChange={(event) => setSeason(event.target.value)}><option value="all">All linked seasons</option>{seasons.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <span>{visibleTrades.length} ledger entries · newest first</span>
