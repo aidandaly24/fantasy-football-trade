@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeFantasyCalcTrades, selectFantasyCalcAnchors } from './trade-tape-store'
+import { buildTrainingTapeExport, normalizeFantasyCalcTrades, selectFantasyCalcAnchors } from './trade-tape-store'
 
 function catalog() {
   return ['QB', 'RB', 'WR', 'TE'].flatMap((position, positionIndex) =>
@@ -51,5 +51,20 @@ describe('FantasyCalc trade tape collection', () => {
       { id: '', date: 'bad', side1: [], side2: [] },
       { id: 'missing-side', date: '2026-08-11', side1: [{ id: 1, name: 'A', position: 'QB' }] },
     ])).toEqual([])
+  })
+
+  it('exports a stable, sanitized dataset identity independent of export time and input order', async () => {
+    const trades = normalizeFantasyCalcTrades([
+      { id: 'trade-2', date: '2026-08-11T14:00:00Z', leagueId: 'b', numQbs: 2, numTeams: 12, ppr: 1, side1: [{ id: 3, name: 'C', position: 'WR' }], side2: [{ id: 4, name: 'D', position: 'RB' }] },
+      { id: 'trade-1', date: '2026-08-10T14:00:00Z', leagueId: 'a', numQbs: 1, numTeams: 10, ppr: 0.5, usernameSide1: 'private', side1: [{ id: 1, name: 'A', position: 'QB' }], side2: [{ id: 2, name: 'B', position: 'PICK' }] },
+    ])
+    const state = { source: 'FantasyCalc completed trades', status: 'ready', lastAttemptAt: null, lastSuccessAt: '2026-08-12T00:00:00Z', totalTrades: 2, uniqueLeagues: 2, firstTradeAt: trades[0].date, latestTradeAt: trades[1].date, latestRun: null } as const
+    const first = await buildTrainingTapeExport(trades, state, '2026-08-12T01:00:00Z')
+    const second = await buildTrainingTapeExport([...trades].reverse(), state, '2026-08-13T01:00:00Z')
+    expect(first.datasetId).toBe(second.datasetId)
+    expect(first.totalTrades).toBe(2)
+    expect(first.uniqueLeagues).toBe(2)
+    expect(first.trades.map((trade) => trade.id)).toEqual(['trade-1', 'trade-2'])
+    expect(JSON.stringify(first)).not.toContain('username')
   })
 })

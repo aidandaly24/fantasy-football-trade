@@ -14,6 +14,9 @@ changing it safely.
   leakage controls, promotion gates, and generated artifacts.
 - [Historical trade models](trade-models.md) — exchange-premium and outcome
   targets, evidence gates, user-controlled weighting, and known tape limits.
+- [Trade evaluation protocol](trade-evaluation-protocol.md) — the required
+  evidence lanes, five-stage provenance test, recommendation format, and
+  hosted-to-offline training runbook.
 - [Development workflow](development-workflow.md) — local setup, branch and PR
   policy, migrations, validation, and agent coordination.
 - [Design ideas](design-ideas/README.md) — proposed systems and model changes

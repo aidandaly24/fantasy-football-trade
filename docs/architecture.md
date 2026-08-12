@@ -105,7 +105,7 @@ instead of reimplementing ranking or valuation rules in JSX.
 | `/api/alerts` | `GET`, `POST` | D1 | Requires identity; materializes private watchlist alerts |
 | `/api/edge` | `GET`, `POST` | D1 | Requires identity; stores and reads private market tape and learning state |
 | `/api/research` | `GET`, `POST` | D1 | Requires identity; syncs and reads historical evidence |
-| `/api/trade-tape` | `GET`, `POST` | D1 | Requires identity; POST performs the bounded FantasyCalc completed-trade refresh |
+| `/api/trade-tape` | `GET`, `POST` | D1 | Requires identity; POST refreshes the bounded FantasyCalc tape; `GET ?format=training` downloads the sanitized content-addressed tape |
 | `/api/intel` | `GET` | None | Requires identity; generic feed is cached privately for five minutes |
 | `/api/rookies` | `GET` | None | Requires identity; returns the checked-in sanitized rookie-production artifact with no-store caching |
 

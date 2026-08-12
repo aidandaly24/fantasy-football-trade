@@ -27,4 +27,9 @@ describe('trade tape route boundary', () => {
     }), env)
     expect(response.status).toBe(403)
   })
+
+  it('requires hosted identity for the training export', async () => {
+    const response = await tradeTapeResponse(new Request('https://rosterlab.test/api/trade-tape?format=training'), env)
+    expect(response.status).toBe(401)
+  })
 })

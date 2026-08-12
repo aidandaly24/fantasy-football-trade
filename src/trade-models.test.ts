@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LeagueContext } from './league-context'
-import { buildConsolidationStructure, modelSignalsForTrade, predictPortableModel, weightTradeEvidence } from './trade-models'
+import { buildConsolidationStructure, buildHistoricalTradeEvidenceStages, modelSignalsForTrade, predictPortableModel, weightTradeEvidence } from './trade-models'
 import type { Asset, Team } from './types'
 
 const asset = (id: string, value: number, kind: Asset['kind'] = 'player'): Asset => ({
@@ -50,5 +50,19 @@ describe('trade model evidence layers', () => {
     expect(weighted.weightCoverage).toBe(0.7)
     expect(weighted.complete).toBe(false)
     expect(weighted.coveredSignal).toBeCloseTo((4 * 50 + 2 * 20) / 70)
+  })
+
+  it('does not confuse collected tape with valued, validated, or active historical evidence', () => {
+    const weighted = weightTradeEvidence(
+      { market: 4, lineup: 2, exchange: null, outcome: null },
+      { market: 50, lineup: 20, exchange: 20, outcome: 10, outcomeHorizon: 180, outcomeVariant: 'premiumAware' },
+    )
+    const stages = buildHistoricalTradeEvidenceStages({
+      source: 'FantasyCalc completed trades', status: 'partial', lastAttemptAt: null, lastSuccessAt: null,
+      totalTrades: 830, uniqueLeagues: 802, firstTradeAt: null, latestTradeAt: null, latestRun: null,
+    }, null, weighted)
+    expect(stages.map((stage) => [stage.id, stage.status])).toEqual([
+      ['collected', 'partial'], ['valued', 'blocked'], ['trained', 'blocked'], ['validated', 'blocked'], ['influencing', 'inactive'],
+    ])
   })
 })

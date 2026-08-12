@@ -51,6 +51,19 @@ export type StoredFantasyCalcTrade = {
   side2: FantasyCalcAsset[]
 }
 
+export type TrainingTapeExport = {
+  schemaVersion: 1
+  datasetId: string
+  source: 'FantasyCalc completed trades'
+  exportedAt: string
+  totalTrades: number
+  uniqueLeagues: number
+  firstTradeAt: string | null
+  latestTradeAt: string | null
+  lastSuccessAt: string | null
+  trades: StoredFantasyCalcTrade[]
+}
+
 type RunRow = {
   started_at: string
   finished_at: string | null
@@ -161,6 +174,31 @@ function parseJson<T>(value: string, fallback: T): T {
   try { return JSON.parse(value) as T } catch { return fallback }
 }
 
+async function sha256(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
+  return `sha256:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')}`
+}
+
+export async function buildTrainingTapeExport(
+  trades: StoredFantasyCalcTrade[],
+  state: TradeTapeRefreshState,
+  exportedAt = new Date().toISOString(),
+): Promise<TrainingTapeExport> {
+  const canonicalTrades = normalizeFantasyCalcTrades(trades)
+  return {
+    schemaVersion: 1,
+    datasetId: await sha256(JSON.stringify(canonicalTrades)),
+    source: 'FantasyCalc completed trades',
+    exportedAt,
+    totalTrades: canonicalTrades.length,
+    uniqueLeagues: new Set(canonicalTrades.map((trade) => trade.leagueId).filter(Boolean)).size,
+    firstTradeAt: canonicalTrades[0]?.date ?? null,
+    latestTradeAt: canonicalTrades.at(-1)?.date ?? null,
+    lastSuccessAt: state.lastSuccessAt,
+    trades: canonicalTrades,
+  }
+}
+
 async function batchInChunks(db: D1Database, statements: D1PreparedStatement[], size = 50): Promise<void> {
   for (let index = 0; index < statements.length; index += size) await db.batch(statements.slice(index, index + size))
 }
@@ -238,6 +276,17 @@ WHERE status IN ('ready', 'partial') ORDER BY finished_at DESC LIMIT 1`).first<{
       errors: parseJson<string[]>(latestRun.errors_json, []),
     } : null,
   }
+}
+
+export async function exportTradeTape(db: D1Database): Promise<TrainingTapeExport> {
+  await ensureTradeTapeSchema(db)
+  const [rows, state] = await Promise.all([
+    db.prepare('SELECT raw_json FROM fantasycalc_trade_tape ORDER BY trade_at, trade_id')
+      .all<{ raw_json: string }>(),
+    readTradeTapeState(db),
+  ])
+  const trades = rows.results.flatMap((row) => normalizeFantasyCalcTrades([parseJson<unknown>(row.raw_json, null)]))
+  return buildTrainingTapeExport(trades, state)
 }
 
 export async function refreshTradeTape(
