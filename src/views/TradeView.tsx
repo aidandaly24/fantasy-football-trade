@@ -8,6 +8,7 @@ import { strategyProfileForLeague } from '../leagues'
 import type { Asset, Team, TeamStrategyProfile } from '../types'
 import {
   buildConsolidationStructure,
+  buildHistoricalTradeEvidenceStages,
   DEFAULT_TRADE_MODEL_WEIGHTS,
   modelSignalsForTrade,
   weightTradeEvidence,
@@ -367,6 +368,11 @@ function PremiumModelPanel({
 }) {
   const exchange = health?.exchange
   const outcome = health?.outcomes.find((item) => item.horizonDays === weights.outcomeHorizon)
+  const evidenceStages = buildHistoricalTradeEvidenceStages(tape, health, weighted)
+  const activeLanes = weighted.contributions
+    .filter((item) => item.weight > 0 && item.contribution !== null)
+    .map((item) => item.id === 'lineup' ? 'covered production' : item.id === 'exchange' ? 'exchange premium' : item.id === 'outcome' ? 'future outcome' : 'current market')
+  const historicalInfluence = evidenceStages.find((stage) => stage.id === 'influencing')?.status === 'ready'
   const signalLabel = weighted.coveredSignal === null
     ? 'No weighted evidence'
     : `${weighted.coveredSignal >= 0 ? '+' : ''}${weighted.coveredSignal.toFixed(1)}% toward Side A`
@@ -403,14 +409,30 @@ function PremiumModelPanel({
     <section className="premium-model-panel panel">
       <div className="panel-heading">
         <div><span className="eyebrow">Consolidation research</span><h2>Raw price, exchange premium, and outcome stay separate</h2></div>
-        <button className="tape-refresh-button" type="button" onClick={onTapeRefresh} disabled={tapeRefreshing}>
-          <RefreshCw size={15} className={tapeRefreshing ? 'spin' : ''} />
-          {tapeRefreshing ? 'Refreshing tape…' : 'Refresh historical tape'}
-        </button>
+        <div className="tape-actions">
+          <a className="tape-export-button" href="/api/trade-tape?format=training" download>Download training tape</a>
+          <button className="tape-refresh-button" type="button" onClick={onTapeRefresh} disabled={tapeRefreshing}>
+            <RefreshCw size={15} className={tapeRefreshing ? 'spin' : ''} />
+            {tapeRefreshing ? 'Refreshing tape…' : 'Refresh historical tape'}
+          </button>
+        </div>
       </div>
       <div className={`tape-refresh-status ${tapeError ? 'has-error' : ''}`}>
         <span><strong>{tapeStatus}</strong>{tape?.lastSuccessAt ? ` · last saved ${new Date(tape.lastSuccessAt).toLocaleString()}` : ''}</span>
         <small>{tapeError ?? 'One click scans a fixed market sample, deduplicates completed trades, and saves only new rows to private storage.'}</small>
+      </div>
+      <div className={`trade-evidence-verdict ${historicalInfluence ? 'active' : 'inactive'}`}>
+        <span><strong>Evidence influencing this trade</strong>{activeLanes.length ? activeLanes.join(' + ') : 'No promoted evidence selected'}</span>
+        <b>{historicalInfluence ? 'Historical models active' : 'Historical models not applied'}</b>
+      </div>
+      <div className="trade-evidence-pipeline" aria-label="Historical trade evidence pipeline">
+        {evidenceStages.map((stage) => (
+          <article className={stage.status} key={stage.id}>
+            <small>{stage.label}</small>
+            <strong>{stage.status}</strong>
+            <span>{stage.detail}</span>
+          </article>
+        ))}
       </div>
       <div className="premium-model-summary">
         <article>
@@ -461,7 +483,7 @@ function PremiumModelPanel({
         <label className="trade-weight-select"><span><strong>Outcome horizon</strong></span><select value={weights.outcomeHorizon} onChange={(event) => setOutcomeSetting('outcomeHorizon', Number(event.target.value) as 90 | 180 | 365)}><option value={90}>90 days</option><option value={180}>180 days</option><option value={365}>365 days</option></select><small>Held-out horizon</small></label>
         <label className="trade-weight-select"><span><strong>Outcome model</strong></span><select value={weights.outcomeVariant} onChange={(event) => setOutcomeSetting('outcomeVariant', event.target.value as TradeModelWeights['outcomeVariant'])}><option value="structureOnly">Without paid premium</option><option value="premiumAware">With paid premium</option></select><small>Compare challengers</small></label>
       </div>
-      <div className="model-note premium-model-note"><Info size={16} /><span>The refresh grows the raw D1 tape; it does not retrain or promote the browser artifact inside this request. The last trained artifact is dated {health?.generatedAt ? new Date(health.generatedAt).toLocaleString() : 'unavailable'}. Accepted trades reveal exchange prices, not rejected offers or acceptance probability.</span></div>
+      <div className="model-note premium-model-note"><Info size={16} /><span>The refresh grows the raw D1 tape. Download exports its sanitized, content-addressed training input; neither action retrains or promotes the browser artifact. The last trained artifact is dated {health?.generatedAt ? new Date(health.generatedAt).toLocaleString() : 'unavailable'}. Accepted trades reveal exchange prices, not rejected offers or acceptance probability.</span></div>
     </section>
   )
 }
