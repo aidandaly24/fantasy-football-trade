@@ -288,6 +288,50 @@ can support a return model. It must address:
 Until those gates pass, a market-return forecast cannot change trade values,
 packages, or recommendations.
 
+### V7.3 completed-trade availability audit
+
+The bounded FantasyCalc audit compares the base completed-trade response with
+`page=2` and `offset=100`. On the dated V7.3 run, all three returned the same
+50 ordered trade IDs. Pagination and an older bulk backfill are therefore not
+proven through the observed public contract. The accepted-trade tape remains
+an incremental exchange-price dataset; it is not the source for the asset
+return model. The committed audit is
+`ml/reports/fantasycalc-trade-availability-v7.3.json`.
+
+### V7.4 asset return, risk, and decay research
+
+`ml/asset_returns.py` uses cached daily FantasyCalc value histories to predict
+the same asset's later market-value percentage return at 30, 90, 180, and 365
+days. The histories are separated into 1QB and superflex series. Features use
+only point-in-time value, rank percentile, age/position, trailing return,
+trailing volatility, trailing drawdown, and pick distance that were knowable at
+the prediction anchor.
+
+Each horizon uses weekly anchors, a label embargo, a pre-test calibration
+window for choosing between a standardized ridge and one bounded histogram
+gradient challenger, and a final untouched later-date holdout. It must beat the
+best zero-return or position/value-cohort baseline in MAE and clear a
+cross-sectional rank guardrail. Intervals are calibrated and evaluated
+separately. Passing one horizon never promotes another.
+
+Artifacts:
+
+- `public/data/asset-return-health.json`
+- `ml/reports/asset-return-health.json`
+- `ml/reports/asset-return-health.md`
+- `ml/reports/asset-return-complexity-ledger.md`
+
+The browser artifact contains the current per-asset forecasts. The audit JSON
+keeps the matching dataset, model, metrics, cohort, and gate manifest plus the
+forecast count, while omitting the duplicate per-asset payload.
+
+The current source population is the present FantasyCalc catalog plus assets
+found in the completed-trade tape. There is no versioned full historical
+catalog, so disappearance/failure risk is incomplete. RosterLab calls the
+exported interval a tracked-asset interval, not a complete downside
+probability. The model never overwrites the current market composite and never
+predicts manager acceptance.
+
 ## Trade journal and outcomes
 
 The durable journal follows linked Sleeper league seasons, ingests completed

@@ -50,6 +50,8 @@ PROCESSED = ROOT / "data" / "processed" / "trade_models"
 REPORT_JSON = ROOT / "ml" / "reports" / "trade-model-health.json"
 REPORT_MD = ROOT / "ml" / "reports" / "trade-model-health.md"
 PUBLIC_JSON = ROOT / "public" / "data" / "trade-model-health.json"
+TRADE_AVAILABILITY_JSON = ROOT / "ml" / "reports" / "fantasycalc-trade-availability-v7.3.json"
+TRADE_AVAILABILITY_MD = ROOT / "ml" / "reports" / "fantasycalc-trade-availability-v7.3.md"
 
 BASE = "https://api.fantasycalc.com"
 TERMS = "https://fantasycalc.com/terms-of-usage"
@@ -217,6 +219,111 @@ def collect_anchor_trades(anchor: dict[str, Any], offline: bool, refresh: bool) 
         _write_json(path, payload)
     payload = json.loads(path.read_text())
     return anchor_id, len(payload)
+
+
+def _trade_probe_summary(payload: Any) -> dict[str, Any]:
+    rows = payload if isinstance(payload, list) else []
+    identifiers = [str(item.get("id")) for item in rows if isinstance(item, dict) and item.get("id")]
+    dates = sorted(
+        observed.isoformat()
+        for item in rows
+        if isinstance(item, dict) and (observed := _parse_date(item.get("date")))
+    )
+    return {
+        "rows": len(rows),
+        "firstTradeAt": dates[0] if dates else None,
+        "latestTradeAt": dates[-1] if dates else None,
+        "orderedIdDigest": hashlib.sha256("\n".join(identifiers).encode("utf-8")).hexdigest(),
+    }
+
+
+def audit_trade_availability(offline: bool = False) -> dict[str, Any]:
+    """Bounded V7.3 probe for proven completed-trade history controls.
+
+    FantasyCalc's public database UI exposes filters but no documented cursor.
+    We compare the unmodified response with common page and offset parameters;
+    equality is evidence that those parameters are ignored, not proof that no
+    other private or future backfill route can exist.
+    """
+    ensure_dirs()
+    if offline:
+        if not TRADE_AVAILABILITY_JSON.exists():
+            raise FileNotFoundError("No cached V7.3 trade-availability audit")
+        return json.loads(TRADE_AVAILABILITY_JSON.read_text())
+    catalog = load_current()
+    selected = select_anchors(catalog, 4)
+    if not selected:
+        raise ValueError("No current FantasyCalc player is available for the pagination probe")
+    anchor = max(selected, key=lambda item: float(item.get("value") or 0))
+    anchor_id = int(anchor["player"]["id"])
+    parameters = {
+        "isDynasty": "true",
+        "side1": anchor_id,
+        "minPlayers": 2,
+        "maxPlayers": 4,
+    }
+    base = _trade_probe_summary(fetch_json(_url("/trades", parameters)))
+    page = _trade_probe_summary(fetch_json(_url("/trades", {**parameters, "page": 2})))
+    offset = _trade_probe_summary(fetch_json(_url("/trades", {**parameters, "offset": 100})))
+    page_identical = page["orderedIdDigest"] == base["orderedIdDigest"] and page["rows"] == base["rows"]
+    offset_identical = offset["orderedIdDigest"] == base["orderedIdDigest"] and offset["rows"] == base["rows"]
+    local_trades = load_all_trades()
+    local_dates = sorted(observed for trade in local_trades if (observed := _parse_date(trade.get("date"))))
+    result = {
+        "schemaVersion": 1,
+        "auditedAt": utc_now(),
+        "source": {
+            "name": "FantasyCalc public completed-trade endpoint",
+            "endpoint": f"{BASE}/trades",
+            "methodology": FAQ,
+            "terms": TERMS,
+        },
+        "anchor": {
+            "id": anchor_id,
+            "name": str(anchor["player"].get("name") or anchor_id),
+            "position": str(anchor["player"].get("position") or ""),
+        },
+        "probes": {"base": base, "page2": page, "offset100": offset},
+        "page2Identical": page_identical,
+        "offset100Identical": offset_identical,
+        "observedRowCap": base["rows"],
+        "paginationProven": not page_identical or not offset_identical,
+        "olderBackfillProven": False,
+        "localTape": {
+            "trades": len(local_trades),
+            "firstTradeAt": local_dates[0].isoformat() if local_dates else None,
+            "latestTradeAt": local_dates[-1].isoformat() if local_dates else None,
+            "dateSpanDays": (local_dates[-1] - local_dates[0]).days if local_dates else 0,
+            "anchorQueryFiles": len(list(TRADES.glob("*/*.json"))),
+        },
+        "conclusion": (
+            "The observed endpoint returned the same capped rows for base, page=2, and offset=100. "
+            "No older-page contract is proven; keep incremental cached collection for exchange-price research "
+            "and use the separate daily asset histories for return/risk modeling."
+            if page_identical and offset_identical
+            else "At least one pagination probe changed the response; investigate and validate ordering before backfill."
+        ),
+    }
+    _write_json(TRADE_AVAILABILITY_JSON, result)
+    TRADE_AVAILABILITY_MD.write_text("\n".join([
+        "# FantasyCalc completed-trade availability audit (V7.3)",
+        "",
+        f"Audited: `{result['auditedAt']}`",
+        "",
+        f"- Probe anchor: **{result['anchor']['name']}** (`{anchor_id}`)",
+        f"- Base response: **{base['rows']} rows**, {base['firstTradeAt']} to {base['latestTradeAt']}",
+        f"- `page=2` identical: **{page_identical}**",
+        f"- `offset=100` identical: **{offset_identical}**",
+        f"- Local deduplicated tape: **{len(local_trades)} trades** across **{result['localTape']['dateSpanDays']} days**",
+        "",
+        "## Decision",
+        "",
+        result["conclusion"],
+        "",
+        "This is a bounded observed-contract audit. It does not claim that an undocumented or future provider route cannot exist.",
+        "",
+    ]))
+    return result
 
 
 def _history_paths(asset_id: int, num_qbs: int) -> tuple[Path, Path]:
@@ -888,7 +995,7 @@ def train() -> dict[str, Any]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("collect", "train", "refresh", "import-tape"))
+    parser.add_argument("command", choices=("collect", "train", "refresh", "import-tape", "audit-trades"))
     parser.add_argument("--tape", type=Path)
     parser.add_argument("--anchors", type=int, default=80)
     parser.add_argument("--history-scope", choices=("trades", "universe"), default="universe")
@@ -899,6 +1006,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.command == "audit-trades":
+        print(json.dumps(audit_trade_availability(offline=args.offline), indent=2))
+        return
     if args.command == "import-tape":
         if args.tape is None:
             raise SystemExit("--tape is required for import-tape")
