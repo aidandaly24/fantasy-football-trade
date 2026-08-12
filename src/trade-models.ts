@@ -83,12 +83,21 @@ export type ExchangePremiumHealth = {
   rows: number
   trainingRows: number
   testRows: number
+  testStart?: string | null
+  novelLeagueTestRows?: number
   dateSpanDays: number
   uniqueLeagues: number
   medianPremium: number | null
   baseline: TradeModelMetrics
+  baselines?: {
+    selected: string
+    globalMedian: TradeModelMetrics
+    structureSegmentedMedian: TradeModelMetrics
+  }
   modelMetrics: TradeModelMetrics
   maeImprovement: number
+  leagueBalancedMaeImprovement?: number
+  novelLeagueMetrics?: TradeModelMetrics
   model: PortableRidgeModel | null
   segments: ExchangeSegment[]
   gates: TradeModelGate[]
@@ -128,6 +137,19 @@ export type TradeModelHealthBundle = {
   }
   rawTradeCount: number
   historyAssetCount: number
+  samplingAudit?: {
+    selection: string
+    anchorQueryFiles: number
+    queriedAnchorIds: number
+    queryRows: number
+    uniqueQueryTrades: number
+    importedTrades: number
+    combinedDeduplicatedTrades: number
+    meanAnchorExposure: number
+    maximumAnchorExposure: number
+    multiAnchorTradeShare: number
+    warning: string
+  }
   exchange: ExchangePremiumHealth
   outcomes: TradeOutcomeHealth[]
   lineupOutcome: {

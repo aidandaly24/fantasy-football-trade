@@ -1,8 +1,19 @@
 {
   "exchange": {
     "baseline": {
-      "mae": 0.21907273670231475,
-      "rmse": 0.28780499987567015
+      "mae": 0.19122056456845418,
+      "rmse": 0.2564873248793277
+    },
+    "baselines": {
+      "globalMedian": {
+        "mae": 0.21907273670231475,
+        "rmse": 0.28780499987567015
+      },
+      "selected": "structure-segmented median",
+      "structureSegmentedMedian": {
+        "mae": 0.19122056456845418,
+        "rmse": 0.2564873248793277
+      }
     },
     "dateSpanDays": 28,
     "enabled": false,
@@ -20,6 +31,13 @@
         "label": "Chronological held-out rows",
         "passed": true,
         "requirement": ">= 80 later trades"
+      },
+      {
+        "actual": 87.0,
+        "id": "novelLeagues",
+        "label": "Held-out rows from unseen leagues",
+        "passed": true,
+        "requirement": ">= 60 later trades from leagues absent in training"
       },
       {
         "actual": 427.0,
@@ -57,14 +75,22 @@
         "requirement": ">= 75%"
       },
       {
-        "actual": 0.19655478685816943,
+        "actual": 0.07952922306980571,
         "id": "mae",
-        "label": "Held-out MAE beats median",
+        "label": "Held-out MAE beats best simple baseline",
         "passed": true,
-        "requirement": ">= 0% regression"
+        "requirement": ">= 2% improvement"
+      },
+      {
+        "actual": 0.07791395990026612,
+        "id": "clusterMae",
+        "label": "League-balanced MAE lift",
+        "passed": true,
+        "requirement": ">= 2% improvement"
       }
     ],
-    "maeImprovement": 0.19655478685816943,
+    "leagueBalancedMaeImprovement": 0.07791395990026612,
+    "maeImprovement": 0.07952922306980571,
     "medianPremium": 0.16465041832319582,
     "model": {
       "coefficients": [
@@ -142,6 +168,11 @@
       "mae": 0.1760129416333554,
       "rmse": 0.22069233610640043
     },
+    "novelLeagueMetrics": {
+      "mae": 0.1757353061617663,
+      "rmse": 0.22091717166278388
+    },
+    "novelLeagueTestRows": 87,
     "rows": 436,
     "segments": [
       {
@@ -244,10 +275,11 @@
     "status": "needs-data",
     "target": "accepted package value / elite value - 1 at trade date",
     "testRows": 88,
+    "testStart": "2026-08-10",
     "trainingRows": 348,
     "uniqueLeagues": 427
   },
-  "generatedAt": "2026-08-12T04:16:18.582481Z",
+  "generatedAt": "2026-08-12T04:54:39.197189Z",
   "historyAssetCount": 528,
   "historySeriesCount": 1056,
   "lineupOutcome": {
@@ -458,6 +490,19 @@
     }
   ],
   "rawTradeCount": 1674,
+  "samplingAudit": {
+    "anchorQueryFiles": 20,
+    "combinedDeduplicatedTrades": 1674,
+    "importedTrades": 830,
+    "maximumAnchorExposure": 2,
+    "meanAnchorExposure": 1.0213723284589427,
+    "multiAnchorTradeShare": 0.021372328458942633,
+    "queriedAnchorIds": 20,
+    "queryRows": 908,
+    "selection": "position/value-stratified current-player anchors plus the private hosted anchor sample",
+    "uniqueQueryTrades": 889,
+    "warning": "Anchor discovery is not a probability sample of all trades. Deduplication removes repeated rows but cannot remove selection bias; promotion still requires later independent leagues and exact historical format coverage."
+  },
   "source": {
     "acceptedTradesOnly": true,
     "historicalFormatWarning": "The historical endpoint matches 1QB versus superflex but does not expose point-in-time PPR, TE-premium, or team-count variants.",

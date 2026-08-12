@@ -25,6 +25,7 @@ import type {
 import type { ResearchPipelineBundle } from './research'
 import type { RookieBoardBundle } from './rookies'
 import type { TradeModelHealthBundle, TradeTapeRefreshState } from './trade-models'
+import type { AssetReturnHealthBundle } from './asset-returns'
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
@@ -34,6 +35,7 @@ const valueRequests = new Map<string, Promise<ValueBundle>>()
 const currentSeasonValueRequests = new Map<string, Promise<CurrentSeasonValueBundle>>()
 let modelHealthRequest: Promise<ModelHealthBundle | null> | null = null
 let eventModelHealthRequest: Promise<EventModelHealthBundle | null> | null = null
+let assetReturnHealthRequest: Promise<AssetReturnHealthBundle | null> | null = null
 let rookieBoardRequest: Promise<RookieBoardBundle> | null = null
 let intelRequest: Promise<IntelFeed> | null = null
 let intelCachedAt = 0
@@ -150,6 +152,11 @@ export async function fetchTradeModelHealth(): Promise<TradeModelHealthBundle | 
   } catch {
     return null
   }
+}
+
+export async function fetchAssetReturnHealth(): Promise<AssetReturnHealthBundle | null> {
+  assetReturnHealthRequest ??= fetchJson<AssetReturnHealthBundle>('/data/asset-return-health.json').catch(() => null)
+  return assetReturnHealthRequest
 }
 
 export async function fetchTradeTapeState(): Promise<TradeTapeRefreshState> {

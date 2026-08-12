@@ -92,9 +92,20 @@ premium on later trades. Segment medians are descriptive and require at least
 10 rows; they are not a substitute for promotion.
 
 Promotion requires at least 400 rows, 80 later held-out rows, 100 source
-leagues, 90 days of trade dates, declared format/age coverage, and no held-out
-MAE regression. Until every gate passes, the Trade Lab displays the sample and
-its status but does not apply the estimate.
+leagues, 90 days of trade dates, declared format/age coverage, at least 60
+later trades from leagues absent in training, and at least 2% held-out and
+league-balanced MAE improvement over the better simple baseline. Until every
+gate passes, the Trade Lab displays the sample and its status but does not
+apply the estimate.
+
+V7.6 strengthens that comparison without relaxing any source gate. The final
+chronological slice now reports rows from leagues absent in training,
+league-balanced MAE, and both a global-median and a structure-segmented median
+baseline. The ridge challenger must beat the better simple baseline and its
+league-balanced counterpart by at least 2%. The artifact also records anchor
+query exposure and explicitly warns that a position/value anchor sample is not
+a probability sample of all trades. Deduplication prevents repeated packages
+from becoming extra rows; it does not erase anchor-selection bias.
 
 ## Outcome targets
 

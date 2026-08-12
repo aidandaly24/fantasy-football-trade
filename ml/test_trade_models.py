@@ -14,6 +14,7 @@ from ml.trade_models import (
     add_outcome_labels,
     audit_trade_availability,
     build_training_manifest,
+    build_anchor_sampling_audit,
     import_training_tape,
     load_all_trades,
     normalize_exchange_trade,
@@ -136,6 +137,25 @@ class TradeModelTests(unittest.TestCase):
         report = train_exchange(pd.DataFrame(rows))
         self.assertFalse(report["enabled"])
         self.assertEqual(report["status"], "needs-data")
+        self.assertIn("structureSegmentedMedian", report["baselines"])
+        self.assertIn("novelLeagueTestRows", report)
+
+    def test_anchor_sampling_audit_deduplicates_repeat_exposure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            trades_dir = Path(temporary) / "trades" / "2026-08-12"
+            trades_dir.mkdir(parents=True)
+            repeated = trade()
+            (trades_dir / "1.json").write_text(json.dumps([repeated]))
+            (trades_dir / "2.json").write_text(json.dumps([repeated]))
+            with (
+                patch("ml.trade_models.TRADES", trades_dir.parent),
+                patch("ml.trade_models.load_imported_tapes", return_value=([], [])),
+            ):
+                audit = build_anchor_sampling_audit([repeated])
+        self.assertEqual(audit["queryRows"], 2)
+        self.assertEqual(audit["uniqueQueryTrades"], 1)
+        self.assertEqual(audit["maximumAnchorExposure"], 2)
+        self.assertEqual(audit["multiAnchorTradeShare"], 1)
 
     def test_outcome_keeps_structure_and_premium_challengers_separate(self) -> None:
         row = {feature: 1.0 for feature in EXCHANGE_FEATURES}
