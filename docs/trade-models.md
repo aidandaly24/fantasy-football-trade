@@ -26,6 +26,14 @@ artifact so fresh raw data cannot be mistaken for newly validated evidence.
 Offline retraining remains the review point for chronological splits, metrics,
 and promotion gates.
 
+The adjacent authenticated **Download training tape** action exports every
+sanitized D1 row with a stable SHA-256 dataset ID and `private, no-store`
+delivery. The dataset ID depends on the canonical trade rows, not the download
+time. That makes the offline input auditable without publishing the raw tape.
+An export is still only collected data: until an artifact records the imported
+dataset ID and point-in-time coverage, the Trade Lab labels the hosted tape as
+not connected to that artifact.
+
 Anchor players are sampled across positions and the full current value range.
 Every completed package is deduplicated by trade ID. Asset history is requested
 for every observed package asset and, when `--history-scope universe` is used,
@@ -118,6 +126,11 @@ The historical refresh button is available before a package is selected. It is
 the supported collection trigger; the UI never claims that an inactive model is
 automatically collecting in the background. Models below their declared gates
 use the explicit `needs-data` status.
+
+The panel also renders the pipeline as collected, historically valued, trained,
+validated, and influencing this trade. The final stage is active only when a
+promoted exchange or outcome signal has nonzero weight and a non-null
+contribution for the selected package.
 
 Accepted trades cannot identify rejected-offer acceptance probability. These
 models must not be used to claim that another manager will accept an offer.

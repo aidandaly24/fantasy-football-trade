@@ -20,6 +20,7 @@ The league ribbon has one-click controls for BC League (`1336087922847289344`) a
 - Completed Sleeper trades—not saved recommendations—receive 7/30/90/180/365-day outcome checkpoints when a legitimate entry snapshot exists.
 - Accepted 1-for-2/3 exchange premiums and 90/180/365-day market outcomes have separate historical models. Raw provider totals remain unchanged; only promoted evidence may enter the user-weighted Trade Lab view.
 - Trade Lab has an authenticated historical-tape refresh action that deduplicates FantasyCalc completed trades into D1. It exposes coverage and failures; it does not retrain or promote a model inside the request.
+- The authenticated training-tape export gives offline retraining a private, sanitized, content-addressed input. Trade Lab distinguishes collected, historically valued, trained, validated, and currently influencing evidence.
 - V4.7 records a private, full-league market tape when the Evidence desk opens and refreshes seeded leagues automatically from attributed Tradyr data.
 - V4.8 converts non-overlapping 30-day outcomes into research-only empirical position and event cohorts, shrinking small samples instead of treating them as established effects.
 - V4.9 trains a small time-split ridge model in shadow. It cannot change rankings, prices, or packages; promotion requires enough independent examples, assets, market regimes, held-out MAE lift, and ranking quality.
@@ -51,7 +52,8 @@ npm run build
 - [Development and pull-request workflow](docs/development-workflow.md)
 
 All project changes use task-specific branches and GitHub pull requests. Do not
-push directly to `main`, and do not merge without explicit approval.
+push directly to `main`; merge only passing, non-conflicting scoped work under
+the active user/workspace authorization, then deploy the exact merged revision.
 
 ## Ranking and trade quantities
 

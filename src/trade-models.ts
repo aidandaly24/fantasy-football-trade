@@ -21,6 +21,26 @@ export type TradeTapeRefreshState = {
   } | null
 }
 
+export type TradeTrainingManifest = {
+  schemaVersion: number
+  datasetId: string
+  source: string
+  exportedAt: string
+  totalTrades: number
+  uniqueLeagues: number
+  firstTradeAt: string | null
+  latestTradeAt: string | null
+  pointInTimeValuedTrades: number
+  historyAssetCount: number
+}
+
+export type TradeEvidenceStage = {
+  id: 'collected' | 'valued' | 'trained' | 'validated' | 'influencing'
+  label: string
+  status: 'ready' | 'partial' | 'blocked' | 'inactive'
+  detail: string
+}
+
 export type TradeModelGate = {
   id: string
   label: string
@@ -90,6 +110,7 @@ export type TradeOutcomeHealth = {
 
 export type TradeModelHealthBundle = {
   generatedAt: string
+  trainingManifest?: TradeTrainingManifest
   source: {
     name: string
     methodology: string
@@ -158,6 +179,59 @@ export type WeightedTradeEvidence = {
     signal: number | null
     contribution: number | null
   }>
+}
+
+export function buildHistoricalTradeEvidenceStages(
+  tape: TradeTapeRefreshState | null,
+  health: TradeModelHealthBundle | null,
+  weighted: WeightedTradeEvidence,
+): TradeEvidenceStage[] {
+  const manifest = health?.trainingManifest
+  const historicalContributions = weighted.contributions.filter((item) => item.id === 'exchange' || item.id === 'outcome')
+  const activeHistorical = historicalContributions.filter((item) => item.weight > 0 && item.contribution !== null)
+  const validatedModels = Number(Boolean(health?.exchange.enabled)) + (health?.outcomes.filter((item) => item.enabled).length ?? 0)
+  return [
+    {
+      id: 'collected',
+      label: 'Collected',
+      status: tape?.totalTrades ? (tape.status === 'ready' ? 'ready' : 'partial') : 'inactive',
+      detail: tape?.totalTrades
+        ? `${tape.totalTrades} completed trades saved from ${tape.uniqueLeagues} leagues.`
+        : 'No hosted completed-trade tape is saved yet.',
+    },
+    {
+      id: 'valued',
+      label: 'Historically valued',
+      status: manifest?.pointInTimeValuedTrades ? 'ready' : 'blocked',
+      detail: manifest
+        ? `${manifest.pointInTimeValuedTrades}/${manifest.totalTrades} imported trades have point-in-time price coverage.`
+        : 'The shipped artifact does not identify a hosted-tape dataset or point-in-time join.',
+    },
+    {
+      id: 'trained',
+      label: 'Trained',
+      status: health?.exchange.rows ? 'ready' : 'blocked',
+      detail: health?.exchange.rows
+        ? `${health.exchange.rows} eligible exchange rows in the artifact dated ${new Date(health.generatedAt).toLocaleDateString()}.`
+        : 'No eligible historical exchange rows are in the shipped artifact.',
+    },
+    {
+      id: 'validated',
+      label: 'Validated',
+      status: validatedModels ? 'ready' : 'blocked',
+      detail: validatedModels
+        ? `${validatedModels} historical model${validatedModels === 1 ? '' : 's'} passed every declared held-out gate.`
+        : 'No historical model has passed every sample, span, coverage, and held-out performance gate.',
+    },
+    {
+      id: 'influencing',
+      label: 'Influencing this trade',
+      status: activeHistorical.length ? 'ready' : 'inactive',
+      detail: activeHistorical.length
+        ? `${activeHistorical.map((item) => item.id).join(' and ')} evidence contributes to the weighted direction.`
+        : 'No exchange-premium or future-outcome evidence contributes to this trade.',
+    },
+  ]
 }
 
 function average(values: number[]): number {
