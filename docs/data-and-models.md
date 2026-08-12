@@ -138,6 +138,11 @@ return P&L, draft-capital flow, and current market net remain visible facts;
 they are never blended into a target score. League-relative thresholds are
 recalculated from the loaded league and candidate package population.
 
+Compounders must also keep tracked package downside at or above the full
+candidate median. Player-based liquidity conversions require both non-negative
+promoted carry and the same package-downside guard; draft picks remain separate
+liquidity instruments and do not receive a player-return fallback.
+
 The actionable book is a selection policy, not a new trained model. It adds no
 collector, storage, scheduled process, acceptance probability, or long-term
 return claim. Its holding period and exit condition are decision rules for the

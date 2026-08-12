@@ -45,7 +45,8 @@ The three books are:
 - **Long-term compounder:** starter-level current value, age that fits the
   declared horizon relative to meaningful peers at the position, above-median
   covered liquidity, no-worse-than-median tracked drawdown, a verified current
-  role, and non-negative promoted 30-day package carry.
+  role, non-negative promoted 30-day package carry, and package downside no
+  worse than the full candidate median.
 - **Catalyst flip:** a promoted 30-day row, package P&L at least as large as the
   median positive candidate, downside no worse than the candidate median,
   above-median liquidity, a verified role, and no veteran-decay exception. The
@@ -53,7 +54,9 @@ The three books are:
 - **Liquidity conversion:** a reusable pick or above-median liquid player,
   material inventory value, improved portfolio liquidity or draft capital,
   non-negative current-market net, simpler inventory, and horizon-compatible
-  age for a player.
+  age for a player. A player conversion must also have non-negative promoted
+  carry and package downside no worse than the full candidate median; picks do
+  not inherit a player-return requirement.
 
 Each surfaced record contains the candidate package, current market net,
 promoted return P&L, tracked downside, age at the declared horizon, holding

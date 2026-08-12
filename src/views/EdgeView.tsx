@@ -465,6 +465,7 @@ export function EdgeView({
           <span><small>Median covered liquidity</small><b>{actionableTradeBook.thresholds.liquidityFloor === null ? 'Unavailable' : actionableTradeBook.thresholds.liquidityFloor.toFixed(4)}</b></span>
           <span><small>Median tracked drawdown</small><b>{actionableTradeBook.thresholds.drawdownFloor === null ? 'Unavailable' : `${(actionableTradeBook.thresholds.drawdownFloor * 100).toFixed(1)}%`}</b></span>
           <span><small>Material positive P&amp;L</small><b>{actionableTradeBook.thresholds.catalystPnlFloor === null ? 'Unavailable' : `${actionableTradeBook.thresholds.catalystPnlFloor.toFixed(0)} FC`}</b></span>
+          <span><small>Package downside floor</small><b>{actionableTradeBook.thresholds.packageDownsideFloor === null ? 'Unavailable' : `${actionableTradeBook.thresholds.packageDownsideFloor.toFixed(0)} FC`}</b></span>
         </div>
         <div className="model-caveat"><Info size={17} /><span>These gates improve selection discipline; they do not prove the seller will accept or that a target will appreciate. Negotiation utility and realized outcomes remain separate future edges.</span></div>
       </section>
