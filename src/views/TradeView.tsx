@@ -2,7 +2,7 @@ import { AlertTriangle, ArrowLeftRight, Check, Info, RefreshCw, Search, X } from
 import { useEffect, useMemo, useState } from 'react'
 import { fetchTradeTapeState, refreshTradeTape } from '../api'
 import type { LeagueContext } from '../league-context'
-import { assetRoleLabel, evaluateTrade } from '../rankings'
+import { assetRoleLabel, evaluateTrade, optimizeLineup, projectedLineupPpg } from '../rankings'
 import type { ResolvedTeamStrategy } from '../strategy'
 import { strategyProfileForLeague } from '../leagues'
 import type { Asset, Team, TeamStrategyProfile } from '../types'
@@ -299,7 +299,7 @@ function ScenarioPanel({
   return (
     <section className="scenario-panel panel">
       <div className="panel-heading">
-        <div><span className="eyebrow">Honest scenario simulator</span><h2>Four lenses, no blended grade</h2></div>
+        <div><span className="eyebrow">Honest scenario simulator</span><h2>Five lenses, no blended grade</h2></div>
         <span className="method-note">{objectiveApplies ? `${strategy.mode} · ${strategy.horizonYears}-year horizon` : 'Factual comparison only'}</span>
       </div>
       <div className="scenario-grid">
@@ -315,8 +315,15 @@ function ScenarioPanel({
           <strong>{signed(result.currentSeasonImpactA)} power</strong>
           <span>Before <b>{currentSeason?.before.score.toLocaleString() ?? 'Unavailable'}</b></span>
           <span>After <b>{currentSeason?.after.score.toLocaleString() ?? 'Unavailable'}</b></span>
-          <span>Modeled expected <b>{signed(production?.expectedDelta ?? null, ' PPG', true)}</b></span>
           {currentSeason && <em>{currentSeason.before.covered}/{currentSeason.before.required} redraft-valued slots before · {currentSeason.after.covered}/{currentSeason.after.required} after</em>}
+        </article>
+        <article>
+          <small>Covered production</small>
+          <strong>{production?.complete ? signed(production.expectedDelta, ' PPG', true) : 'Lineup guarded'}</strong>
+          <span>Floor <b>{signed(production?.floorDelta ?? null, ' PPG', true)}</b></span>
+          <span>Expected <b>{signed(production?.expectedDelta ?? null, ' PPG', true)}</b></span>
+          <span>Ceiling <b>{signed(production?.ceilingDelta ?? null, ' PPG', true)}</b></span>
+          {production && <em>{production.beforeCoverage.covered}/{production.beforeCoverage.required} modeled slots before · {production.afterCoverage.covered}/{production.afterCoverage.required} after</em>}
         </article>
         <article>
           <small>Pick-position scenarios</small>
@@ -474,7 +481,7 @@ function PremiumModelPanel({
           const contribution = weighted.contributions.find((item) => item.id === key)
           return (
             <label key={key}>
-              <span><strong>{key === 'exchange' ? 'Exchange premium' : key === 'outcome' ? 'Future outcome' : key === 'lineup' ? 'Lineup power' : 'Market'}</strong><b>{weights[key]}</b></span>
+              <span><strong>{key === 'exchange' ? 'Exchange premium' : key === 'outcome' ? 'Future outcome' : key === 'lineup' ? 'Covered production' : 'Market'}</strong><b>{weights[key]}</b></span>
               <input type="range" min="0" max="100" value={weights[key]} onChange={(event) => setWeight(key, Number(event.target.value))} onPointerUp={(event) => commitWeight(key, Number(event.currentTarget.value))} onKeyUp={(event) => commitWeight(key, Number(event.currentTarget.value))} />
               <small>{contribution?.signal === null ? 'Not promoted' : `${contribution?.signal && contribution.signal >= 0 ? '+' : ''}${contribution?.signal?.toFixed(1)}% Side A signal`}</small>
             </label>
@@ -554,8 +561,8 @@ export function TradeView({
   }) : null
   const averageRawValue = (result.valueA + result.valueB) / 2
   const rawMarketPercent = ready && averageRawValue > 0 ? (result.marketNetA / averageRawValue) * 100 : null
-  const beforeLineup = result.currentSeasonScenarioA?.before.score ?? 0
-  const lineupPercent = result.currentSeasonImpactA === null || beforeLineup <= 0 ? null : (result.currentSeasonImpactA / beforeLineup) * 100
+  const beforeLineup = optimizeLineup(teamA.players, rosterPositions).reduce((sum, asset) => sum + projectedLineupPpg(asset), 0)
+  const lineupPercent = result.lineupImpactA === null || beforeLineup <= 0 ? null : (result.lineupImpactA / beforeLineup) * 100
   const signals = modelSignalsForTrade({ rawMarketPercent, lineupPercent, structure, health: tradeModelHealth, weights })
   const weighted = weightTradeEvidence(signals, weights)
   const privateStrategy = strategyProfileForLeague(leagueContext.id, strategyRosterId)
