@@ -1,0 +1,469 @@
+{
+  "exchange": {
+    "baseline": {
+      "mae": 0.2420570165758294,
+      "rmse": 0.315644024435653
+    },
+    "dateSpanDays": 28,
+    "enabled": false,
+    "gates": [
+      {
+        "actual": 267.0,
+        "id": "rows",
+        "label": "Eligible accepted trades",
+        "passed": false,
+        "requirement": ">= 400 deduplicated elite 1-for-2/3 trades"
+      },
+      {
+        "actual": 54.0,
+        "id": "heldout",
+        "label": "Chronological held-out rows",
+        "passed": false,
+        "requirement": ">= 80 later trades"
+      },
+      {
+        "actual": 263.0,
+        "id": "leagues",
+        "label": "Independent leagues",
+        "passed": true,
+        "requirement": ">= 100 source leagues"
+      },
+      {
+        "actual": 28.0,
+        "id": "span",
+        "label": "Historical span",
+        "passed": false,
+        "requirement": ">= 90 days"
+      },
+      {
+        "actual": 0.9962546816479401,
+        "id": "format",
+        "label": "League-format coverage",
+        "passed": true,
+        "requirement": ">= 95%"
+      },
+      {
+        "actual": 0.0,
+        "id": "historicalFormat",
+        "label": "Exact historical value format",
+        "passed": false,
+        "requirement": ">= 95% exact QB/PPR/TEP/team-count history"
+      },
+      {
+        "actual": 0.8164794007490637,
+        "id": "age",
+        "label": "Age coverage",
+        "passed": true,
+        "requirement": ">= 75%"
+      },
+      {
+        "actual": 0.24652879008793183,
+        "id": "mae",
+        "label": "Held-out MAE beats median",
+        "passed": true,
+        "requirement": ">= 0% regression"
+      }
+    ],
+    "maeImprovement": 0.24652879008793183,
+    "medianPremium": 0.16115470852017943,
+    "model": {
+      "coefficients": [
+        -0.1408154352429282,
+        0.12095402188199302,
+        -0.016894621565176036,
+        0.014195056096209066,
+        0.03874779686980124,
+        0.014195056096209059,
+        -0.017142793572291093,
+        -0.04248673196540951,
+        -0.022986238472619467,
+        -0.03898942798882402,
+        0.01960367771325058,
+        -0.023834665840155603,
+        -0.004622885081850347,
+        0.00967147825897798,
+        0.03855553952601194
+      ],
+      "features": [
+        "elite_percentile",
+        "package_size",
+        "pick_count",
+        "elite_is_pick",
+        "elite_age",
+        "elite_age_missing",
+        "package_average_age",
+        "package_age_missing",
+        "num_teams",
+        "num_qbs",
+        "ppr",
+        "te_premium",
+        "roster_size",
+        "starter_count",
+        "depth_ratio"
+      ],
+      "intercept": 0.18707118174390489,
+      "kind": "standardized-ridge-v1",
+      "means": [
+        0.8929541791421471,
+        2.403755868544601,
+        1.0234741784037558,
+        0.0892018779342723,
+        24.99200469483568,
+        0.0892018779342723,
+        24.411095461658842,
+        0.11267605633802817,
+        11.474178403755868,
+        1.6572769953051643,
+        0.8873239436619719,
+        0.28497652576562943,
+        24.469483568075116,
+        9.295774647887324,
+        2.6008451381690816
+      ],
+      "scales": [
+        0.07811861832141573,
+        0.49064963788878513,
+        0.8636711389109313,
+        0.2850349152424515,
+        8.195059567765616,
+        0.2850349152424515,
+        9.110268440897995,
+        0.31619639888230494,
+        2.1980657109332635,
+        0.4746197917784079,
+        0.26019832313251623,
+        0.4120652488715545,
+        6.656935965360721,
+        1.3043196510186168,
+        0.6194846078427118
+      ]
+    },
+    "modelMetrics": {
+      "mae": 0.18238299314709572,
+      "rmse": 0.2350825171782424
+    },
+    "rows": 267,
+    "segments": [
+      {
+        "dimension": "elite_band",
+        "label": "70\u201384th",
+        "medianPremium": 0.3425325983259998,
+        "p25Premium": 0.12813437277921086,
+        "p75Premium": 0.5622488019333445,
+        "rows": 76
+      },
+      {
+        "dimension": "elite_band",
+        "label": "85\u201394th",
+        "medianPremium": 0.1585691262627601,
+        "p25Premium": 0.00866266627346668,
+        "p75Premium": 0.31754975294887705,
+        "rows": 112
+      },
+      {
+        "dimension": "elite_band",
+        "label": "95th+",
+        "medianPremium": 0.0177289377289378,
+        "p25Premium": -0.08752432980014524,
+        "p75Premium": 0.18265361168999528,
+        "rows": 79
+      },
+      {
+        "dimension": "package_size",
+        "label": "2.0",
+        "medianPremium": 0.12482202183198865,
+        "p25Premium": -0.047372919171235484,
+        "p75Premium": 0.282318652393201,
+        "rows": 159
+      },
+      {
+        "dimension": "package_size",
+        "label": "3.0",
+        "medianPremium": 0.22564535562779642,
+        "p25Premium": 0.03297380944323319,
+        "p75Premium": 0.5315716124809272,
+        "rows": 108
+      },
+      {
+        "dimension": "format",
+        "label": "1QB",
+        "medianPremium": 0.20861812750384812,
+        "p25Premium": 0.047583248245406384,
+        "p75Premium": 0.4256001176356072,
+        "rows": 84
+      },
+      {
+        "dimension": "format",
+        "label": "Superflex",
+        "medianPremium": 0.13246187363834427,
+        "p25Premium": -0.04481080652313779,
+        "p75Premium": 0.3043466754587446,
+        "rows": 183
+      },
+      {
+        "dimension": "picks",
+        "label": "Includes picks",
+        "medianPremium": 0.16791744840525324,
+        "p25Premium": -0.03498671390611163,
+        "p75Premium": 0.3636708380735685,
+        "rows": 189
+      },
+      {
+        "dimension": "picks",
+        "label": "Players only",
+        "medianPremium": 0.14863068049565442,
+        "p25Premium": 0.006392871700268532,
+        "p75Premium": 0.3005689315121395,
+        "rows": 78
+      },
+      {
+        "dimension": "age",
+        "label": "25+",
+        "medianPremium": 0.15163630639129388,
+        "p25Premium": -0.03517049410639625,
+        "p75Premium": 0.33998695472576074,
+        "rows": 196
+      },
+      {
+        "dimension": "age",
+        "label": "Pick/no age",
+        "medianPremium": 0.1880952380952381,
+        "p25Premium": 0.07209668433802696,
+        "p75Premium": 0.4193560904435658,
+        "rows": 23
+      },
+      {
+        "dimension": "age",
+        "label": "Under 25",
+        "medianPremium": 0.18265361168999528,
+        "p25Premium": 0.0034902787005988145,
+        "p75Premium": 0.3521126447389346,
+        "rows": 48
+      }
+    ],
+    "status": "needs-data",
+    "target": "accepted package value / elite value - 1 at trade date",
+    "testRows": 54,
+    "trainingRows": 213,
+    "uniqueLeagues": 263
+  },
+  "generatedAt": "2026-08-12T03:11:33.309465Z",
+  "historyAssetCount": 493,
+  "historySeriesCount": 986,
+  "lineupOutcome": {
+    "enabled": false,
+    "reason": "External completed trades do not expose point-in-time full rosters or legal lineups. League-local snapshots are required.",
+    "rows": 0,
+    "status": "needs-data",
+    "target": "90/180/365-day change in legal projected lineup output"
+  },
+  "outcomes": [
+    {
+      "baseline": {
+        "mae": 0,
+        "rmse": 0
+      },
+      "enabled": false,
+      "gates": [
+        {
+          "actual": 0.0,
+          "id": "rows",
+          "label": "90-day labels",
+          "passed": false,
+          "requirement": ">= 300 point-in-time outcomes"
+        },
+        {
+          "actual": 0.0,
+          "id": "heldout",
+          "label": "Chronological held-out rows",
+          "passed": false,
+          "requirement": ">= 60 later outcomes"
+        },
+        {
+          "actual": 0.0,
+          "id": "span",
+          "label": "Trade-date span",
+          "passed": false,
+          "requirement": ">= 90 days"
+        },
+        {
+          "actual": 0.0,
+          "id": "structure",
+          "label": "Structure model beats median",
+          "passed": false,
+          "requirement": ">= 2% MAE improvement"
+        },
+        {
+          "actual": 0.0,
+          "id": "premium",
+          "label": "Premium feature adds held-out value",
+          "passed": false,
+          "requirement": ">= 2% MAE improvement vs structure-only"
+        }
+      ],
+      "horizonDays": 90,
+      "premiumAware": {
+        "maeImprovementVsStructure": 0.0,
+        "metrics": {
+          "mae": 0,
+          "rmse": 0
+        },
+        "model": null
+      },
+      "rows": 0,
+      "status": "needs-data",
+      "structureOnly": {
+        "maeImprovement": 0.0,
+        "metrics": {
+          "mae": 0,
+          "rmse": 0
+        },
+        "model": null
+      },
+      "target": "elite-side market return minus package-side market return",
+      "testRows": 0,
+      "trainingRows": 0
+    },
+    {
+      "baseline": {
+        "mae": 0,
+        "rmse": 0
+      },
+      "enabled": false,
+      "gates": [
+        {
+          "actual": 0.0,
+          "id": "rows",
+          "label": "180-day labels",
+          "passed": false,
+          "requirement": ">= 220 point-in-time outcomes"
+        },
+        {
+          "actual": 0.0,
+          "id": "heldout",
+          "label": "Chronological held-out rows",
+          "passed": false,
+          "requirement": ">= 44 later outcomes"
+        },
+        {
+          "actual": 0.0,
+          "id": "span",
+          "label": "Trade-date span",
+          "passed": false,
+          "requirement": ">= 90 days"
+        },
+        {
+          "actual": 0.0,
+          "id": "structure",
+          "label": "Structure model beats median",
+          "passed": false,
+          "requirement": ">= 2% MAE improvement"
+        },
+        {
+          "actual": 0.0,
+          "id": "premium",
+          "label": "Premium feature adds held-out value",
+          "passed": false,
+          "requirement": ">= 2% MAE improvement vs structure-only"
+        }
+      ],
+      "horizonDays": 180,
+      "premiumAware": {
+        "maeImprovementVsStructure": 0.0,
+        "metrics": {
+          "mae": 0,
+          "rmse": 0
+        },
+        "model": null
+      },
+      "rows": 0,
+      "status": "needs-data",
+      "structureOnly": {
+        "maeImprovement": 0.0,
+        "metrics": {
+          "mae": 0,
+          "rmse": 0
+        },
+        "model": null
+      },
+      "target": "elite-side market return minus package-side market return",
+      "testRows": 0,
+      "trainingRows": 0
+    },
+    {
+      "baseline": {
+        "mae": 0,
+        "rmse": 0
+      },
+      "enabled": false,
+      "gates": [
+        {
+          "actual": 0.0,
+          "id": "rows",
+          "label": "365-day labels",
+          "passed": false,
+          "requirement": ">= 120 point-in-time outcomes"
+        },
+        {
+          "actual": 0.0,
+          "id": "heldout",
+          "label": "Chronological held-out rows",
+          "passed": false,
+          "requirement": ">= 24 later outcomes"
+        },
+        {
+          "actual": 0.0,
+          "id": "span",
+          "label": "Trade-date span",
+          "passed": false,
+          "requirement": ">= 90 days"
+        },
+        {
+          "actual": 0.0,
+          "id": "structure",
+          "label": "Structure model beats median",
+          "passed": false,
+          "requirement": ">= 2% MAE improvement"
+        },
+        {
+          "actual": 0.0,
+          "id": "premium",
+          "label": "Premium feature adds held-out value",
+          "passed": false,
+          "requirement": ">= 2% MAE improvement vs structure-only"
+        }
+      ],
+      "horizonDays": 365,
+      "premiumAware": {
+        "maeImprovementVsStructure": 0.0,
+        "metrics": {
+          "mae": 0,
+          "rmse": 0
+        },
+        "model": null
+      },
+      "rows": 0,
+      "status": "needs-data",
+      "structureOnly": {
+        "maeImprovement": 0.0,
+        "metrics": {
+          "mae": 0,
+          "rmse": 0
+        },
+        "model": null
+      },
+      "target": "elite-side market return minus package-side market return",
+      "testRows": 0,
+      "trainingRows": 0
+    }
+  ],
+  "rawTradeCount": 889,
+  "source": {
+    "acceptedTradesOnly": true,
+    "historicalFormatWarning": "The historical endpoint matches 1QB versus superflex but does not expose point-in-time PPR, TE-premium, or team-count variants.",
+    "methodology": "https://fantasycalc.com/frequently-asked-questions",
+    "name": "FantasyCalc public completed-trade and player-history APIs",
+    "terms": "https://fantasycalc.com/terms-of-usage",
+    "warning": "Accepted trades cannot identify rejected-offer acceptance probability."
+  }
+}

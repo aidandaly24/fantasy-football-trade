@@ -2,6 +2,7 @@ import { AlertTriangle, Check, Info } from 'lucide-react'
 import type { LeagueContext } from '../league-context'
 import type { Asset, ModelHealthBundle } from '../types'
 import { AssetBadge, signedPercent } from '../components/domain-ui'
+import type { TradeModelHealthBundle } from '../trade-models'
 
 const baselineLabels: Record<string, string> = {
   repeatPrior: 'Repeat prior season',
@@ -23,7 +24,7 @@ const sliceLabels: Record<string, string> = {
   gamesObserved14plus: '14+ games observed',
 }
 
-export function ModelView({ health, leagueContext }: { health: ModelHealthBundle | null; leagueContext: LeagueContext }) {
+export function ModelView({ health, tradeHealth, leagueContext }: { health: ModelHealthBundle | null; tradeHealth: TradeModelHealthBundle | null; leagueContext: LeagueContext }) {
   if (!health) {
     return (
       <main className="page-shell model-page">
@@ -121,6 +122,18 @@ export function ModelView({ health, leagueContext }: { health: ModelHealthBundle
       </section>
 
       <section className="model-caveat panel"><Info size={17} /><span><strong>What this does not claim:</strong> production MAE improved{health.metrics.rankCorrelationDelta >= 0 ? ` and rank correlation improved by ${health.metrics.rankCorrelationDelta.toFixed(3)}` : ` while rank correlation trails the simple baseline by ${Math.abs(health.metrics.rankCorrelationDelta).toFixed(3)}`}. That is useful held-out evidence, not proof the model is universally smarter.</span></section>
+
+      {tradeHealth && (
+        <section className="panel trade-model-audit">
+          <div className="panel-heading"><div><span className="eyebrow">Historical trade models</span><h2>Exchange price and future outcome are different targets</h2></div><span className="method-note">Accepted trades only</span></div>
+          <div className="trade-model-audit-grid">
+            <article><small>Exchange premium</small><strong>{tradeHealth.exchange.status}</strong><span>{tradeHealth.exchange.rows} eligible 1-for-2/3 trades · {tradeHealth.exchange.uniqueLeagues} leagues · {tradeHealth.exchange.dateSpanDays} days</span><b>{tradeHealth.exchange.medianPremium === null ? 'No estimate' : `${(tradeHealth.exchange.medianPremium * 100).toFixed(1)}% observed median`}</b></article>
+            {tradeHealth.outcomes.map((outcome) => <article key={outcome.horizonDays}><small>{outcome.horizonDays}-day market outcome</small><strong>{outcome.status}</strong><span>{outcome.rows} point-in-time labels · {outcome.testRows} later held-out rows</span><b>{outcome.enabled ? `${(outcome.premiumAware.maeImprovementVsStructure ?? 0) * 100}% premium lift` : 'Not used in Trade Lab'}</b></article>)}
+            <article><small>Lineup outcome</small><strong>{tradeHealth.lineupOutcome.status}</strong><span>{tradeHealth.lineupOutcome.reason}</span><b>{tradeHealth.lineupOutcome.rows} valid labels</b></article>
+          </div>
+          <div className="model-note scenario-note"><Info size={16} /><span>The first tape is real but only {tradeHealth.exchange.dateSpanDays} days deep. Its provisional {(tradeHealth.exchange.maeImprovement * 100).toFixed(1)}% held-out MAE lift is visible for audit and remains blocked until every sample, span, coverage, and performance gate passes.</span></div>
+        </section>
+      )}
     </main>
   )
 }

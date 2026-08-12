@@ -17,11 +17,12 @@ function client(overrides: Partial<SleeperJournalClient> = {}): SleeperJournalCl
 describe('journal collection', () => {
   it('traverses every predecessor and uses season-specific identities', async () => {
     const result = await collectLeagueJournal('current', client({
-      getRosters: async (id) => [{ roster_id: 1, owner_id: id === 'current' ? 'user-now' : 'user-then' }],
+      getRosters: async (id) => [{ roster_id: 1, owner_id: id === 'current' ? 'user-now' : 'user-then', players: ['20', '3'], starters: ['20'], reserve: ['3'], taxi: [] }],
     }))
     expect(result.seasons.map((season) => season.league_id)).toEqual(['current', 'old'])
     expect(result.identities).toContainEqual(expect.objectContaining({ leagueId: 'current', ownerUserId: 'user-now' }))
     expect(result.identities).toContainEqual(expect.objectContaining({ leagueId: 'old', ownerUserId: 'user-then' }))
+    expect(result.seasonRosters).toContainEqual(expect.objectContaining({ leagueId: 'current', players: ['3', '20'], starters: ['20'] }))
     expect(result.coverage.filter((target) => target.type === 'transactions')).toHaveLength(38)
     expect(result.complete).toBe(true)
   })

@@ -137,6 +137,58 @@ export const tradeOutcomes = sqliteTable(
   ],
 )
 
+export const tradeRosterContexts = sqliteTable(
+  'trade_roster_contexts',
+  {
+    leagueId: text('league_id').notNull(),
+    transactionId: text('transaction_id').notNull(),
+    rosterId: integer('roster_id').notNull(),
+    capturedAt: text('captured_at').notNull(),
+    contextKind: text('context_kind').notNull(),
+    contextJson: text('context_json').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.leagueId, table.transactionId, table.rosterId] })],
+)
+
+export const fantasyCalcTradeTape = sqliteTable(
+  'fantasycalc_trade_tape',
+  {
+    tradeId: text('trade_id').primaryKey(),
+    tradeAt: text('trade_at').notNull(),
+    sourceLeagueId: text('source_league_id').notNull(),
+    numQbs: integer('num_qbs').notNull(),
+    numTeams: integer('num_teams').notNull(),
+    ppr: real('ppr').notNull(),
+    tePremium: real('te_premium').notNull(),
+    side1Count: integer('side1_count').notNull(),
+    side2Count: integer('side2_count').notNull(),
+    rawJson: text('raw_json').notNull(),
+    firstSeenAt: text('first_seen_at').notNull(),
+    lastSeenAt: text('last_seen_at').notNull(),
+  },
+  (table) => [
+    index('idx_fantasycalc_trade_tape_date').on(table.tradeAt),
+    index('idx_fantasycalc_trade_tape_league').on(table.sourceLeagueId),
+  ],
+)
+
+export const fantasyCalcTradeTapeRuns = sqliteTable(
+  'fantasycalc_trade_tape_runs',
+  {
+    id: text('id').primaryKey(),
+    initiatedByUserId: text('initiated_by_user_id').notNull(),
+    startedAt: text('started_at').notNull(),
+    finishedAt: text('finished_at'),
+    status: text('status').notNull(),
+    anchorsAttempted: integer('anchors_attempted').notNull().default(0),
+    anchorsSucceeded: integer('anchors_succeeded').notNull().default(0),
+    tradesDiscovered: integer('trades_discovered').notNull().default(0),
+    newTradeCount: integer('new_trade_count').notNull().default(0),
+    errorsJson: text('errors_json').notNull().default('[]'),
+  },
+  (table) => [index('idx_fantasycalc_trade_tape_runs_started').on(table.startedAt)],
+)
+
 export const intelEvents = sqliteTable(
   'intel_events',
   {

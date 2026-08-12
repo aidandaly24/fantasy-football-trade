@@ -101,6 +101,8 @@ same time.
 | `npm run ml:rookies:offline` | Reproduces the rookie report from local caches |
 | `npm run ml:future-rookies` | Refreshes the V6.4 same-horizon future-rookie evidence tape |
 | `npm run ml:future-rookies:offline` | Reproduces the V6.4 evidence report from pinned local caches |
+| `npm run ml:trade-models` | Refreshes completed-trade tape and the exchange-premium/outcome model audit |
+| `npm run ml:trade-models:offline` | Reproduces the trade-model audit from cached source data |
 | `npm run ml:audit-sources` | Refreshes the historical return-source audit |
 
 Run focused tests during development, then the full relevant suite before the

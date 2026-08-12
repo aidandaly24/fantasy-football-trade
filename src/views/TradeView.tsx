@@ -1,9 +1,21 @@
-import { AlertTriangle, ArrowLeftRight, Check, Info, Search, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { AlertTriangle, ArrowLeftRight, Check, Info, RefreshCw, Search, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { fetchTradeTapeState, refreshTradeTape } from '../api'
 import type { LeagueContext } from '../league-context'
-import { assetRoleLabel, evaluateTrade } from '../rankings'
+import { assetRoleLabel, evaluateTrade, optimizeLineup, projectedLineupPpg } from '../rankings'
 import type { ResolvedTeamStrategy } from '../strategy'
 import type { Asset, Team, TeamStrategyProfile } from '../types'
+import {
+  buildConsolidationStructure,
+  DEFAULT_TRADE_MODEL_WEIGHTS,
+  modelSignalsForTrade,
+  weightTradeEvidence,
+  type ConsolidationStructure,
+  type TradeModelHealthBundle,
+  type TradeTapeRefreshState,
+  type TradeModelWeights,
+  type WeightedTradeEvidence,
+} from '../trade-models'
 import { AssetBadge, Avatar, formatValue } from '../components/domain-ui'
 import type { TradeDraft } from './types'
 
@@ -327,6 +339,130 @@ function ScenarioPanel({
   )
 }
 
+function PremiumModelPanel({
+  structure,
+  health,
+  weights,
+  weighted,
+  onWeightsChange,
+  onWeightsCommit,
+  tape,
+  tapeRefreshing,
+  tapeError,
+  onTapeRefresh,
+}: {
+  structure: ConsolidationStructure | null
+  health: TradeModelHealthBundle | null
+  weights: TradeModelWeights
+  weighted: WeightedTradeEvidence
+  onWeightsChange: (weights: TradeModelWeights) => void
+  onWeightsCommit: (weights: TradeModelWeights) => void
+  tape: TradeTapeRefreshState | null
+  tapeRefreshing: boolean
+  tapeError: string | null
+  onTapeRefresh: () => void
+}) {
+  const exchange = health?.exchange
+  const outcome = health?.outcomes.find((item) => item.horizonDays === weights.outcomeHorizon)
+  const signalLabel = weighted.coveredSignal === null
+    ? 'No weighted evidence'
+    : `${weighted.coveredSignal >= 0 ? '+' : ''}${weighted.coveredSignal.toFixed(1)}% toward Side A`
+  const setWeight = (key: 'market' | 'lineup' | 'exchange' | 'outcome', value: number) => {
+    onWeightsChange({ ...weights, [key]: Math.max(0, Math.min(100, value)) })
+  }
+  const commitWeight = (key: 'market' | 'lineup' | 'exchange' | 'outcome', value: number) => {
+    onWeightsCommit({ ...weights, [key]: Math.max(0, Math.min(100, value)) })
+  }
+  const setOutcomeSetting = <K extends 'outcomeHorizon' | 'outcomeVariant'>(key: K, value: TradeModelWeights[K]) => {
+    const next = { ...weights, [key]: value }
+    onWeightsChange(next)
+    onWeightsCommit(next)
+  }
+  const exchangeStatus = exchange?.status === 'needs-data'
+    ? 'Needs more tape'
+    : exchange?.status === 'shadow'
+      ? 'Shadow only'
+      : exchange?.status === 'validated'
+        ? 'Validated'
+        : 'Unavailable'
+  const tapeStatus = tape?.status === 'never-refreshed'
+    ? 'Not refreshed yet'
+    : tape?.status === 'partial'
+      ? 'Partial refresh'
+      : tape?.status === 'failed'
+        ? 'Last refresh failed'
+        : tape?.status === 'refreshing'
+          ? 'Refreshing'
+          : tape
+            ? 'Current tape saved'
+            : 'Loading tape status'
+  return (
+    <section className="premium-model-panel panel">
+      <div className="panel-heading">
+        <div><span className="eyebrow">Consolidation research</span><h2>Raw price, exchange premium, and outcome stay separate</h2></div>
+        <button className="tape-refresh-button" type="button" onClick={onTapeRefresh} disabled={tapeRefreshing}>
+          <RefreshCw size={15} className={tapeRefreshing ? 'spin' : ''} />
+          {tapeRefreshing ? 'Refreshing tape…' : 'Refresh historical tape'}
+        </button>
+      </div>
+      <div className={`tape-refresh-status ${tapeError ? 'has-error' : ''}`}>
+        <span><strong>{tapeStatus}</strong>{tape?.lastSuccessAt ? ` · last saved ${new Date(tape.lastSuccessAt).toLocaleString()}` : ''}</span>
+        <small>{tapeError ?? 'One click scans a fixed market sample, deduplicates completed trades, and saves only new rows to private storage.'}</small>
+      </div>
+      <div className="premium-model-summary">
+        <article>
+          <small>This deal</small>
+          <strong>{structure ? `${structure.packageAssets.length}-for-1` : 'Not 2/3-for-1'}</strong>
+          <span>{structure
+            ? `${structure.eliteAsset.name} is ${Math.round(structure.elitePercentile * 100)}th percentile; package is ${Math.abs(structure.actualPremium * 100).toFixed(1)}% ${structure.actualPremium >= 0 ? 'above' : 'below'} its raw price.`
+            : 'The exchange-premium target applies only when one side sends one asset and the other sends two or three.'}</span>
+        </article>
+        <article>
+          <small>Stored completed-trade tape</small>
+          <strong>{tape ? `${tape.totalTrades} trades · ${tape.uniqueLeagues} leagues` : 'Loading'}</strong>
+          <span>{tape?.latestRun
+            ? `${tape.latestRun.newTrades} new in the last refresh; ${tape.latestRun.anchorsSucceeded}/${tape.latestRun.anchorsAttempted} anchors succeeded.`
+            : 'No user-triggered collection run is stored yet.'}</span>
+        </article>
+        <article>
+          <small>Last trained exchange artifact</small>
+          <strong>{exchange ? `${exchangeStatus} · ${exchange.rows} eligible trades` : 'Unavailable'}</strong>
+          <span>{exchange?.medianPremium === null || exchange?.medianPremium === undefined
+            ? 'No point-in-time accepted-trade estimate yet.'
+            : `${(exchange.medianPremium * 100).toFixed(1)}% observed median across ${exchange.dateSpanDays} days. ${exchange.enabled ? 'Held-out gates passed.' : 'Research only; not applied.'}`}</span>
+        </article>
+        <article>
+          <small>{weights.outcomeHorizon}-day outcome</small>
+          <strong>{outcome ? `${outcome.status} · ${outcome.rows} labels` : 'Unavailable'}</strong>
+          <span>{outcome?.enabled
+            ? `${weights.outcomeVariant === 'premiumAware' ? 'Premium-aware' : 'Structure-only'} held-out model is available.`
+            : 'No future labels yet. A price premium is not being treated as future profit.'}</span>
+        </article>
+        <article>
+          <small>User-weighted direction</small>
+          <strong>{signalLabel}</strong>
+          <span>{Math.round(weighted.weightCoverage * 100)}% of your requested weight has promoted evidence. Missing weight is exposed, never redistributed.</span>
+        </article>
+      </div>
+      <div className="trade-weight-controls">
+        {(['market', 'lineup', 'exchange', 'outcome'] as const).map((key) => {
+          const contribution = weighted.contributions.find((item) => item.id === key)
+          return (
+            <label key={key}>
+              <span><strong>{key === 'exchange' ? 'Exchange premium' : key === 'outcome' ? 'Future outcome' : key[0].toUpperCase() + key.slice(1)}</strong><b>{weights[key]}</b></span>
+              <input type="range" min="0" max="100" value={weights[key]} onChange={(event) => setWeight(key, Number(event.target.value))} onPointerUp={(event) => commitWeight(key, Number(event.currentTarget.value))} onKeyUp={(event) => commitWeight(key, Number(event.currentTarget.value))} />
+              <small>{contribution?.signal === null ? 'Not promoted' : `${contribution?.signal && contribution.signal >= 0 ? '+' : ''}${contribution?.signal?.toFixed(1)}% Side A signal`}</small>
+            </label>
+          )
+        })}
+        <label className="trade-weight-select"><span><strong>Outcome horizon</strong></span><select value={weights.outcomeHorizon} onChange={(event) => setOutcomeSetting('outcomeHorizon', Number(event.target.value) as 90 | 180 | 365)}><option value={90}>90 days</option><option value={180}>180 days</option><option value={365}>365 days</option></select><small>Held-out horizon</small></label>
+        <label className="trade-weight-select"><span><strong>Outcome model</strong></span><select value={weights.outcomeVariant} onChange={(event) => setOutcomeSetting('outcomeVariant', event.target.value as TradeModelWeights['outcomeVariant'])}><option value="structureOnly">Without paid premium</option><option value="premiumAware">With paid premium</option></select><small>Compare challengers</small></label>
+      </div>
+      <div className="model-note premium-model-note"><Info size={16} /><span>The refresh grows the raw D1 tape; it does not retrain or promote the browser artifact inside this request. The last trained artifact is dated {health?.generatedAt ? new Date(health.generatedAt).toLocaleString() : 'unavailable'}. Accepted trades reveal exchange prices, not rejected offers or acceptance probability.</span></div>
+    </section>
+  )
+}
+
 export function TradeView({
   teams,
   rosterPositions,
@@ -335,6 +471,10 @@ export function TradeView({
   strategy,
   strategyRosterId,
   onStrategyChange,
+  tradeModelHealth,
+  tradeModelWeights,
+  onTradeModelWeightsChange,
+  marketPopulation,
 }: {
   teams: Team[]
   rosterPositions: string[]
@@ -343,6 +483,10 @@ export function TradeView({
   strategy: ResolvedTeamStrategy
   strategyRosterId: number
   onStrategyChange: (strategy: TeamStrategyProfile) => void
+  tradeModelHealth: TradeModelHealthBundle | null
+  tradeModelWeights?: TradeModelWeights
+  onTradeModelWeightsChange: (weights: TradeModelWeights) => void
+  marketPopulation: number[]
 }) {
   const [teamAId, setTeamAId] = useState(initialDraft?.teamAId ?? strategyRosterId)
   const [teamBId, setTeamBId] = useState(initialDraft?.teamBId ?? teams[1]?.rosterId ?? teams[0].rosterId)
@@ -350,6 +494,20 @@ export function TradeView({
   const [selectedB, setSelectedB] = useState<string[]>(initialDraft?.selectedB ?? [])
   const [searchA, setSearchA] = useState('')
   const [searchB, setSearchB] = useState('')
+  const [weights, setWeights] = useState<TradeModelWeights>(() => ({ ...DEFAULT_TRADE_MODEL_WEIGHTS, ...(tradeModelWeights ?? {}) }))
+  const [tape, setTape] = useState<TradeTapeRefreshState | null>(null)
+  const [tapeRefreshing, setTapeRefreshing] = useState(false)
+  const [tapeError, setTapeError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchTradeTapeState().then((state) => {
+      if (!cancelled) setTape(state)
+    }).catch((loadError) => {
+      if (!cancelled) setTapeError(loadError instanceof Error ? loadError.message : 'Tape status unavailable')
+    })
+    return () => { cancelled = true }
+  }, [])
   const teamA = teams.find((team) => team.rosterId === teamAId) ?? teams[0]
   const teamB = teams.find((team) => team.rosterId === teamBId) ?? teams[1] ?? teams[0]
   const assetsA = [...teamA.players, ...teamA.picks].filter((asset) => selectedA.includes(asset.id))
@@ -361,9 +519,37 @@ export function TradeView({
     horizonYears: strategy.horizonYears,
   })
   const ready = assetsA.length > 0 && assetsB.length > 0
+  const structure = ready ? buildConsolidationStructure({
+    sideA: assetsA,
+    sideB: assetsB,
+    teamA,
+    teamB,
+    marketPopulation,
+    leagueContext,
+  }) : null
+  const averageRawValue = (result.valueA + result.valueB) / 2
+  const rawMarketPercent = ready && averageRawValue > 0 ? (result.marketNetA / averageRawValue) * 100 : null
+  const beforeLineup = optimizeLineup(teamA.players, rosterPositions).reduce((sum, asset) => sum + projectedLineupPpg(asset), 0)
+  const lineupPercent = result.lineupImpactA === null || beforeLineup <= 0 ? null : (result.lineupImpactA / beforeLineup) * 100
+  const signals = modelSignalsForTrade({ rawMarketPercent, lineupPercent, structure, health: tradeModelHealth, weights })
+  const weighted = weightTradeEvidence(signals, weights)
 
   const toggle = (ids: string[], setIds: (value: string[]) => void, id: string) => {
     setIds(ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id])
+  }
+
+  const runTapeRefresh = async () => {
+    if (tapeRefreshing) return
+    setTapeRefreshing(true)
+    setTapeError(null)
+    try {
+      setTape(await refreshTradeTape())
+    } catch (refreshError) {
+      setTapeError(refreshError instanceof Error ? refreshError.message : 'Tape refresh failed')
+      void fetchTradeTapeState().then(setTape).catch(() => undefined)
+    } finally {
+      setTapeRefreshing(false)
+    }
   }
 
   return (
@@ -419,6 +605,7 @@ export function TradeView({
       </section>
 
       <RosterImpact teamA={teamA} teamB={teamB} sideA={assetsA} sideB={assetsB} result={result} horizonYears={strategy.horizonYears} />
+      <PremiumModelPanel structure={structure} health={tradeModelHealth} weights={weights} weighted={weighted} onWeightsChange={setWeights} onWeightsCommit={onTradeModelWeightsChange} tape={tape} tapeRefreshing={tapeRefreshing} tapeError={tapeError} onTapeRefresh={() => void runTapeRefresh()} />
       {ready && <ScenarioPanel result={result} teamA={teamA} strategy={strategy} strategyRosterId={strategyRosterId} />}
     </main>
   )

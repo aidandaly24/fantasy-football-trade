@@ -31,6 +31,14 @@ export type StoredLeaguePreference = {
       horizonYears: 1 | 2 | 3 | 4
       flipPriority: number
     }
+    tradeModelWeights?: {
+      market: number
+      lineup: number
+      exchange: number
+      outcome: number
+      outcomeHorizon: 90 | 180 | 365
+      outcomeVariant: 'structureOnly' | 'premiumAware'
+    }
   }
   updatedAt: string
 }
@@ -166,6 +174,29 @@ export function normalizePreferenceInput(input: unknown): Omit<StoredLeaguePrefe
         mode: mode as NonNullable<StoredLeaguePreference['settings']['teamStrategy']>['mode'],
         horizonYears: horizonYears as 1 | 2 | 3 | 4,
         flipPriority,
+      }
+    }
+  }
+  if (rawSettings.tradeModelWeights && typeof rawSettings.tradeModelWeights === 'object' && !Array.isArray(rawSettings.tradeModelWeights)) {
+    const weights = rawSettings.tradeModelWeights as Record<string, unknown>
+    const market = Number(weights.market)
+    const lineup = Number(weights.lineup)
+    const exchange = Number(weights.exchange)
+    const outcome = Number(weights.outcome)
+    const outcomeHorizon = Number(weights.outcomeHorizon)
+    const outcomeVariant = String(weights.outcomeVariant)
+    if (
+      [market, lineup, exchange, outcome].every((weight) => Number.isFinite(weight) && weight >= 0 && weight <= 100)
+      && [90, 180, 365].includes(outcomeHorizon)
+      && ['structureOnly', 'premiumAware'].includes(outcomeVariant)
+    ) {
+      settings.tradeModelWeights = {
+        market,
+        lineup,
+        exchange,
+        outcome,
+        outcomeHorizon: outcomeHorizon as 90 | 180 | 365,
+        outcomeVariant: outcomeVariant as 'structureOnly' | 'premiumAware',
       }
     }
   }

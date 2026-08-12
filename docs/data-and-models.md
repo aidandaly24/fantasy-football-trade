@@ -16,6 +16,8 @@ interchangeable.
 | Completed-trade journal | Factual league transaction ledger | Historical manager context and outcome tracking |
 | Historical market tape | Dated market observations | Calibration and shadow learning research |
 | Trade outcomes | Change after an observed entry snapshot | Evaluation at declared checkpoints |
+| Exchange-premium tape | Accepted 1-for-2/3 package price at the trade date | Separately gated consolidation research |
+| Trade outcome challengers | 90/180/365-day elite-side return minus package-side return | Structure-only versus premium-aware held-out research |
 
 A market composite is not a production forecast. Production is not resale
 profit. News is not causation. A completed trade is not evidence of every
@@ -92,6 +94,12 @@ The Trade Lab evaluates an explicit package through separate factual lenses:
   artifact;
 - current draft-capital flow, roster-space change, and player age at the
   user's declared horizon.
+
+For 1-for-2 and 1-for-3 proposals, a separate historical panel may also show
+the proposed package's raw premium and the status of the exchange-premium and
+outcome tapes. It never adds a hidden package adjustment to the direct provider
+sum. A user may save explicit weights for promoted lenses; missing weight is
+reported rather than redistributed. See [Historical trade models](trade-models.md).
 
 Production scenarios use a strict likely-lineup coverage guard. The current
 market-selected lineup before and after the deal must fill every required skill
@@ -255,7 +263,7 @@ transactions by week, records coverage failures, and stores season-specific
 manager identities. It values a new trade at ingestion when possible and marks
 older initial valuations as retrospective backfills.
 
-Outcome checkpoints are scheduled at 7, 30, 90, and 180 days. A missing initial
+Outcome checkpoints are queued at 7, 30, 90, 180, and 365 days. A missing initial
 snapshot blocks a legitimate before/after return claim. Outcome evidence should
 evaluate the decision process, not retroactively rewrite its entry thesis.
 

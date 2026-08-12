@@ -5,7 +5,7 @@ import {
   rebuildEdgeLearningState,
   saveMarketTape,
 } from '../edge-learning-store'
-import { ensureHistoricalTapeSchema, queueHistoricalTapeAudit, readHistoricalTapeAudit } from '../historical-tape-store'
+import { ensureHistoricalTapeSchema, queueHistoricalTapeAudit, readHistoricalTapeAudit, refreshHistoricalTapeAudits } from '../historical-tape-store'
 import { authenticatedUser } from '../user-store'
 import type { Env } from '../env'
 import { methodNotAllowed, privateJson, sameOriginWrite, validLeagueId } from '../http'
@@ -38,6 +38,7 @@ export async function edgeResponse(request: Request, env: Env): Promise<Response
       const tape = normalizeMarketTapeInput(input.marketTape)
       await saveMarketTape(env.DB, user.id, leagueId, tape)
       await queueHistoricalTapeAudit(env.DB, user.id, leagueId, tape)
+      await refreshHistoricalTapeAudits(env.DB)
       await rebuildEdgeLearningState(env.DB, user.id, leagueId)
     } else {
       return privateJson({ message: 'Invalid edge action' }, 400)
