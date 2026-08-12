@@ -263,7 +263,7 @@
 .actionable-target-list details strong { font-size: 7px; }
 .actionable-target-list details small { grid-column: 2; color: var(--ink-soft); font-size: 6px; line-height: 1.4; }
 .actionable-target-list > article > button { min-height: 36px; margin-top: auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: #f3f4ee; background: var(--dark); border: 0; border-radius: 8px; font-size: 7px; font-weight: 900; }
-.actionability-thresholds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #efede6; border-top: 1px solid var(--line); }
+.actionability-thresholds { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: #efede6; border-top: 1px solid var(--line); }
 .actionability-thresholds span { min-height: 62px; padding: 11px 14px; display: grid; align-content: center; gap: 5px; border-right: 1px solid var(--line); }
 .actionability-thresholds span:last-child { border-right: 0; }
 
@@ -384,6 +384,7 @@
   .actionability-thresholds { grid-template-columns: 1fr 1fr; }
   .actionability-thresholds span:nth-child(2) { border-right: 0; }
   .actionability-thresholds span:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
+  .actionability-thresholds span:last-child { grid-column: 1 / -1; border-top: 1px solid var(--line); }
 }
 
 @media (max-width: 560px) {

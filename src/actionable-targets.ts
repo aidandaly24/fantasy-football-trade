@@ -40,7 +40,7 @@ export type ActionableTradeBook = {
     liquidityFloor: number | null
     drawdownFloor: number | null
     catalystPnlFloor: number | null
-    catalystDownsideFloor: number | null
+    packageDownsideFloor: number | null
   }
   method: string
 }
@@ -112,7 +112,7 @@ export function buildActionableTradeBook(options: ActionableTradeBookOptions): A
     candidates: [],
     evaluatedTargets: options.candidates.length,
     qualifyingTargets: 0,
-    thresholds: { starterValueFloor: 0, liquidityFloor: null, drawdownFloor: null, catalystPnlFloor: null, catalystDownsideFloor: null },
+    thresholds: { starterValueFloor: 0, liquidityFloor: null, drawdownFloor: null, catalystPnlFloor: null, packageDownsideFloor: null },
     method: 'No complete target and package population was available.',
   }
   const mine = options.teams.find((team) => team.rosterId === options.myRosterId)
@@ -139,7 +139,7 @@ export function buildActionableTradeBook(options: ActionableTradeBookOptions): A
       ? [candidate.portfolio.expectedPnl30]
       : []
   )))
-  const catalystDownsideFloor = median(options.candidates.flatMap((candidate) => (
+  const packageDownsideFloor = median(options.candidates.flatMap((candidate) => (
     candidate.portfolio?.trackedAssetLowerPnl30 !== null && candidate.portfolio?.trackedAssetLowerPnl30 !== undefined
       ? [candidate.portfolio.trackedAssetLowerPnl30]
       : []
@@ -197,12 +197,13 @@ export function buildActionableTradeBook(options: ActionableTradeBookOptions): A
       gate('compounder-liquidity', 'League-relative liquidity', liquidityFits, formatNumber(targetTradeFrequency, 4), liquidityFloor === null ? 'League median unavailable' : `At or above covered league median (${liquidityFloor.toFixed(4)})`),
       gate('compounder-downside', 'Tracked drawdown', downsideFits, targetDrawdown180 === null ? 'Unavailable' : `${(targetDrawdown180 * 100).toFixed(1)}%`, drawdownFloor === null ? 'League median unavailable' : `No worse than covered league median (${(drawdownFloor * 100).toFixed(1)}%)`),
       gate('compounder-carry', 'Short-horizon carry', (candidate.portfolio?.expectedPnl30 ?? Number.NEGATIVE_INFINITY) >= 0, formatNumber(candidate.portfolio?.expectedPnl30), 'Non-negative promoted 30-day package P&L'),
+      gate('compounder-package-downside', 'Package downside', packageDownsideFloor !== null && (candidate.portfolio?.trackedAssetLowerPnl30 ?? Number.NEGATIVE_INFINITY) >= packageDownsideFloor, formatNumber(candidate.portfolio?.trackedAssetLowerPnl30), packageDownsideFloor === null ? 'Tracked downside sample unavailable' : `At or above the full candidate median (${packageDownsideFloor.toFixed(0)})`),
       gate('compounder-role', 'Current role', roleVerified, roleVerified ? 'Active top-two role marker' : 'Role needs verification', 'No inactive or depth-chart risk marker'),
     ]
     const catalystGates = [
       gate('catalyst-model', 'Promoted return evidence', promotedReturn, horizon?.enabled ? 'Enabled' : 'Unavailable', 'Validated 30-day asset-return row'),
       gate('catalyst-pnl', 'Material package repricing', catalystPnlFloor !== null && (candidate.portfolio?.expectedPnl30 ?? Number.NEGATIVE_INFINITY) >= catalystPnlFloor, formatNumber(candidate.portfolio?.expectedPnl30), catalystPnlFloor === null ? 'Positive package sample unavailable' : `At or above the median positive package P&L (${catalystPnlFloor.toFixed(0)})`),
-      gate('catalyst-downside', 'Package downside', catalystDownsideFloor !== null && (candidate.portfolio?.trackedAssetLowerPnl30 ?? Number.NEGATIVE_INFINITY) >= catalystDownsideFloor, formatNumber(candidate.portfolio?.trackedAssetLowerPnl30), catalystDownsideFloor === null ? 'Tracked downside sample unavailable' : `At or above the league candidate median (${catalystDownsideFloor.toFixed(0)})`),
+      gate('catalyst-downside', 'Package downside', packageDownsideFloor !== null && (candidate.portfolio?.trackedAssetLowerPnl30 ?? Number.NEGATIVE_INFINITY) >= packageDownsideFloor, formatNumber(candidate.portfolio?.trackedAssetLowerPnl30), packageDownsideFloor === null ? 'Tracked downside sample unavailable' : `At or above the full candidate median (${packageDownsideFloor.toFixed(0)})`),
       gate('catalyst-liquidity', 'Exit liquidity', liquidityFits, formatNumber(targetTradeFrequency, 4), liquidityFloor === null ? 'League median unavailable' : `At or above covered league median (${liquidityFloor.toFixed(4)})`),
       gate('catalyst-age', 'Avoid veteran decay', ageFits, targetAgeAtHorizon === null ? target.kind : targetAgeAtHorizon.toFixed(1), positionAgeRequirement),
       gate('catalyst-role', 'Current role', roleVerified, roleVerified ? 'Active top-two role marker' : 'Role needs verification', 'No inactive or depth-chart risk marker'),
@@ -213,6 +214,8 @@ export function buildActionableTradeBook(options: ActionableTradeBookOptions): A
       gate('liquidity-improves', 'Portfolio liquidity improves', (candidate.portfolio?.tradeFrequency ?? Number.NEGATIVE_INFINITY) > 0 || candidate.draftCapitalNetToMe > 0, candidate.portfolio?.tradeFrequency === null || candidate.portfolio?.tradeFrequency === undefined ? `${candidate.draftCapitalNetToMe >= 0 ? '+' : ''}${candidate.draftCapitalNetToMe.toFixed(0)} pick value` : `${candidate.portfolio.tradeFrequency >= 0 ? '+' : ''}${candidate.portfolio.tradeFrequency.toFixed(4)}`, 'Positive covered trade-frequency delta or positive draft-capital net'),
       gate('liquidity-price', 'No current price donation', candidate.marketNetToMe >= 0, `${candidate.marketNetToMe >= 0 ? '+' : ''}${candidate.marketNetToMe.toFixed(0)}`, 'Non-negative current composite net'),
       gate('liquidity-consolidates', 'Inventory becomes simpler', target.kind === 'pick' || candidate.send.length > candidate.receive.length, `${candidate.send.length}-for-${candidate.receive.length}`, 'Pick conversion or fewer incoming pieces than outgoing pieces'),
+      gate('liquidity-carry', 'Player carry', target.kind === 'pick' || (candidate.portfolio?.expectedPnl30 ?? Number.NEGATIVE_INFINITY) >= 0, target.kind === 'pick' ? 'Draft capital' : formatNumber(candidate.portfolio?.expectedPnl30), 'Pick, or non-negative promoted 30-day package P&L'),
+      gate('liquidity-downside', 'Player downside', target.kind === 'pick' || (packageDownsideFloor !== null && (candidate.portfolio?.trackedAssetLowerPnl30 ?? Number.NEGATIVE_INFINITY) >= packageDownsideFloor), target.kind === 'pick' ? 'Draft capital' : formatNumber(candidate.portfolio?.trackedAssetLowerPnl30), target.kind === 'pick' ? 'Draft capital qualifies' : packageDownsideFloor === null ? 'Tracked downside sample unavailable' : `At or above the full candidate median (${packageDownsideFloor.toFixed(0)})`),
       gate('liquidity-age', 'Window-relative age', ageFits, targetAgeAtHorizon === null ? target.kind : targetAgeAtHorizon.toFixed(1), positionAgeRequirement),
     ]
     const books: Array<{ book: ActionableTargetBook; gates: ActionabilityGate[] }> = [
@@ -266,7 +269,7 @@ export function buildActionableTradeBook(options: ActionableTradeBookOptions): A
     candidates: selected.slice(0, limit),
     evaluatedTargets: options.candidates.length,
     qualifyingTargets: decorated.length,
-    thresholds: { starterValueFloor, liquidityFloor, drawdownFloor, catalystPnlFloor, catalystDownsideFloor },
+    thresholds: { starterValueFloor, liquidityFloor, drawdownFloor, catalystPnlFloor, packageDownsideFloor },
     method: 'Targets must clear every visible gate for at least one thesis. Thresholds are medians of this league population or its candidate packages; no weighted target score is used.',
   }
 }

@@ -254,6 +254,28 @@ describe('evidence-only strategy inventory', () => {
     expect(candidate?.send.length).toBeLessThanOrEqual(2)
   })
 
+  it('does not call a negative-carry player a liquidity conversion', () => {
+    const mine = team(1, [asset('piece-a', 'WR', 250), asset('piece-b', 'WR', 250)])
+    const liquidPlayer = asset('liquid-player', 'WR', 500, { age: 22, isStarter: true })
+    const health = returnHealth([
+      { id: 'piece-a', value: 250, expected: 0.05, lower: -0.05, liquidity: 0.005, drawdown: -0.1 },
+      { id: 'piece-b', value: 250, expected: 0.05, lower: -0.05, liquidity: 0.005, drawdown: -0.1 },
+      { id: 'liquid-player', value: 500, age: 22, expected: -0.2, lower: -0.4, liquidity: 0.03, drawdown: -0.05 },
+    ])
+    const teams = [mine, team(2, [liquidPlayer])]
+    const strategy = { mode: 'rebuilding' as const, horizonYears: 3 as const, flipPriority: 0 }
+    const discovery = buildTradeDiscovery(teams, {
+      myRosterId: 1,
+      rosterPositions,
+      strategy,
+      assetReturnHealth: health,
+      numQbs: 2,
+    })
+    const book = buildActionableTradeBook({ teams, myRosterId: 1, strategy, assetReturnHealth: health, numQbs: 2, candidates: discovery.candidates })
+
+    expect(book.candidates.some((candidate) => candidate.targetAsset.id === 'liquid-player')).toBe(false)
+  })
+
   it('derives negotiation anchors from visible packages without acceptance odds', () => {
     const mine = team(1, [asset('fair', 'WR', 500), asset('cheap', 'WR', 450), asset('dear', 'WR', 550)])
     const theirs = team(2, [asset('target', 'RB', 500)])
