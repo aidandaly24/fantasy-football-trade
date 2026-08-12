@@ -54,11 +54,11 @@ function toAsset(
   const usableProjection = projection && projection.gamesObserved > 0 ? projection : undefined
   const position = isDefense
     ? 'DEF'
-    : (tradyr?.position ?? sleeper?.position ?? sleeper?.fantasy_positions?.[0] ?? 'NA')
+    : (tradyr?.position ?? projection?.position ?? sleeper?.position ?? sleeper?.fantasy_positions?.[0] ?? 'NA')
 
   return {
     id,
-    name: tradyr?.name ?? (isDefense ? `${id} Defense` : playerName(sleeper, id)),
+    name: tradyr?.name ?? projection?.name ?? (isDefense ? `${id} Defense` : playerName(sleeper, id)),
     kind: 'player',
     position: (['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].includes(position) ? position : 'NA') as Asset['position'],
     team: tradyr?.team ?? sleeper?.team ?? (isDefense ? id : null),

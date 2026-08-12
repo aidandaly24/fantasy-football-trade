@@ -26,7 +26,7 @@ import type { RookieBoardBundle } from './rookies'
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
-const sleeperPlayerCache = new Map<string, SleeperPlayer>()
+let sleeperPlayerCatalog: Promise<Record<string, SleeperPlayer>> | null = null
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init)
@@ -131,35 +131,31 @@ export async function saveLeaguePreferences(
   })
 }
 
-export async function fetchSleeperPlayers(ids: string[]): Promise<Map<string, SleeperPlayer>> {
-  const playerMap = new Map<string, SleeperPlayer>()
-  const filtered = [...new Set(ids.filter((id) => id !== '0' && /^\d+$/.test(id)))]
-  const uncached = filtered.filter((id) => {
-    const cached = sleeperPlayerCache.get(id)
-    if (cached) playerMap.set(id, cached)
-    return !cached
+export function selectSleeperPlayers(
+  catalog: Record<string, SleeperPlayer>,
+  ids: string[],
+): Map<string, SleeperPlayer> {
+  const selected = new Map<string, SleeperPlayer>()
+  ;[...new Set(ids)].forEach((id) => {
+    if (id === '0') return
+    const player = catalog[id]
+    if (player) selected.set(id, player)
   })
+  return selected
+}
 
-  for (let offset = 0; offset < uncached.length; offset += 40) {
-    const batch = uncached.slice(offset, offset + 40)
-    const results = await Promise.all(
-      batch.map(async (id) => {
-        try {
-          return await fetchJson<SleeperPlayer>(`${SLEEPER_BASE}/players/nfl/${id}`)
-        } catch {
-          return null
-        }
-      }),
-    )
-    results.forEach((player) => {
-      if (player?.player_id) {
-        sleeperPlayerCache.set(player.player_id, player)
-        playerMap.set(player.player_id, player)
-      }
-    })
+/** Sleeper's catalog endpoint is intentionally fetched once and filtered in
+ * memory. The caller runs this after the first useful render, so optional role
+ * and injury metadata never blocks current league and market values. */
+export async function fetchSleeperPlayers(ids: string[]): Promise<Map<string, SleeperPlayer>> {
+  if (!sleeperPlayerCatalog) {
+    sleeperPlayerCatalog = fetchJson<Record<string, SleeperPlayer>>(`${SLEEPER_BASE}/players/nfl`)
+      .catch((error) => {
+        sleeperPlayerCatalog = null
+        throw error
+      })
   }
-
-  return playerMap
+  return selectSleeperPlayers(await sleeperPlayerCatalog, ids)
 }
 
 export async function fetchIntel(): Promise<IntelFeed> {

@@ -65,19 +65,26 @@ Offline training does not run in the request path.
 
 ## Client flow
 
-`App` loads the selected league and then composes domain evidence:
+`App` uses a progressive client flow so the default league-facts screen is not
+held behind data or code owned by another view:
 
 1. `fetchLeagueBundle` reads the league, rosters, managers, traded picks, and
-   current draft from Sleeper.
+   current draft from Sleeper. After the first visit, the device-local last
+   league selection lets this read overlap the authenticated preference read.
 2. `fetchValues` reads attributed player and pick composites from Tradyr.
-3. `fetchProjections` and model-health readers load checked-in browser-safe
-   artifacts.
-4. Pure domain functions build teams, lineups, league-relative metrics, neutral
-   or manually supplied manager context, current-state dislocations, trade
-   scenarios, and Pareto package frontiers. A frontier is calculated only from
-   inspectable objectives and is not an acceptance or return model.
-5. Identity-aware Worker routes load preferences, the trade journal, alerts,
-   evidence snapshots, and research state.
+3. `fetchProjections` loads the browser-safe production artifact. Those three
+   inputs are sufficient to build teams, lineups, and league-relative rankings,
+   so React renders the first useful screen immediately after they resolve.
+4. Optional Sleeper role and injury metadata is hydrated from one bulk catalog
+   request only when Trade Lab or Evidence needs it. It never blocks current
+   ownership or market values and no per-roster-player request fan-out is
+   permitted.
+5. Trade Lab, Journal, News, Evidence, Rookie board, and Model code is split by
+   view. Model health, rookie evidence, event health, and the stored journal load
+   only when their owning view opens.
+6. A full multi-season journal sync is manual. Evidence snapshots and research
+   state remain owned by the Evidence view, whose Pareto frontiers use only
+   inspectable objectives and do not claim acceptance or return probabilities.
 
 All live league views use the current Sleeper roster and traded-pick ledger as
 their single source of ownership truth. RosterLab does not persist or project
