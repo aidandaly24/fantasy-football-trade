@@ -60,6 +60,51 @@ type LeagueLoadPrefetch = {
 
 type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model'
 
+const STARTUP_WORKSPACES: Record<View, { eyebrow: string; title: string; description: string; status: string }> = {
+  rankings: {
+    eyebrow: 'League intelligence',
+    title: 'Compare the league. Without a mystery score.',
+    description: 'The league desk is open. Fresh rosters, picks, projections, and market values are filling in now.',
+    status: 'Refreshing league facts…',
+  },
+  trade: {
+    eyebrow: 'Trade laboratory',
+    title: 'Compare the evidence. Make your own call.',
+    description: 'The trade builder is open. Current league assets and prices are filling in now.',
+    status: 'Refreshing trade assets…',
+  },
+  journal: {
+    eyebrow: 'Automated trade journal',
+    title: 'Every completed deal. No selective memory.',
+    description: 'The journal is open. The latest saved league ledger is filling in now.',
+    status: 'Refreshing saved trades…',
+  },
+  intel: {
+    eyebrow: 'Private signal desk',
+    title: 'Read the reports. Keep price separate.',
+    description: 'The signal desk is open. Current headlines and roster links are filling in now.',
+    status: 'Refreshing current reports…',
+  },
+  strategy: {
+    eyebrow: 'Private trade discovery',
+    title: 'Find targets. Compare real packages.',
+    description: 'The evidence desk is open. League targets and completed packages are filling in now.',
+    status: 'Refreshing league evidence…',
+  },
+  rookies: {
+    eyebrow: 'Private rookie research',
+    title: 'Production evidence, not a trade promise.',
+    description: 'The rookie board is open. The latest validated evidence is filling in now.',
+    status: 'Refreshing rookie evidence…',
+  },
+  model: {
+    eyebrow: 'Model audit',
+    title: 'Trust is earned one gate at a time.',
+    description: 'The model audit is open. Promotion and calibration results are filling in now.',
+    status: 'Refreshing model health…',
+  },
+}
+
 const EMPTY_JOURNAL: JournalBundle = {
   trades: [],
   identities: [],
@@ -99,6 +144,11 @@ function writeCachedLeaguePreferences(preferences: LeaguePreferences): void {
     projectionBundle: cached.projectionBundle,
     preferences,
   })
+}
+
+function observePromise<T>(promise: Promise<T>): Promise<T> {
+  void promise.catch(() => undefined)
+  return promise
 }
 
 function AppHeader({
@@ -181,13 +231,26 @@ function LeagueRibbon({ data, loading, onSelectLeague }: {
   )
 }
 
-function LoadingState() {
+function LoadingState({ view }: { view: View }) {
+  const workspace = STARTUP_WORKSPACES[view]
   return (
-    <main className="loading-state">
-      <div className="loading-mark"><span /></div>
-      <span className="eyebrow">Syncing the war room</span>
-      <h1>Pulling rosters, picks, and market values…</h1>
-      <div className="loading-lines"><span /><span /><span /></div>
+    <main className="page-shell startup-workspace">
+      <section className="startup-workspace-hero panel">
+        <div>
+          <span className="eyebrow accent-eyebrow">{workspace.eyebrow}</span>
+          <h1>{workspace.title}</h1>
+          <p>{workspace.description}</p>
+        </div>
+        <div className="deferred-view-status">
+          <RefreshCw className="spin" size={18} />
+          <span><strong>{workspace.status}</strong><small>You can choose another workspace now.</small></span>
+        </div>
+      </section>
+      <section className="startup-workspace-grid" aria-label="Fresh data is loading">
+        <article className="panel"><span /><span /><span /></article>
+        <article className="panel"><span /><span /><span /></article>
+        <article className="panel"><span /><span /><span /></article>
+      </section>
     </main>
   )
 }
@@ -314,9 +377,9 @@ function App() {
     ;['rookies', 'model', 'event-model', 'journal'].forEach((kind) => secondaryLoads.current.delete(`${id}:${kind}`))
     try {
       const preset = SUPPORTED_LEAGUES.find((item) => item.id === id)!
-      const leagueRequest = prefetch.league ?? fetchLeagueBundle(id)
-      const valueRequest = prefetch.values ?? fetchValues(preset.marketFormat)
-      const projectionRequest = prefetch.projections ?? fetchProjections()
+      const leagueRequest = observePromise(prefetch.league ?? fetchLeagueBundle(id))
+      const valueRequest = observePromise(prefetch.values ?? fetchValues(preset.marketFormat))
+      const projectionRequest = observePromise(prefetch.projections ?? fetchProjections())
       const leagueBundle = await leagueRequest
       const context = leagueContext(leagueBundle)
       const existingPreference = stateOverride?.preferences.find((item) => item.leagueId === id) ?? prefetch.preferences
@@ -416,9 +479,9 @@ function App() {
       if (cached) showCachedLeague(cached)
       const preset = SUPPORTED_LEAGUES.find((item) => item.id === initialLeague)!
       const statePromise = fetchUserState()
-      const leaguePromise = fetchLeagueBundle(initialLeague)
-      const valuePromise = fetchValues(preset.marketFormat)
-      const projectionPromise = fetchProjections()
+      const leaguePromise = observePromise(fetchLeagueBundle(initialLeague))
+      const valuePromise = observePromise(fetchValues(preset.marketFormat))
+      const projectionPromise = observePromise(fetchProjections())
       const state = await statePromise
       setUserState(state)
       const savedLeagueId = state?.preferences.find((item) => isSupportedLeagueId(item.leagueId))?.leagueId
@@ -608,7 +671,7 @@ function App() {
       />
       {data && <LeagueRibbon data={data} loading={loading} onSelectLeague={selectLeague} />}
       {loading && !data ? (
-        <LoadingState />
+        <LoadingState view={view} />
       ) : error && !data ? (
         <ErrorState message={error} onRetry={() => void loadLeague(leagueId)} loading={loading} />
       ) : data ? (
