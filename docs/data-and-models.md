@@ -346,6 +346,35 @@ Current Tradyr value and FantasyCalc return P&L remain on their labeled source
 scales. Uncovered assets contribute neither zero return nor extrapolated P&L;
 their missing portfolio weight is reported as return coverage.
 
+### V7.6 exchange-premium validation
+
+The consolidation experiment now compares its challenger against the strongest
+eligible global or structure-segmented median baseline, reports league-balanced
+MAE, reserves transactions from unseen leagues, and audits anchor-sampling
+concentration. It remains disabled: the stored artifact spans only 28 days and
+has no exact historical league-format coverage. An encouraging held-out lift is
+research evidence, not permission to alter a trade price.
+
+### V7.7 return-aware package frontier
+
+For an explicitly saved rebuild or retool objective, target discovery adds only
+the promoted 30-day asset-return evidence to its Pareto comparison. Expected
+FantasyCalc-value P&L, tracked-asset lower P&L, observed drawdown, concentration,
+current Tradyr price, draft capital, horizon age, and covered production remain
+separate dimensions. Missing evidence is omitted from pairwise comparison and
+is displayed as coverage; it is never filled with zero.
+
+Trade Lab shows the same before/after portfolio facts and an incoming-asset
+research memo. The memo’s 30-day reassessment window follows the only promoted
+forecast horizon. It explicitly does not claim a three-year forecast or a
+validated sell trigger.
+
+Negotiation labels are descriptive price anchors over the displayed package
+set: the nearest cheaper package is the ambitious opening, the closest current
+composite is the fair target, and the nearest dearer package is the comparison
+ceiling. They are not acceptance probabilities. There is still no blended
+rebuild score, letter grade, or guaranteed P&L.
+
 ## Trade journal and outcomes
 
 The durable journal follows linked Sleeper league seasons, ingests completed
