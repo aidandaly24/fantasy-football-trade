@@ -1,0 +1,2361 @@
+{
+  "assetForecastCount": 940,
+  "dataAsOf": "2026-08-11",
+  "generatedAt": "2026-08-12T04:45:20.778809Z",
+  "models": [
+    {
+      "anchorDates": 50,
+      "assets": 476,
+      "baseline": {
+        "mae": 0.14968449993867716,
+        "rankCorrelation": 0.0248935276633742,
+        "rmse": 0.3644125867319388
+      },
+      "baselineName": "position-value cohort median",
+      "calibrationStart": "2026-03-12",
+      "challengerValidation": [
+        {
+          "kind": "ridge",
+          "metrics": {
+            "mae": 0.1695236045746262,
+            "rankCorrelation": 0.10852263800014364,
+            "rmse": 0.34261023078803615
+          }
+        },
+        {
+          "kind": "hist-gradient",
+          "metrics": {
+            "mae": 0.1623546113310146,
+            "rankCorrelation": 0.19464323513239754,
+            "rmse": 0.3265626440590042
+          }
+        }
+      ],
+      "cohortBaseline": {
+        "mae": 0.14968449993867716,
+        "rankCorrelation": 0.0248935276633742,
+        "rmse": 0.3644125867319388
+      },
+      "cohorts": [
+        {
+          "ageBand": "Pick/no age",
+          "assets": 76,
+          "medianReturn": -0.005286360026734549,
+          "p10Return": -0.03305867934215538,
+          "p90Return": 0.05533784589931831,
+          "position": "PICK",
+          "rows": 3800
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 31,
+          "medianReturn": -0.020119225037257826,
+          "p10Return": -0.30684461547075503,
+          "p90Return": 0.2966623309328175,
+          "position": "QB",
+          "rows": 1089
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 25,
+          "medianReturn": -0.012358405204503542,
+          "p10Return": -0.25725822686798294,
+          "p90Return": 0.30015236029335807,
+          "position": "QB",
+          "rows": 862
+        },
+        {
+          "ageBand": "29+",
+          "assets": 23,
+          "medianReturn": -0.0086333243195863,
+          "p10Return": -0.41111282251954473,
+          "p90Return": 0.49315213088798043,
+          "position": "QB",
+          "rows": 904
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 13,
+          "medianReturn": -0.006008411520614876,
+          "p10Return": -0.2753342269414073,
+          "p90Return": 0.1487859828838174,
+          "position": "QB",
+          "rows": 336
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 53,
+          "medianReturn": -0.011896512549804727,
+          "p10Return": -0.3283991003884686,
+          "p90Return": 0.26670454545454547,
+          "position": "RB",
+          "rows": 1830
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 36,
+          "medianReturn": -0.01094260031025912,
+          "p10Return": -0.30728507901337154,
+          "p90Return": 0.32962176208546456,
+          "position": "RB",
+          "rows": 1390
+        },
+        {
+          "ageBand": "29+",
+          "assets": 12,
+          "medianReturn": -0.03206709422792309,
+          "p10Return": -0.39751552795031053,
+          "p90Return": 0.2103004291845494,
+          "position": "RB",
+          "rows": 481
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 34,
+          "medianReturn": -0.017530487804878092,
+          "p10Return": -0.25625795617670155,
+          "p90Return": 0.15943464206655739,
+          "position": "RB",
+          "rows": 1313
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 34,
+          "medianReturn": -0.002703264711998332,
+          "p10Return": -0.2989864864864865,
+          "p90Return": 0.47142857142857153,
+          "position": "TE",
+          "rows": 1021
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 19,
+          "medianReturn": -0.028286189683860208,
+          "p10Return": -0.33333333333333337,
+          "p90Return": 0.4563758389261745,
+          "position": "TE",
+          "rows": 601
+        },
+        {
+          "ageBand": "29+",
+          "assets": 14,
+          "medianReturn": -0.014613778705636737,
+          "p10Return": -0.3002148863535002,
+          "p90Return": 0.2633749101119751,
+          "position": "TE",
+          "rows": 593
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 20,
+          "medianReturn": -0.0035393287749882485,
+          "p10Return": -0.16846526431859615,
+          "p90Return": 0.21321324991038548,
+          "position": "TE",
+          "rows": 686
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 90,
+          "medianReturn": -0.020386932291917403,
+          "p10Return": -0.314034957784032,
+          "p90Return": 0.29679516250944854,
+          "position": "WR",
+          "rows": 3208
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 46,
+          "medianReturn": -0.023145961265942372,
+          "p10Return": -0.32519088669950735,
+          "p90Return": 0.2768174569217007,
+          "position": "WR",
+          "rows": 1565
+        },
+        {
+          "ageBand": "29+",
+          "assets": 21,
+          "medianReturn": -0.042649728075217164,
+          "p10Return": -0.3570541669263853,
+          "p90Return": 0.27677052102746946,
+          "position": "WR",
+          "rows": 760
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 47,
+          "medianReturn": -0.01006250952889165,
+          "p10Return": -0.18619246861924688,
+          "p90Return": 0.13705759888965985,
+          "position": "WR",
+          "rows": 1631
+        }
+      ],
+      "crossSectionRankCorrelation": 0.18205282666623404,
+      "enabled": true,
+      "format": "1qb",
+      "gates": [
+        {
+          "actual": 22070.0,
+          "id": "rows",
+          "label": "Time-safe labeled rows",
+          "passed": true,
+          "requirement": ">= 6000"
+        },
+        {
+          "actual": 476.0,
+          "id": "assets",
+          "label": "Distinct tracked assets",
+          "passed": true,
+          "requirement": ">= 200"
+        },
+        {
+          "actual": 50.0,
+          "id": "anchorDates",
+          "label": "Distinct weekly anchors",
+          "passed": true,
+          "requirement": ">= 24"
+        },
+        {
+          "actual": 2297.0,
+          "id": "heldout",
+          "label": "Later embargoed holdout rows",
+          "passed": true,
+          "requirement": ">= 800"
+        },
+        {
+          "actual": 468.0,
+          "id": "heldoutAssets",
+          "label": "Later holdout assets",
+          "passed": true,
+          "requirement": ">= 150"
+        },
+        {
+          "actual": 280.0,
+          "id": "trainSpan",
+          "label": "Training-anchor span",
+          "passed": true,
+          "requirement": ">= 60 days"
+        },
+        {
+          "actual": 0.07557725964711229,
+          "id": "mae",
+          "label": "MAE lift over best simple baseline",
+          "passed": true,
+          "requirement": ">= 2%"
+        },
+        {
+          "actual": 0.18205282666623404,
+          "id": "rank",
+          "label": "Median held-out cross-sectional rank",
+          "passed": true,
+          "requirement": ">= 0.05"
+        },
+        {
+          "actual": 0.8415324336090553,
+          "id": "interval",
+          "label": "Held-out 80% interval calibration",
+          "passed": true,
+          "requirement": "70%\u201390%"
+        }
+      ],
+      "heldoutAssets": 468,
+      "horizonDays": 30,
+      "interval": {
+        "heldoutCoverage": 0.8415324336090553,
+        "meanWidth": 0.47954167125394553,
+        "targetCoverage": 0.8
+      },
+      "maeImprovement": 0.07557725964711229,
+      "model": {
+        "kind": "hist-gradient-boosting-log-return-v1",
+        "parameters": {
+          "l2Regularization": 1.0,
+          "learningRate": 0.05,
+          "maxIterations": 160,
+          "maxLeafNodes": 15,
+          "minimumLeafRows": 30
+        },
+        "portable": false
+      },
+      "modelMetrics": {
+        "mae": 0.1383717556216636,
+        "rankCorrelation": 0.20464899311544,
+        "rmse": 0.30467254971775704
+      },
+      "rows": 22070,
+      "selectedModel": "hist-gradient",
+      "split": {
+        "embargoDays": 30,
+        "testStart": "2026-06-11"
+      },
+      "status": "validated",
+      "target": "same-asset later FantasyCalc market-value percentage return",
+      "testRows": 2297,
+      "trainSpanDays": 280,
+      "trainingRows": 17952,
+      "zeroReturnBaseline": {
+        "mae": 0.15177422499266927,
+        "rankCorrelation": 0.0,
+        "rmse": 0.3645668509630197
+      }
+    },
+    {
+      "anchorDates": 41,
+      "assets": 461,
+      "baseline": {
+        "mae": 0.20852549752507724,
+        "rankCorrelation": 0.0,
+        "rmse": 0.43863505894683763
+      },
+      "baselineName": "zero return",
+      "calibrationStart": "2025-12-11",
+      "challengerValidation": [
+        {
+          "kind": "ridge",
+          "metrics": {
+            "mae": 0.26006209113997386,
+            "rankCorrelation": 0.09987859308945482,
+            "rmse": 0.5657773522014913
+          }
+        },
+        {
+          "kind": "hist-gradient",
+          "metrics": {
+            "mae": 0.2693116066111924,
+            "rankCorrelation": 0.015239198540932851,
+            "rmse": 0.5957121728508504
+          }
+        }
+      ],
+      "cohortBaseline": {
+        "mae": 0.22632974955033536,
+        "rankCorrelation": -0.1111033434309225,
+        "rmse": 0.4432191442816787
+      },
+      "cohorts": [
+        {
+          "ageBand": "Pick/no age",
+          "assets": 76,
+          "medianReturn": -0.012980994908705745,
+          "p10Return": -0.05980472764645428,
+          "p90Return": 0.2472509987921584,
+          "position": "PICK",
+          "rows": 3116
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 30,
+          "medianReturn": -0.05268638832457745,
+          "p10Return": -0.45201060539107385,
+          "p90Return": 0.6336070888264531,
+          "position": "QB",
+          "rows": 892
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 22,
+          "medianReturn": -0.05226936673656252,
+          "p10Return": -0.3802145887861102,
+          "p90Return": 0.3769087496597283,
+          "position": "QB",
+          "rows": 658
+        },
+        {
+          "ageBand": "29+",
+          "assets": 21,
+          "medianReturn": -0.018133459302922594,
+          "p10Return": -0.5645775806766519,
+          "p90Return": 1.1765957446808524,
+          "position": "QB",
+          "rows": 708
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 13,
+          "medianReturn": -0.01526406801505642,
+          "p10Return": -0.3765850461555624,
+          "p90Return": 0.5153829016159694,
+          "position": "QB",
+          "rows": 304
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 48,
+          "medianReturn": -0.025618723556099288,
+          "p10Return": -0.45651852581789515,
+          "p90Return": 0.4307206833400109,
+          "position": "RB",
+          "rows": 1470
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 34,
+          "medianReturn": -0.024816622990841974,
+          "p10Return": -0.42071991670385245,
+          "p90Return": 0.5984644597948626,
+          "position": "RB",
+          "rows": 1096
+        },
+        {
+          "ageBand": "29+",
+          "assets": 11,
+          "medianReturn": -0.17593738450221574,
+          "p10Return": -0.7016372491451073,
+          "p90Return": 0.36230386879538246,
+          "position": "RB",
+          "rows": 378
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 33,
+          "medianReturn": -0.041284403669724745,
+          "p10Return": -0.4386151189626259,
+          "p90Return": 0.321089034627973,
+          "position": "RB",
+          "rows": 1107
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 29,
+          "medianReturn": 0.009771986970684043,
+          "p10Return": -0.4826764557548097,
+          "p90Return": 0.7947842357618992,
+          "position": "TE",
+          "rows": 795
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 18,
+          "medianReturn": -0.07105505998154416,
+          "p10Return": -0.47981020203786423,
+          "p90Return": 0.7739720370479619,
+          "position": "TE",
+          "rows": 465
+        },
+        {
+          "ageBand": "29+",
+          "assets": 13,
+          "medianReturn": -0.06735469853340581,
+          "p10Return": -0.44453125000000004,
+          "p90Return": 0.3055303717135087,
+          "position": "TE",
+          "rows": 481
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 18,
+          "medianReturn": -0.030567699385897373,
+          "p10Return": -0.28337166933404273,
+          "p90Return": 0.3907900432900432,
+          "position": "TE",
+          "rows": 582
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 82,
+          "medianReturn": -0.06415194637892713,
+          "p10Return": -0.5015210645315824,
+          "p90Return": 0.4323486414276353,
+          "position": "WR",
+          "rows": 2566
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 44,
+          "medianReturn": -0.06877090879237863,
+          "p10Return": -0.5029671259366691,
+          "p90Return": 0.3274593441748859,
+          "position": "WR",
+          "rows": 1208
+        },
+        {
+          "ageBand": "29+",
+          "assets": 19,
+          "medianReturn": -0.10977943754028469,
+          "p10Return": -0.5693649758851602,
+          "p90Return": 0.30596419016258486,
+          "position": "WR",
+          "rows": 594
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 46,
+          "medianReturn": -0.03884315140383099,
+          "p10Return": -0.29826575171553343,
+          "p90Return": 0.19435864661150093,
+          "position": "WR",
+          "rows": 1422
+        }
+      ],
+      "crossSectionRankCorrelation": -0.075825058117167,
+      "enabled": false,
+      "format": "1qb",
+      "gates": [
+        {
+          "actual": 17842.0,
+          "id": "rows",
+          "label": "Time-safe labeled rows",
+          "passed": true,
+          "requirement": ">= 4000"
+        },
+        {
+          "actual": 461.0,
+          "id": "assets",
+          "label": "Distinct tracked assets",
+          "passed": true,
+          "requirement": ">= 200"
+        },
+        {
+          "actual": 41.0,
+          "id": "anchorDates",
+          "label": "Distinct weekly anchors",
+          "passed": true,
+          "requirement": ">= 18"
+        },
+        {
+          "actual": 2240.0,
+          "id": "heldout",
+          "label": "Later embargoed holdout rows",
+          "passed": true,
+          "requirement": ">= 500"
+        },
+        {
+          "actual": 456.0,
+          "id": "heldoutAssets",
+          "label": "Later holdout assets",
+          "passed": true,
+          "requirement": ">= 150"
+        },
+        {
+          "actual": 161.0,
+          "id": "trainSpan",
+          "label": "Training-anchor span",
+          "passed": true,
+          "requirement": ">= 90 days"
+        },
+        {
+          "actual": -0.14450519070766046,
+          "id": "mae",
+          "label": "MAE lift over best simple baseline",
+          "passed": false,
+          "requirement": ">= 2%"
+        },
+        {
+          "actual": -0.075825058117167,
+          "id": "rank",
+          "label": "Median held-out cross-sectional rank",
+          "passed": false,
+          "requirement": ">= 0.05"
+        },
+        {
+          "actual": 0.8165178571428572,
+          "id": "interval",
+          "label": "Held-out 80% interval calibration",
+          "passed": true,
+          "requirement": "70%\u201390%"
+        }
+      ],
+      "heldoutAssets": 456,
+      "horizonDays": 90,
+      "interval": {
+        "heldoutCoverage": 0.8165178571428572,
+        "meanWidth": 0.6885808529764716,
+        "targetCoverage": 0.8
+      },
+      "maeImprovement": -0.14450519070766046,
+      "model": {
+        "coefficients": [
+          -0.3156903261375803,
+          0.2493920727755109,
+          0.003397841997044401,
+          -0.09341470929311059,
+          -0.014038939142128943,
+          0.008198916114958005,
+          0.0006311397935933291,
+          -0.008536663111792308,
+          0.018386020721513754,
+          -0.014038939135409712,
+          -0.009801201082772056,
+          -0.02454504799294352,
+          -0.017903499088620347,
+          0.04646410164044396,
+          -0.019528168910916195
+        ],
+        "features": [
+          "log_value",
+          "market_percentile",
+          "position_percentile",
+          "age",
+          "age_missing",
+          "is_qb",
+          "is_rb",
+          "is_wr",
+          "is_te",
+          "is_pick",
+          "return_7d",
+          "return_30d",
+          "volatility_30d",
+          "max_drawdown_30d",
+          "pick_years_away"
+        ],
+        "intercept": -0.06674241929871158,
+        "kind": "standardized-ridge-log-return-v1",
+        "means": [
+          6.953838290277193,
+          0.51471877546457,
+          0.5186157135590928,
+          21.150915480327317,
+          0.17464409819526958,
+          0.1435937675148526,
+          0.22704853715951126,
+          0.3245151888801704,
+          0.13019840825019616,
+          0.17464409819526958,
+          0.05183552024908266,
+          0.13767865231351253,
+          0.6214464211427932,
+          -0.21604830144978834,
+          0.17643761910099764
+        ],
+        "portable": true,
+        "scales": [
+          1.16610446716322,
+          0.2821627165470009,
+          0.282912158843432,
+          10.188943164387311,
+          0.37966239892940495,
+          0.35067734093571407,
+          0.4189242162172501,
+          0.4681934227071518,
+          0.336521593273465,
+          0.37966239892940495,
+          0.8100253509305122,
+          1.7206173917482603,
+          2.065766093788443,
+          0.23649736250738396,
+          0.5546359415286374
+        ]
+      },
+      "modelMetrics": {
+        "mae": 0.2386585143123483,
+        "rankCorrelation": -0.07025488771227525,
+        "rmse": 0.4270901032329129
+      },
+      "rows": 17842,
+      "selectedModel": "ridge",
+      "split": {
+        "embargoDays": 90,
+        "testStart": "2026-04-09"
+      },
+      "status": "shadow",
+      "target": "same-asset later FantasyCalc market-value percentage return",
+      "testRows": 2240,
+      "trainSpanDays": 161,
+      "trainingRows": 10285,
+      "zeroReturnBaseline": {
+        "mae": 0.20852549752507724,
+        "rankCorrelation": 0.0,
+        "rmse": 0.43863505894683763
+      }
+    },
+    {
+      "anchorDates": 29,
+      "assets": 458,
+      "baseline": {
+        "mae": 0.2968339132871437,
+        "rankCorrelation": 0.0,
+        "rmse": 0.5357248702222167
+      },
+      "baselineName": "zero return",
+      "calibrationStart": null,
+      "challengerValidation": [],
+      "cohortBaseline": {
+        "mae": 0.332358754123024,
+        "rankCorrelation": -0.056591869275019496,
+        "rmse": 0.5560901782266647
+      },
+      "cohorts": [
+        {
+          "ageBand": "Pick/no age",
+          "assets": 76,
+          "medianReturn": -0.017111474419331085,
+          "p10Return": -0.08010859728506789,
+          "p90Return": 0.22101902158060738,
+          "position": "PICK",
+          "rows": 2204
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 29,
+          "medianReturn": -0.06493506493506496,
+          "p10Return": -0.5729613733905579,
+          "p90Return": 0.9284818067754077,
+          "position": "QB",
+          "rows": 611
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 19,
+          "medianReturn": -0.10256410256410253,
+          "p10Return": -0.40954446854663773,
+          "p90Return": 0.5139508928571428,
+          "position": "QB",
+          "rows": 431
+        },
+        {
+          "ageBand": "29+",
+          "assets": 21,
+          "medianReturn": -0.08899572649572651,
+          "p10Return": -0.6592259235532778,
+          "p90Return": 1.4678687241417891,
+          "position": "QB",
+          "rows": 490
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 13,
+          "medianReturn": -0.0121076930917427,
+          "p10Return": -0.47897990824351216,
+          "p90Return": 0.6686394093156388,
+          "position": "QB",
+          "rows": 252
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 44,
+          "medianReturn": -0.09236186348862407,
+          "p10Return": -0.5856074232690934,
+          "p90Return": 0.5243560546807556,
+          "position": "RB",
+          "rows": 1023
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 29,
+          "medianReturn": -0.05048475886648068,
+          "p10Return": -0.4471100511803639,
+          "p90Return": 0.5539606844615153,
+          "position": "RB",
+          "rows": 740
+        },
+        {
+          "ageBand": "29+",
+          "assets": 10,
+          "medianReturn": -0.3458333333333333,
+          "p10Return": -0.857985955216439,
+          "p90Return": 0.09858093051522718,
+          "position": "RB",
+          "rows": 257
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 33,
+          "medianReturn": -0.06009453072248483,
+          "p10Return": -0.44451612903225807,
+          "p90Return": 0.7471232876712328,
+          "position": "RB",
+          "rows": 827
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 25,
+          "medianReturn": 0.020381328073635796,
+          "p10Return": -0.5612015940396777,
+          "p90Return": 0.8855603789727179,
+          "position": "TE",
+          "rows": 535
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 15,
+          "medianReturn": -0.14302884615384615,
+          "p10Return": -0.5221337378333966,
+          "p90Return": 1.289867601881304,
+          "position": "TE",
+          "rows": 313
+        },
+        {
+          "ageBand": "29+",
+          "assets": 13,
+          "medianReturn": -0.20793985688684397,
+          "p10Return": -0.5333784528401333,
+          "p90Return": 0.22520432575956628,
+          "position": "TE",
+          "rows": 336
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 17,
+          "medianReturn": -0.04347826086956519,
+          "p10Return": -0.43247232935914665,
+          "p90Return": 0.6071262090989032,
+          "position": "TE",
+          "rows": 439
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 76,
+          "medianReturn": -0.10329807093963905,
+          "p10Return": -0.6202227027345072,
+          "p90Return": 0.5714073953743377,
+          "position": "WR",
+          "rows": 1779
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 35,
+          "medianReturn": -0.13490002596728123,
+          "p10Return": -0.6260549748354627,
+          "p90Return": 0.5675139213220755,
+          "position": "WR",
+          "rows": 807
+        },
+        {
+          "ageBand": "29+",
+          "assets": 17,
+          "medianReturn": -0.24036173250832937,
+          "p10Return": -0.6762809695013084,
+          "p90Return": 0.14453165881737312,
+          "position": "WR",
+          "rows": 403
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 46,
+          "medianReturn": -0.0988161280150473,
+          "p10Return": -0.4129437354988399,
+          "p90Return": 0.17538503475534958,
+          "position": "WR",
+          "rows": 1092
+        }
+      ],
+      "crossSectionRankCorrelation": 0.008398170379226019,
+      "enabled": false,
+      "format": "1qb",
+      "gates": [
+        {
+          "actual": 12539.0,
+          "id": "rows",
+          "label": "Time-safe labeled rows",
+          "passed": true,
+          "requirement": ">= 2000"
+        },
+        {
+          "actual": 458.0,
+          "id": "assets",
+          "label": "Distinct tracked assets",
+          "passed": true,
+          "requirement": ">= 200"
+        },
+        {
+          "actual": 29.0,
+          "id": "anchorDates",
+          "label": "Distinct weekly anchors",
+          "passed": true,
+          "requirement": ">= 12"
+        },
+        {
+          "actual": 1330.0,
+          "id": "heldout",
+          "label": "Later embargoed holdout rows",
+          "passed": true,
+          "requirement": ">= 300"
+        },
+        {
+          "actual": 450.0,
+          "id": "heldoutAssets",
+          "label": "Later holdout assets",
+          "passed": true,
+          "requirement": ">= 150"
+        },
+        {
+          "actual": 0.0,
+          "id": "trainSpan",
+          "label": "Training-anchor span",
+          "passed": false,
+          "requirement": ">= 180 days"
+        },
+        {
+          "actual": -0.15732900682642972,
+          "id": "mae",
+          "label": "MAE lift over best simple baseline",
+          "passed": false,
+          "requirement": ">= 2%"
+        },
+        {
+          "actual": 0.008398170379226019,
+          "id": "rank",
+          "label": "Median held-out cross-sectional rank",
+          "passed": false,
+          "requirement": ">= 0.05"
+        },
+        {
+          "actual": 0.793984962406015,
+          "id": "interval",
+          "label": "Held-out 80% interval calibration",
+          "passed": true,
+          "requirement": "70%\u201390%"
+        }
+      ],
+      "heldoutAssets": 450,
+      "horizonDays": 180,
+      "interval": {
+        "heldoutCoverage": 0.793984962406015,
+        "meanWidth": 1.0926508832385224,
+        "targetCoverage": 0.8
+      },
+      "maeImprovement": -0.15732900682642972,
+      "model": {
+        "coefficients": [
+          -0.3987432995954002,
+          0.37031657913821975,
+          -0.0225534582528199,
+          -0.25803457613382547,
+          -0.05973844798852021,
+          0.042715281168207,
+          0.0021614038027385164,
+          -0.008958217531001313,
+          0.03309088497599563,
+          -0.059738447997602875,
+          -0.016749632828944205,
+          -0.04911330872126309,
+          -0.024394457274248885,
+          -0.007674008081319897,
+          -0.025482509525742516
+        ],
+        "features": [
+          "log_value",
+          "market_percentile",
+          "position_percentile",
+          "age",
+          "age_missing",
+          "is_qb",
+          "is_rb",
+          "is_wr",
+          "is_te",
+          "is_pick",
+          "return_7d",
+          "return_30d",
+          "volatility_30d",
+          "max_drawdown_30d",
+          "pick_years_away"
+        ],
+        "intercept": -0.11939332338353759,
+        "kind": "standardized-ridge-log-return-v1",
+        "means": [
+          6.985032395969524,
+          0.5147686874156692,
+          0.5185621090881959,
+          21.033777015710985,
+          0.17577159263099132,
+          0.14227609857245394,
+          0.2270515990110854,
+          0.32546455060212137,
+          0.12943615918334794,
+          0.17577159263099132,
+          0.06289370680076255,
+          0.16496191129274437,
+          0.6865777930450575,
+          -0.22374657339124152,
+          0.21660419491187494
+        ],
+        "portable": true,
+        "scales": [
+          1.1644671225611463,
+          0.28210180193987494,
+          0.28306977135756617,
+          10.178565102521011,
+          0.38062572148365925,
+          0.349333093690614,
+          0.4189262111608615,
+          0.46854815857442067,
+          0.3356820517680547,
+          0.38062572148365925,
+          0.9565670720159973,
+          1.8804096167953466,
+          2.4859341852762302,
+          0.24143034610463024,
+          0.6082941497327086
+        ]
+      },
+      "modelMetrics": {
+        "mae": 0.3435344980570126,
+        "rankCorrelation": 0.012391000900826711,
+        "rmse": 0.5599832322025562
+      },
+      "rows": 12539,
+      "selectedModel": "ridge",
+      "split": {
+        "embargoDays": 180,
+        "testStart": "2026-01-29"
+      },
+      "status": "needs-data",
+      "target": "same-asset later FantasyCalc market-value percentage return",
+      "testRows": 1330,
+      "trainSpanDays": 0,
+      "trainingRows": 414,
+      "zeroReturnBaseline": {
+        "mae": 0.2968339132871437,
+        "rankCorrelation": 0.0,
+        "rmse": 0.5357248702222167
+      }
+    },
+    {
+      "anchorDates": 2,
+      "assets": 422,
+      "baseline": {
+        "mae": 0.45096455209185765,
+        "rankCorrelation": 0.0,
+        "rmse": 0.7402559916707481
+      },
+      "baselineName": "position-value cohort median",
+      "calibrationStart": null,
+      "challengerValidation": [],
+      "cohortBaseline": {
+        "mae": 0.45096455209185765,
+        "rankCorrelation": 0.0,
+        "rmse": 0.7402559916707481
+      },
+      "cohorts": [
+        {
+          "ageBand": "Pick/no age",
+          "assets": 76,
+          "medianReturn": 0.11334421721319232,
+          "p10Return": 0.010480430083058375,
+          "p90Return": 0.1708377988541406,
+          "position": "PICK",
+          "rows": 152
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 34,
+          "medianReturn": -0.04160347992657032,
+          "p10Return": -0.8301729786397588,
+          "p90Return": 0.6625296689864939,
+          "position": "RB",
+          "rows": 68
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 33,
+          "medianReturn": -0.25196850393700787,
+          "p10Return": -0.7791436036504575,
+          "p90Return": 0.5220177330457705,
+          "position": "RB",
+          "rows": 65
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 56,
+          "medianReturn": -0.07473241371097977,
+          "p10Return": -0.8596263988349017,
+          "p90Return": 1.6389715461412235,
+          "position": "WR",
+          "rows": 110
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 45,
+          "medianReturn": -0.22180408205446972,
+          "p10Return": -0.5814959800858671,
+          "p90Return": 0.2609599621679701,
+          "position": "WR",
+          "rows": 90
+        }
+      ],
+      "crossSectionRankCorrelation": 0.0,
+      "enabled": false,
+      "format": "1qb",
+      "gates": [
+        {
+          "actual": 838.0,
+          "id": "rows",
+          "label": "Time-safe labeled rows",
+          "passed": false,
+          "requirement": ">= 1000"
+        },
+        {
+          "actual": 422.0,
+          "id": "assets",
+          "label": "Distinct tracked assets",
+          "passed": true,
+          "requirement": ">= 200"
+        },
+        {
+          "actual": 2.0,
+          "id": "anchorDates",
+          "label": "Distinct weekly anchors",
+          "passed": false,
+          "requirement": ">= 8"
+        },
+        {
+          "actual": 421.0,
+          "id": "heldout",
+          "label": "Later embargoed holdout rows",
+          "passed": true,
+          "requirement": ">= 150"
+        },
+        {
+          "actual": 421.0,
+          "id": "heldoutAssets",
+          "label": "Later holdout assets",
+          "passed": true,
+          "requirement": ">= 150"
+        },
+        {
+          "actual": 0.0,
+          "id": "trainSpan",
+          "label": "Training-anchor span",
+          "passed": false,
+          "requirement": ">= 365 days"
+        },
+        {
+          "actual": 0.0,
+          "id": "mae",
+          "label": "MAE lift over best simple baseline",
+          "passed": false,
+          "requirement": ">= 2%"
+        },
+        {
+          "actual": 0.0,
+          "id": "rank",
+          "label": "Median held-out cross-sectional rank",
+          "passed": false,
+          "requirement": ">= 0.05"
+        },
+        {
+          "actual": 0.0,
+          "id": "interval",
+          "label": "Held-out 80% interval calibration",
+          "passed": false,
+          "requirement": "70%\u201390%"
+        }
+      ],
+      "heldoutAssets": 421,
+      "horizonDays": 365,
+      "interval": {
+        "heldoutCoverage": 0.0,
+        "meanWidth": 0.0,
+        "targetCoverage": 0.8
+      },
+      "maeImprovement": 0.0,
+      "model": null,
+      "modelMetrics": {
+        "mae": 0.0,
+        "rankCorrelation": 0.0,
+        "rmse": 0.0
+      },
+      "rows": 838,
+      "selectedModel": "ridge",
+      "split": {
+        "embargoDays": 365,
+        "testStart": "2025-08-07"
+      },
+      "status": "needs-data",
+      "target": "same-asset later FantasyCalc market-value percentage return",
+      "testRows": 421,
+      "trainSpanDays": 0,
+      "trainingRows": 0,
+      "zeroReturnBaseline": {
+        "mae": 0.45096455209185765,
+        "rankCorrelation": 0.0,
+        "rmse": 0.7402559916707481
+      }
+    },
+    {
+      "anchorDates": 50,
+      "assets": 476,
+      "baseline": {
+        "mae": 0.1502085116917743,
+        "rankCorrelation": 0.0,
+        "rmse": 0.36557567090252124
+      },
+      "baselineName": "zero return",
+      "calibrationStart": "2026-03-12",
+      "challengerValidation": [
+        {
+          "kind": "ridge",
+          "metrics": {
+            "mae": 0.16200076505375977,
+            "rankCorrelation": 0.08170082020767061,
+            "rmse": 0.33046593698065946
+          }
+        },
+        {
+          "kind": "hist-gradient",
+          "metrics": {
+            "mae": 0.15205828441814798,
+            "rankCorrelation": 0.21583003951359817,
+            "rmse": 0.31796853684432924
+          }
+        }
+      ],
+      "cohortBaseline": {
+        "mae": 0.15021677562691643,
+        "rankCorrelation": 0.0898577606720347,
+        "rmse": 0.3658841361130498
+      },
+      "cohorts": [
+        {
+          "ageBand": "Pick/no age",
+          "assets": 76,
+          "medianReturn": 0.0037831262075710415,
+          "p10Return": -0.025948303465942343,
+          "p90Return": 0.056670233378640134,
+          "position": "PICK",
+          "rows": 3800
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 31,
+          "medianReturn": -0.016726858011784862,
+          "p10Return": -0.2997288092388957,
+          "p90Return": 0.2890860953785313,
+          "position": "QB",
+          "rows": 1087
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 25,
+          "medianReturn": -0.00822418799248259,
+          "p10Return": -0.2500823509233896,
+          "p90Return": 0.32964125140502026,
+          "position": "QB",
+          "rows": 862
+        },
+        {
+          "ageBand": "29+",
+          "assets": 23,
+          "medianReturn": -0.006222593612714544,
+          "p10Return": -0.4084576982549149,
+          "p90Return": 0.4956005676686881,
+          "position": "QB",
+          "rows": 904
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 13,
+          "medianReturn": -0.0025991658412672924,
+          "p10Return": -0.2668297869073938,
+          "p90Return": 0.14685787981496878,
+          "position": "QB",
+          "rows": 336
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 53,
+          "medianReturn": -0.008995746715915187,
+          "p10Return": -0.32196731615336266,
+          "p90Return": 0.27024005630509607,
+          "position": "RB",
+          "rows": 1830
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 36,
+          "medianReturn": -0.007844981400124573,
+          "p10Return": -0.30257771108180426,
+          "p90Return": 0.3469746768227929,
+          "position": "RB",
+          "rows": 1390
+        },
+        {
+          "ageBand": "29+",
+          "assets": 12,
+          "medianReturn": -0.029264810849393252,
+          "p10Return": -0.37662337662337664,
+          "p90Return": 0.22659176029962547,
+          "position": "RB",
+          "rows": 481
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 34,
+          "medianReturn": -0.010204081632653073,
+          "p10Return": -0.2478019365818748,
+          "p90Return": 0.16635169136147598,
+          "position": "RB",
+          "rows": 1313
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 34,
+          "medianReturn": 0.0,
+          "p10Return": -0.2911765917988873,
+          "p90Return": 0.4834012072544521,
+          "position": "TE",
+          "rows": 1020
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 19,
+          "medianReturn": -0.027506654835847355,
+          "p10Return": -0.32790224032586557,
+          "p90Return": 0.46226415094339623,
+          "position": "TE",
+          "rows": 601
+        },
+        {
+          "ageBand": "29+",
+          "assets": 14,
+          "medianReturn": -0.007910349373764003,
+          "p10Return": -0.2925102573666542,
+          "p90Return": 0.26922626576560393,
+          "position": "TE",
+          "rows": 593
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 20,
+          "medianReturn": -0.00016323865491346679,
+          "p10Return": -0.1607706505295008,
+          "p90Return": 0.219362389023406,
+          "position": "TE",
+          "rows": 686
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 90,
+          "medianReturn": -0.016335580601444466,
+          "p10Return": -0.3080451658433309,
+          "p90Return": 0.3073498593009483,
+          "position": "WR",
+          "rows": 3208
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 46,
+          "medianReturn": -0.019689511548655836,
+          "p10Return": -0.3285279369627507,
+          "p90Return": 0.2805087246003166,
+          "position": "WR",
+          "rows": 1565
+        },
+        {
+          "ageBand": "29+",
+          "assets": 21,
+          "medianReturn": -0.03732870989304815,
+          "p10Return": -0.3543329140678691,
+          "p90Return": 0.27756486066375036,
+          "position": "WR",
+          "rows": 760
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 47,
+          "medianReturn": -0.004018754186202234,
+          "p10Return": -0.1710646041856233,
+          "p90Return": 0.14025623735670933,
+          "position": "WR",
+          "rows": 1631
+        }
+      ],
+      "crossSectionRankCorrelation": 0.15398311852255656,
+      "enabled": true,
+      "format": "2qb",
+      "gates": [
+        {
+          "actual": 22067.0,
+          "id": "rows",
+          "label": "Time-safe labeled rows",
+          "passed": true,
+          "requirement": ">= 6000"
+        },
+        {
+          "actual": 476.0,
+          "id": "assets",
+          "label": "Distinct tracked assets",
+          "passed": true,
+          "requirement": ">= 200"
+        },
+        {
+          "actual": 50.0,
+          "id": "anchorDates",
+          "label": "Distinct weekly anchors",
+          "passed": true,
+          "requirement": ">= 24"
+        },
+        {
+          "actual": 2297.0,
+          "id": "heldout",
+          "label": "Later embargoed holdout rows",
+          "passed": true,
+          "requirement": ">= 800"
+        },
+        {
+          "actual": 468.0,
+          "id": "heldoutAssets",
+          "label": "Later holdout assets",
+          "passed": true,
+          "requirement": ">= 150"
+        },
+        {
+          "actual": 280.0,
+          "id": "trainSpan",
+          "label": "Training-anchor span",
+          "passed": true,
+          "requirement": ">= 60 days"
+        },
+        {
+          "actual": 0.07427293374520112,
+          "id": "mae",
+          "label": "MAE lift over best simple baseline",
+          "passed": true,
+          "requirement": ">= 2%"
+        },
+        {
+          "actual": 0.15398311852255656,
+          "id": "rank",
+          "label": "Median held-out cross-sectional rank",
+          "passed": true,
+          "requirement": ">= 0.05"
+        },
+        {
+          "actual": 0.8210709621245103,
+          "id": "interval",
+          "label": "Held-out 80% interval calibration",
+          "passed": true,
+          "requirement": "70%\u201390%"
+        }
+      ],
+      "heldoutAssets": 468,
+      "horizonDays": 30,
+      "interval": {
+        "heldoutCoverage": 0.8210709621245103,
+        "meanWidth": 0.4094569195963225,
+        "targetCoverage": 0.8
+      },
+      "maeImprovement": 0.07427293374520112,
+      "model": {
+        "kind": "hist-gradient-boosting-log-return-v1",
+        "parameters": {
+          "l2Regularization": 1.0,
+          "learningRate": 0.05,
+          "maxIterations": 160,
+          "maxLeafNodes": 15,
+          "minimumLeafRows": 30
+        },
+        "portable": false
+      },
+      "modelMetrics": {
+        "mae": 0.13905208485492587,
+        "rankCorrelation": 0.17789946117239944,
+        "rmse": 0.30323881000410363
+      },
+      "rows": 22067,
+      "selectedModel": "hist-gradient",
+      "split": {
+        "embargoDays": 30,
+        "testStart": "2026-06-11"
+      },
+      "status": "validated",
+      "target": "same-asset later FantasyCalc market-value percentage return",
+      "testRows": 2297,
+      "trainSpanDays": 280,
+      "trainingRows": 17949,
+      "zeroReturnBaseline": {
+        "mae": 0.1502085116917743,
+        "rankCorrelation": 0.0,
+        "rmse": 0.36557567090252124
+      }
+    },
+    {
+      "anchorDates": 41,
+      "assets": 461,
+      "baseline": {
+        "mae": 0.2010709081279716,
+        "rankCorrelation": 0.0,
+        "rmse": 0.43896102485150557
+      },
+      "baselineName": "zero return",
+      "calibrationStart": "2025-12-11",
+      "challengerValidation": [
+        {
+          "kind": "ridge",
+          "metrics": {
+            "mae": 0.26249834025388535,
+            "rankCorrelation": 0.0897458191108733,
+            "rmse": 0.5528123686019014
+          }
+        },
+        {
+          "kind": "hist-gradient",
+          "metrics": {
+            "mae": 0.2801821571807571,
+            "rankCorrelation": 0.001278565118790315,
+            "rmse": 0.5830955782186671
+          }
+        }
+      ],
+      "cohortBaseline": {
+        "mae": 0.21970976415941404,
+        "rankCorrelation": -0.16345616105720975,
+        "rmse": 0.44787209114463195
+      },
+      "cohorts": [
+        {
+          "ageBand": "Pick/no age",
+          "assets": 76,
+          "medianReturn": 0.009369249049280604,
+          "p10Return": -0.0400479145843059,
+          "p90Return": 0.13675541585775486,
+          "position": "PICK",
+          "rows": 3116
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 30,
+          "medianReturn": -0.037441809565202155,
+          "p10Return": -0.4434587225448119,
+          "p90Return": 0.6545816078823369,
+          "position": "QB",
+          "rows": 890
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 22,
+          "medianReturn": -0.04210526315789476,
+          "p10Return": -0.3585275958361211,
+          "p90Return": 0.4110407402825183,
+          "position": "QB",
+          "rows": 657
+        },
+        {
+          "ageBand": "29+",
+          "assets": 21,
+          "medianReturn": -0.009440323668240103,
+          "p10Return": -0.5639260787498354,
+          "p90Return": 1.2262725779967156,
+          "position": "QB",
+          "rows": 707
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 13,
+          "medianReturn": 0.01040131138485012,
+          "p10Return": -0.3564609450337512,
+          "p90Return": 0.5087527031331197,
+          "position": "QB",
+          "rows": 304
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 48,
+          "medianReturn": -0.011467889908256867,
+          "p10Return": -0.4437626242515945,
+          "p90Return": 0.4815166889494005,
+          "position": "RB",
+          "rows": 1469
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 34,
+          "medianReturn": -0.010522095016868516,
+          "p10Return": -0.40365572413037976,
+          "p90Return": 0.6098098490792454,
+          "position": "RB",
+          "rows": 1094
+        },
+        {
+          "ageBand": "29+",
+          "assets": 11,
+          "medianReturn": -0.1591914722445696,
+          "p10Return": -0.6966973815658026,
+          "p90Return": 0.3981560798548095,
+          "position": "RB",
+          "rows": 378
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 33,
+          "medianReturn": -0.01850294365012617,
+          "p10Return": -0.4149952600216685,
+          "p90Return": 0.34791514548654817,
+          "position": "RB",
+          "rows": 1107
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 29,
+          "medianReturn": 0.022595222724338226,
+          "p10Return": -0.47202117085568335,
+          "p90Return": 0.8566993464052288,
+          "position": "TE",
+          "rows": 795
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 18,
+          "medianReturn": -0.062153846153846115,
+          "p10Return": -0.47138820625520994,
+          "p90Return": 0.8728182323513068,
+          "position": "TE",
+          "rows": 465
+        },
+        {
+          "ageBand": "29+",
+          "assets": 13,
+          "medianReturn": -0.05599688802508934,
+          "p10Return": -0.41487752621212026,
+          "p90Return": 0.3343283582089554,
+          "position": "TE",
+          "rows": 480
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 18,
+          "medianReturn": 0.005635572528743582,
+          "p10Return": -0.26637209810764634,
+          "p90Return": 0.4259353403323368,
+          "position": "TE",
+          "rows": 582
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 82,
+          "medianReturn": -0.04808242701774468,
+          "p10Return": -0.4932940108892922,
+          "p90Return": 0.47996405155643845,
+          "position": "WR",
+          "rows": 2565
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 44,
+          "medianReturn": -0.05132381963808569,
+          "p10Return": -0.502687728937729,
+          "p90Return": 0.36735943775100394,
+          "position": "WR",
+          "rows": 1208
+        },
+        {
+          "ageBand": "29+",
+          "assets": 19,
+          "medianReturn": -0.09350057012542756,
+          "p10Return": -0.5577466270138653,
+          "p90Return": 0.32230804779824407,
+          "position": "WR",
+          "rows": 593
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 46,
+          "medianReturn": -0.011812176934106966,
+          "p10Return": -0.27717884813715554,
+          "p90Return": 0.21407312820764682,
+          "position": "WR",
+          "rows": 1422
+        }
+      ],
+      "crossSectionRankCorrelation": -0.09970450685569397,
+      "enabled": false,
+      "format": "2qb",
+      "gates": [
+        {
+          "actual": 17832.0,
+          "id": "rows",
+          "label": "Time-safe labeled rows",
+          "passed": true,
+          "requirement": ">= 4000"
+        },
+        {
+          "actual": 461.0,
+          "id": "assets",
+          "label": "Distinct tracked assets",
+          "passed": true,
+          "requirement": ">= 200"
+        },
+        {
+          "actual": 41.0,
+          "id": "anchorDates",
+          "label": "Distinct weekly anchors",
+          "passed": true,
+          "requirement": ">= 18"
+        },
+        {
+          "actual": 2240.0,
+          "id": "heldout",
+          "label": "Later embargoed holdout rows",
+          "passed": true,
+          "requirement": ">= 500"
+        },
+        {
+          "actual": 456.0,
+          "id": "heldoutAssets",
+          "label": "Later holdout assets",
+          "passed": true,
+          "requirement": ">= 150"
+        },
+        {
+          "actual": 161.0,
+          "id": "trainSpan",
+          "label": "Training-anchor span",
+          "passed": true,
+          "requirement": ">= 90 days"
+        },
+        {
+          "actual": -0.1458539850484576,
+          "id": "mae",
+          "label": "MAE lift over best simple baseline",
+          "passed": false,
+          "requirement": ">= 2%"
+        },
+        {
+          "actual": -0.09970450685569397,
+          "id": "rank",
+          "label": "Median held-out cross-sectional rank",
+          "passed": false,
+          "requirement": ">= 0.05"
+        },
+        {
+          "actual": 0.8236607142857143,
+          "id": "interval",
+          "label": "Held-out 80% interval calibration",
+          "passed": true,
+          "requirement": "70%\u201390%"
+        }
+      ],
+      "heldoutAssets": 456,
+      "horizonDays": 90,
+      "interval": {
+        "heldoutCoverage": 0.8236607142857143,
+        "meanWidth": 0.7102156613351641,
+        "targetCoverage": 0.8
+      },
+      "maeImprovement": -0.1458539850484576,
+      "model": {
+        "coefficients": [
+          -0.2970713754406854,
+          0.2017020803699984,
+          0.035794859971063395,
+          -0.09965465866415321,
+          -0.02585742774728694,
+          0.024946794703745754,
+          -0.00028445190571975095,
+          -0.008845646755384838,
+          0.015853961899148086,
+          -0.02585742775620716,
+          -0.004981965365900695,
+          -0.026019408109191813,
+          -0.011197066074808665,
+          0.052658566691441325,
+          -0.005917817833991465
+        ],
+        "features": [
+          "log_value",
+          "market_percentile",
+          "position_percentile",
+          "age",
+          "age_missing",
+          "is_qb",
+          "is_rb",
+          "is_wr",
+          "is_te",
+          "is_pick",
+          "return_7d",
+          "return_30d",
+          "volatility_30d",
+          "max_drawdown_30d",
+          "pick_years_away"
+        ],
+        "intercept": -0.051188818144375516,
+        "kind": "standardized-ridge-log-return-v1",
+        "means": [
+          7.036356923050061,
+          0.5149125334513514,
+          0.5188219321877594,
+          21.147635598923287,
+          0.1747420367877972,
+          0.14344997756841632,
+          0.22700762673844774,
+          0.32458501570210857,
+          0.13021534320323014,
+          0.1747420367877972,
+          0.05830496810085718,
+          0.14612609835318072,
+          0.6270177146658291,
+          -0.21248214121676456,
+          0.17653656348138178
+        ],
+        "portable": true,
+        "scales": [
+          1.149106777371582,
+          0.28208233189680426,
+          0.2827862854254199,
+          10.190705815246801,
+          0.3797463065877657,
+          0.35053114198889257,
+          0.41889755805092166,
+          0.4682195887441815,
+          0.33654020205273416,
+          0.3797463065877657,
+          1.0169355126819872,
+          1.7625343798093394,
+          2.1783338445520255,
+          0.2373056972020422,
+          0.5547756943170539
+        ]
+      },
+      "modelMetrics": {
+        "mae": 0.23039790135574856,
+        "rankCorrelation": -0.10411136479978376,
+        "rmse": 0.4240062662670144
+      },
+      "rows": 17832,
+      "selectedModel": "ridge",
+      "split": {
+        "embargoDays": 90,
+        "testStart": "2026-04-09"
+      },
+      "status": "shadow",
+      "target": "same-asset later FantasyCalc market-value percentage return",
+      "testRows": 2240,
+      "trainSpanDays": 161,
+      "trainingRows": 10275,
+      "zeroReturnBaseline": {
+        "mae": 0.2010709081279716,
+        "rankCorrelation": 0.0,
+        "rmse": 0.43896102485150557
+      }
+    },
+    {
+      "anchorDates": 29,
+      "assets": 458,
+      "baseline": {
+        "mae": 0.28968654468359467,
+        "rankCorrelation": 0.0,
+        "rmse": 0.5404593396827155
+      },
+      "baselineName": "zero return",
+      "calibrationStart": null,
+      "challengerValidation": [],
+      "cohortBaseline": {
+        "mae": 0.33216024070102174,
+        "rankCorrelation": -0.03642481794248863,
+        "rmse": 0.5658856404740126
+      },
+      "cohorts": [
+        {
+          "ageBand": "Pick/no age",
+          "assets": 76,
+          "medianReturn": 0.007070707070707005,
+          "p10Return": -0.034865994806616715,
+          "p90Return": 0.12076592698639953,
+          "position": "PICK",
+          "rows": 2204
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 29,
+          "medianReturn": -0.023551679192434616,
+          "p10Return": -0.5519363395225464,
+          "p90Return": 0.9608695652173923,
+          "position": "QB",
+          "rows": 610
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 19,
+          "medianReturn": -0.081700379266751,
+          "p10Return": -0.39082128508167396,
+          "p90Return": 0.5433518601781255,
+          "position": "QB",
+          "rows": 429
+        },
+        {
+          "ageBand": "29+",
+          "assets": 21,
+          "medianReturn": -0.05223137242187936,
+          "p10Return": -0.6490294341937476,
+          "p90Return": 1.59838185415489,
+          "position": "QB",
+          "rows": 490
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 13,
+          "medianReturn": 0.01580703382172044,
+          "p10Return": -0.45600482441827245,
+          "p90Return": 0.7685041450777202,
+          "position": "QB",
+          "rows": 252
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 44,
+          "medianReturn": -0.055374592833876246,
+          "p10Return": -0.5745326096321185,
+          "p90Return": 0.576496284804442,
+          "position": "RB",
+          "rows": 1023
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 29,
+          "medianReturn": -0.025682182985553803,
+          "p10Return": -0.41570149360012826,
+          "p90Return": 0.6114347112129263,
+          "position": "RB",
+          "rows": 739
+        },
+        {
+          "ageBand": "29+",
+          "assets": 10,
+          "medianReturn": -0.3092643051771117,
+          "p10Return": -0.8544814479638009,
+          "p90Return": 0.12279514030779952,
+          "position": "RB",
+          "rows": 257
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 33,
+          "medianReturn": -0.006403415154749181,
+          "p10Return": -0.4252795073720448,
+          "p90Return": 0.7914569335471844,
+          "position": "RB",
+          "rows": 827
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 25,
+          "medianReturn": 0.052559414990859255,
+          "p10Return": -0.5537707978995757,
+          "p90Return": 0.9375565610859731,
+          "position": "TE",
+          "rows": 533
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 15,
+          "medianReturn": -0.11995084759901825,
+          "p10Return": -0.514966357519549,
+          "p90Return": 1.3165071245889683,
+          "position": "TE",
+          "rows": 312
+        },
+        {
+          "ageBand": "29+",
+          "assets": 13,
+          "medianReturn": -0.18457808023094102,
+          "p10Return": -0.5178812726491002,
+          "p90Return": 0.2863732291596507,
+          "position": "TE",
+          "rows": 336
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 17,
+          "medianReturn": 0.0019717384160367057,
+          "p10Return": -0.42012723624098036,
+          "p90Return": 0.667288337752718,
+          "position": "TE",
+          "rows": 439
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 76,
+          "medianReturn": -0.07179633867276891,
+          "p10Return": -0.6084866220735786,
+          "p90Return": 0.6478106676754304,
+          "position": "WR",
+          "rows": 1775
+        },
+        {
+          "ageBand": "26\u201328",
+          "assets": 35,
+          "medianReturn": -0.09988901220865709,
+          "p10Return": -0.6090187435269154,
+          "p90Return": 0.6263090036530333,
+          "position": "WR",
+          "rows": 807
+        },
+        {
+          "ageBand": "29+",
+          "assets": 17,
+          "medianReturn": -0.20772399145561204,
+          "p10Return": -0.6598746618468772,
+          "p90Return": 0.16735314034196716,
+          "position": "WR",
+          "rows": 402
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 46,
+          "medianReturn": -0.05181209188493813,
+          "p10Return": -0.38665726548129986,
+          "p90Return": 0.22808080491474414,
+          "position": "WR",
+          "rows": 1092
+        }
+      ],
+      "crossSectionRankCorrelation": -0.01881778729260345,
+      "enabled": false,
+      "format": "2qb",
+      "gates": [
+        {
+          "actual": 12527.0,
+          "id": "rows",
+          "label": "Time-safe labeled rows",
+          "passed": true,
+          "requirement": ">= 2000"
+        },
+        {
+          "actual": 458.0,
+          "id": "assets",
+          "label": "Distinct tracked assets",
+          "passed": true,
+          "requirement": ">= 200"
+        },
+        {
+          "actual": 29.0,
+          "id": "anchorDates",
+          "label": "Distinct weekly anchors",
+          "passed": true,
+          "requirement": ">= 12"
+        },
+        {
+          "actual": 1330.0,
+          "id": "heldout",
+          "label": "Later embargoed holdout rows",
+          "passed": true,
+          "requirement": ">= 300"
+        },
+        {
+          "actual": 450.0,
+          "id": "heldoutAssets",
+          "label": "Later holdout assets",
+          "passed": true,
+          "requirement": ">= 150"
+        },
+        {
+          "actual": 0.0,
+          "id": "trainSpan",
+          "label": "Training-anchor span",
+          "passed": false,
+          "requirement": ">= 180 days"
+        },
+        {
+          "actual": -0.15946406681860503,
+          "id": "mae",
+          "label": "MAE lift over best simple baseline",
+          "passed": false,
+          "requirement": ">= 2%"
+        },
+        {
+          "actual": -0.01881778729260345,
+          "id": "rank",
+          "label": "Median held-out cross-sectional rank",
+          "passed": false,
+          "requirement": ">= 0.05"
+        },
+        {
+          "actual": 0.7902255639097744,
+          "id": "interval",
+          "label": "Held-out 80% interval calibration",
+          "passed": true,
+          "requirement": "70%\u201390%"
+        }
+      ],
+      "heldoutAssets": 450,
+      "horizonDays": 180,
+      "interval": {
+        "heldoutCoverage": 0.7902255639097744,
+        "meanWidth": 1.1349956457818735,
+        "targetCoverage": 0.8
+      },
+      "maeImprovement": -0.15946406681860503,
+      "model": {
+        "coefficients": [
+          -0.38310589754377217,
+          0.3033899911625392,
+          0.035799938986577635,
+          -0.2656530772827005,
+          -0.07678377642306607,
+          0.05687349697833491,
+          0.006614371488543202,
+          -0.006417145662657261,
+          0.02863949412932122,
+          -0.07678377641032265,
+          -0.011337077303156804,
+          -0.05052322541349698,
+          -0.021640998036649477,
+          -0.006114319260300289,
+          -0.006752913149113737
+        ],
+        "features": [
+          "log_value",
+          "market_percentile",
+          "position_percentile",
+          "age",
+          "age_missing",
+          "is_qb",
+          "is_rb",
+          "is_wr",
+          "is_te",
+          "is_pick",
+          "return_7d",
+          "return_30d",
+          "volatility_30d",
+          "max_drawdown_30d",
+          "pick_years_away"
+        ],
+        "intercept": -0.08933579753201731,
+        "kind": "standardized-ridge-log-return-v1",
+        "means": [
+          7.05623542583427,
+          0.5150738973879543,
+          0.518911898453514,
+          21.029390516484394,
+          0.17593996966552247,
+          0.14217290652191267,
+          0.2271892711742636,
+          0.32537718527979564,
+          0.12932066735850561,
+          0.17593996966552247,
+          0.07132224820396509,
+          0.17369216412054522,
+          0.6940147146868798,
+          -0.21993183782546094,
+          0.21681168675660573
+        ],
+        "portable": true,
+        "scales": [
+          1.1455300232888999,
+          0.2820387313343502,
+          0.2828826563400262,
+          10.182254869947839,
+          0.3807690858507522,
+          0.3492273917851006,
+          0.41901587826426157,
+          0.4685156054809628,
+          0.33555451472518794,
+          0.3807690858507522,
+          1.2045663180510209,
+          1.932300158300315,
+          2.6007869115371216,
+          0.24218623106983128,
+          0.6085484707239749
+        ]
+      },
+      "modelMetrics": {
+        "mae": 0.3358811392014702,
+        "rankCorrelation": -0.003785443796406854,
+        "rmse": 0.5619920190057252
+      },
+      "rows": 12527,
+      "selectedModel": "ridge",
+      "split": {
+        "embargoDays": 180,
+        "testStart": "2026-01-29"
+      },
+      "status": "needs-data",
+      "target": "same-asset later FantasyCalc market-value percentage return",
+      "testRows": 1330,
+      "trainSpanDays": 0,
+      "trainingRows": 413,
+      "zeroReturnBaseline": {
+        "mae": 0.28968654468359467,
+        "rankCorrelation": 0.0,
+        "rmse": 0.5404593396827155
+      }
+    },
+    {
+      "anchorDates": 2,
+      "assets": 422,
+      "baseline": {
+        "mae": 0.4636330038231521,
+        "rankCorrelation": 0.0,
+        "rmse": 0.7893223035536959
+      },
+      "baselineName": "position-value cohort median",
+      "calibrationStart": null,
+      "challengerValidation": [],
+      "cohortBaseline": {
+        "mae": 0.4636330038231521,
+        "rankCorrelation": 0.0,
+        "rmse": 0.7893223035536959
+      },
+      "cohorts": [
+        {
+          "ageBand": "Pick/no age",
+          "assets": 76,
+          "medianReturn": 0.10577144260419769,
+          "p10Return": 0.0025570029846587743,
+          "p90Return": 0.16026335989063326,
+          "position": "PICK",
+          "rows": 152
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 34,
+          "medianReturn": 0.013258755782120213,
+          "p10Return": -0.8179895755770663,
+          "p90Return": 0.7730733143437736,
+          "position": "RB",
+          "rows": 68
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 33,
+          "medianReturn": -0.2069701280227596,
+          "p10Return": -0.7650673000791766,
+          "p90Return": 0.608396717516896,
+          "position": "RB",
+          "rows": 65
+        },
+        {
+          "ageBand": "23\u201325",
+          "assets": 56,
+          "medianReturn": -0.015010680561378276,
+          "p10Return": -0.8508860930735931,
+          "p90Return": 1.8128670374645817,
+          "position": "WR",
+          "rows": 110
+        },
+        {
+          "ageBand": "Under 23",
+          "assets": 45,
+          "medianReturn": -0.17424114320974465,
+          "p10Return": -0.5580369303241292,
+          "p90Return": 0.33252873492150864,
+          "position": "WR",
+          "rows": 90
+        }
+      ],
+      "crossSectionRankCorrelation": 0.0,
+      "enabled": false,
+      "format": "2qb",
+      "gates": [
+        {
+          "actual": 838.0,
+          "id": "rows",
+          "label": "Time-safe labeled rows",
+          "passed": false,
+          "requirement": ">= 1000"
+        },
+        {
+          "actual": 422.0,
+          "id": "assets",
+          "label": "Distinct tracked assets",
+          "passed": true,
+          "requirement": ">= 200"
+        },
+        {
+          "actual": 2.0,
+          "id": "anchorDates",
+          "label": "Distinct weekly anchors",
+          "passed": false,
+          "requirement": ">= 8"
+        },
+        {
+          "actual": 421.0,
+          "id": "heldout",
+          "label": "Later embargoed holdout rows",
+          "passed": true,
+          "requirement": ">= 150"
+        },
+        {
+          "actual": 421.0,
+          "id": "heldoutAssets",
+          "label": "Later holdout assets",
+          "passed": true,
+          "requirement": ">= 150"
+        },
+        {
+          "actual": 0.0,
+          "id": "trainSpan",
+          "label": "Training-anchor span",
+          "passed": false,
+          "requirement": ">= 365 days"
+        },
+        {
+          "actual": 0.0,
+          "id": "mae",
+          "label": "MAE lift over best simple baseline",
+          "passed": false,
+          "requirement": ">= 2%"
+        },
+        {
+          "actual": 0.0,
+          "id": "rank",
+          "label": "Median held-out cross-sectional rank",
+          "passed": false,
+          "requirement": ">= 0.05"
+        },
+        {
+          "actual": 0.0,
+          "id": "interval",
+          "label": "Held-out 80% interval calibration",
+          "passed": false,
+          "requirement": "70%\u201390%"
+        }
+      ],
+      "heldoutAssets": 421,
+      "horizonDays": 365,
+      "interval": {
+        "heldoutCoverage": 0.0,
+        "meanWidth": 0.0,
+        "targetCoverage": 0.8
+      },
+      "maeImprovement": 0.0,
+      "model": null,
+      "modelMetrics": {
+        "mae": 0.0,
+        "rankCorrelation": 0.0,
+        "rmse": 0.0
+      },
+      "rows": 838,
+      "selectedModel": "ridge",
+      "split": {
+        "embargoDays": 365,
+        "testStart": "2025-08-07"
+      },
+      "status": "needs-data",
+      "target": "same-asset later FantasyCalc market-value percentage return",
+      "testRows": 421,
+      "trainSpanDays": 0,
+      "trainingRows": 0,
+      "zeroReturnBaseline": {
+        "mae": 0.4636330038231521,
+        "rankCorrelation": 0.0,
+        "rmse": 0.7893223035536959
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "source": {
+    "attribution": "FantasyCalc",
+    "methodology": "https://fantasycalc.com/frequently-asked-questions",
+    "name": "FantasyCalc daily dynasty value history",
+    "predictionBoundary": "Same-source tracked-asset market return; not fantasy points, profit certainty, or manager acceptance.",
+    "terms": "https://fantasycalc.com/terms-of-usage"
+  },
+  "sourceAudit": {
+    "currentCatalogAssets": 475,
+    "datasetId": "sha256:fe6d86bc9d4f1d22f385da89d59bf435c3cb52d16be78914b27a23b46279e6d3",
+    "formats": [
+      {
+        "currentCatalogCoverage": 1.0,
+        "format": "1qb",
+        "medianGapDays": 1.0,
+        "medianObservations": 407.0,
+        "medianSpanDays": 406.0,
+        "series": 485
+      },
+      {
+        "currentCatalogCoverage": 1.0,
+        "format": "2qb",
+        "medianGapDays": 1.0,
+        "medianObservations": 407.0,
+        "medianSpanDays": 406.0,
+        "series": 485
+      }
+    ],
+    "historyAssets": 528,
+    "populationBoundary": "Current FantasyCalc catalog plus assets observed in the locally collected completed-trade tape.",
+    "survivorWarning": "The source does not provide a versioned full historical catalog. Failure/disappearance risk is therefore not complete and is never folded into a false confidence score.",
+    "tradeObservedAssetsOutsideCurrentCatalog": 53
+  }
+}

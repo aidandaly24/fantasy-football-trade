@@ -12,6 +12,7 @@ from ml.trade_models import (
     EXCHANGE_FEATURES,
     History,
     add_outcome_labels,
+    audit_trade_availability,
     build_training_manifest,
     import_training_tape,
     load_all_trades,
@@ -152,6 +153,28 @@ class TradeModelTests(unittest.TestCase):
         self.assertIn("structureOnly", report)
         self.assertIn("premiumAware", report)
         self.assertFalse(report["enabled"])
+
+    def test_trade_availability_audit_does_not_invent_pagination(self) -> None:
+        response = [{"id": f"trade-{index}", "date": f"2026-08-{index + 1:02d}"} for index in range(3)]
+        catalog = [{"value": 100, "player": {"id": 1, "name": "Anchor", "position": "QB"}}]
+        with tempfile.TemporaryDirectory() as temporary:
+            report_path = Path(temporary) / "audit.json"
+            markdown_path = Path(temporary) / "audit.md"
+            with (
+                patch("ml.trade_models.load_current", return_value=catalog),
+                patch("ml.trade_models.select_anchors", return_value=catalog),
+                patch("ml.trade_models.fetch_json", side_effect=[response, response, response]),
+                patch("ml.trade_models.load_all_trades", return_value=[]),
+                patch("ml.trade_models.ensure_dirs"),
+                patch("ml.trade_models.TRADES", Path(temporary) / "trades"),
+                patch("ml.trade_models.TRADE_AVAILABILITY_JSON", report_path),
+                patch("ml.trade_models.TRADE_AVAILABILITY_MD", markdown_path),
+            ):
+                report = audit_trade_availability()
+        self.assertTrue(report["page2Identical"])
+        self.assertTrue(report["offset100Identical"])
+        self.assertFalse(report["paginationProven"])
+        self.assertFalse(report["olderBackfillProven"])
 
 
 if __name__ == "__main__":
