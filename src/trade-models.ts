@@ -1,7 +1,25 @@
 import type { LeagueContext } from './league-context'
 import type { Asset, Team } from './types'
 
-export type TradeModelStatus = 'collecting' | 'shadow' | 'validated'
+export type TradeModelStatus = 'needs-data' | 'shadow' | 'validated'
+
+export type TradeTapeRefreshState = {
+  source: 'FantasyCalc completed trades'
+  status: 'never-refreshed' | 'refreshing' | 'ready' | 'partial' | 'failed'
+  lastAttemptAt: string | null
+  lastSuccessAt: string | null
+  totalTrades: number
+  uniqueLeagues: number
+  firstTradeAt: string | null
+  latestTradeAt: string | null
+  latestRun: {
+    anchorsAttempted: number
+    anchorsSucceeded: number
+    tradesDiscovered: number
+    newTrades: number
+    errors: string[]
+  } | null
+}
 
 export type TradeModelGate = {
   id: string

@@ -610,7 +610,7 @@ def train_exchange(frame: pd.DataFrame) -> dict[str, Any]:
     ]
     data_ready = all(gate["passed"] for gate in gates[:-1])
     validated = all(gate["passed"] for gate in gates)
-    status = "validated" if validated else "shadow" if data_ready else "collecting"
+    status = "validated" if validated else "shadow" if data_ready else "needs-data"
     return {
         "status": status,
         "enabled": validated,
@@ -666,7 +666,7 @@ def train_outcome(frame: pd.DataFrame, horizon: int) -> dict[str, Any]:
     data_ready = all(gate["passed"] for gate in gates[:3])
     validated = all(gate["passed"] for gate in gates)
     return {
-        "status": "validated" if validated else "shadow" if data_ready else "collecting",
+        "status": "validated" if validated else "shadow" if data_ready else "needs-data",
         "enabled": validated,
         "horizonDays": horizon,
         "target": "elite-side market return minus package-side market return",
@@ -709,7 +709,7 @@ def report_markdown(report: dict[str, Any]) -> str:
         "",
         "## Known boundary",
         "",
-        "FantasyCalc exposes completed packages, format fields, ages and point-in-time market values, but not the full historical rosters needed to measure lineup outcomes. The lineup target remains collecting from league-local snapshots and cannot be substituted with market return.",
+        "FantasyCalc exposes completed packages, format fields, ages and point-in-time market values, but not the full historical rosters needed to measure lineup outcomes. The lineup target still needs league-local snapshots and cannot be substituted with market return.",
         "",
         f"Sources: {FAQ}, {TERMS}",
         "",
@@ -744,7 +744,7 @@ def train() -> dict[str, Any]:
         "exchange": train_exchange(frame),
         "outcomes": [train_outcome(frame, horizon) for horizon in HORIZONS],
         "lineupOutcome": {
-            "status": "collecting",
+            "status": "needs-data",
             "enabled": False,
             "target": "90/180/365-day change in legal projected lineup output",
             "rows": 0,

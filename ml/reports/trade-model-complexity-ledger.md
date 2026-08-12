@@ -16,8 +16,8 @@ training inside the Worker request path.
 | Essential | Time leakage and repeated source leagues | Deduplicated trade IDs and chronological holdout; independent-league gate |
 | Imported | FantasyCalc returns accepted trades only | No acceptance-probability claim |
 | Imported | History matches QB format but lacks historical PPR/TEP/team-count variants | Exact-format gate remains failed |
-| Imported | External trades omit full historical rosters | Lineup outcome remains a league-local collecting target |
-| Transitional | Ignored local raw caches and committed browser-safe coefficients | Retained until a reviewed daily research runner exists |
+| Imported | External trades omit full historical rosters | Lineup outcome remains a league-local target that needs data |
+| Transitional | Authenticated manual D1 capture plus ignored local caches and committed browser-safe coefficients | The button preserves the rolling window; offline retraining remains the review boundary |
 | Accidental avoided | A second deployed service, queue, or online trainer | Not introduced; current modular monolith remains sufficient |
 | Accidental avoided | KTC-style hidden point adjustment | Raw market values are immutable; consolidation evidence is adjacent |
 
@@ -25,6 +25,9 @@ training inside the Worker request path.
 
 - Moving model training offline keeps requests simple but makes artifact refresh
   an explicit research operation.
+- Replacing an unproven cron with a user-triggered refresh adds one click but
+  removes a silent background-failure mode. The collection endpoint, D1 tape,
+  and trainer boundary remain replaceable if Sites later supports schedules.
 - Letting users choose weights avoids a hidden product opinion but requires the
   UI to expose unavailable weight and partial coverage.
 - Strict format and span gates delay a live premium estimate but prevent a
@@ -43,14 +46,17 @@ training inside the Worker request path.
 - Blocked models visible in Trade Lab and Model audit but unable to affect a
   recommendation.
 - Private user weights persisted with missing-weight coverage.
+- Authenticated, observable manual refresh of the rolling completed-trade tape;
+  no claim that a cron or background collector is running.
 
 ### Next
 
 - Accumulate at least 90 days and the declared row/holdout counts.
 - Validate whether source-relative normalization is stable across PPR, TEP, and
   team-count segments or obtain an exact historical source.
-- Add a reviewed daily runner only after source latency, cache behavior, and
-  failure recovery are measured.
+- Reconsider a scheduled trigger only after Sites exposes observable cron
+  execution. It must call the same bounded collector rather than create a
+  second collection architecture.
 
 ### Later
 

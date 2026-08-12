@@ -263,7 +263,7 @@ transactions by week, records coverage failures, and stores season-specific
 manager identities. It values a new trade at ingestion when possible and marks
 older initial valuations as retrospective backfills.
 
-Outcome checkpoints are scheduled at 7, 30, 90, and 180 days. A missing initial
+Outcome checkpoints are queued at 7, 30, 90, 180, and 365 days. A missing initial
 snapshot blocks a legitimate before/after return claim. Outcome evidence should
 evaluate the decision process, not retroactively rewrite its entry thesis.
 

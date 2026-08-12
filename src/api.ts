@@ -23,7 +23,7 @@ import type {
 } from './types'
 import type { ResearchPipelineBundle } from './research'
 import type { RookieBoardBundle } from './rookies'
-import type { TradeModelHealthBundle } from './trade-models'
+import type { TradeModelHealthBundle, TradeTapeRefreshState } from './trade-models'
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
@@ -125,6 +125,14 @@ export async function fetchTradeModelHealth(): Promise<TradeModelHealthBundle | 
   } catch {
     return null
   }
+}
+
+export async function fetchTradeTapeState(): Promise<TradeTapeRefreshState> {
+  return fetchJson<TradeTapeRefreshState>('/api/trade-tape')
+}
+
+export async function refreshTradeTape(): Promise<TradeTapeRefreshState> {
+  return fetchJson<TradeTapeRefreshState>('/api/trade-tape', { method: 'POST' })
 }
 
 export async function fetchRookieBoard(): Promise<RookieBoardBundle> {

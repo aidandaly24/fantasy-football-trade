@@ -19,6 +19,7 @@ The league ribbon has one-click controls for BC League (`1336087922847289344`) a
 - League-wide and selected-target discovery use Pareto frontiers over visible objectives. Selected-target discovery searches the 60 closest one-to-three-asset packages built from up to the roster's 50 highest-priced assets; neither surface emits a grade, profit forecast, or acceptance probability.
 - Completed Sleeper trades—not saved recommendations—receive 7/30/90/180/365-day outcome checkpoints when a legitimate entry snapshot exists.
 - Accepted 1-for-2/3 exchange premiums and 90/180/365-day market outcomes have separate historical models. Raw provider totals remain unchanged; only promoted evidence may enter the user-weighted Trade Lab view.
+- Trade Lab has an authenticated historical-tape refresh action that deduplicates FantasyCalc completed trades into D1. It exposes coverage and failures; it does not retrain or promote a model inside the request.
 - V4.7 records a private, full-league market tape when the Evidence desk opens and refreshes seeded leagues automatically from attributed Tradyr data.
 - V4.8 converts non-overlapping 30-day outcomes into research-only empirical position and event cohorts, shrinking small samples instead of treating them as established effects.
 - V4.9 trains a small time-split ridge model in shadow. It cannot change rankings, prices, or packages; promotion requires enough independent examples, assets, market regimes, held-out MAE lift, and ranking quality.

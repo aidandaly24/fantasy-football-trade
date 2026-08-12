@@ -67,7 +67,7 @@ class TradeModelTests(unittest.TestCase):
         rows = [{**row, "date": f"2025-01-{index + 1:02d}", "trade_id": str(index), "league_id": str(index), "paid_premium": 0.1, "format_complete": 1, "historical_format_exact": 0, "age_complete": 1} for index in range(10)]
         report = train_exchange(pd.DataFrame(rows))
         self.assertFalse(report["enabled"])
-        self.assertEqual(report["status"], "collecting")
+        self.assertEqual(report["status"], "needs-data")
 
     def test_outcome_keeps_structure_and_premium_challengers_separate(self) -> None:
         row = {feature: 1.0 for feature in EXCHANGE_FEATURES}

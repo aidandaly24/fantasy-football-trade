@@ -241,20 +241,20 @@
         "rows": 48
       }
     ],
-    "status": "collecting",
+    "status": "needs-data",
     "target": "accepted package value / elite value - 1 at trade date",
     "testRows": 54,
     "trainingRows": 213,
     "uniqueLeagues": 263
   },
-  "generatedAt": "2026-08-12T01:33:30.555079Z",
+  "generatedAt": "2026-08-12T03:11:33.309465Z",
   "historyAssetCount": 493,
   "historySeriesCount": 986,
   "lineupOutcome": {
     "enabled": false,
     "reason": "External completed trades do not expose point-in-time full rosters or legal lineups. League-local snapshots are required.",
     "rows": 0,
-    "status": "collecting",
+    "status": "needs-data",
     "target": "90/180/365-day change in legal projected lineup output"
   },
   "outcomes": [
@@ -311,7 +311,7 @@
         "model": null
       },
       "rows": 0,
-      "status": "collecting",
+      "status": "needs-data",
       "structureOnly": {
         "maeImprovement": 0.0,
         "metrics": {
@@ -377,7 +377,7 @@
         "model": null
       },
       "rows": 0,
-      "status": "collecting",
+      "status": "needs-data",
       "structureOnly": {
         "maeImprovement": 0.0,
         "metrics": {
@@ -443,7 +443,7 @@
         "model": null
       },
       "rows": 0,
-      "status": "collecting",
+      "status": "needs-data",
       "structureOnly": {
         "maeImprovement": 0.0,
         "metrics": {

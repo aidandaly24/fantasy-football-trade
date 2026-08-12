@@ -26,11 +26,11 @@ flowchart LR
   W --> N["NFL RSS and Sleeper trends"]
   ML["Offline Python pipelines"] --> A["Versioned model artifacts and reports"]
   A --> UI
-  CRON["Five-minute scheduled Worker trigger"] --> W
+  CLICK["Authenticated refresh actions"] --> W
 ```
 
 The browser performs current public league and market reads. Identity-aware,
-user-specific, persisted, or scheduled behavior stays behind the Worker.
+user-specific, persisted, or user-triggered collection stays behind the Worker.
 Offline training does not run in the request path.
 
 ## Repository surfaces
@@ -51,7 +51,7 @@ Offline training does not run in the request path.
 | `src/intel*.ts` | Headline classification and roster-aware intel signals |
 | `src/journal.ts` | Completed-trade presentation and season-specific identity remapping |
 | `src/research.ts` | Browser representation of historical research state and gates |
-| `worker/index.ts` | Route dispatch, static asset fallback, and scheduled refresh orchestration |
+| `worker/index.ts` | Route dispatch and static asset fallback |
 | `worker/routes/` | Authenticated capability handlers |
 | `worker/generated/` | Sanitized generated artifacts bundled only into authenticated Worker routes |
 | `worker/http.ts` | Shared HTTP boundary helpers |
@@ -105,6 +105,7 @@ instead of reimplementing ranking or valuation rules in JSX.
 | `/api/alerts` | `GET`, `POST` | D1 | Requires identity; materializes private watchlist alerts |
 | `/api/edge` | `GET`, `POST` | D1 | Requires identity; stores and reads private market tape and learning state |
 | `/api/research` | `GET`, `POST` | D1 | Requires identity; syncs and reads historical evidence |
+| `/api/trade-tape` | `GET`, `POST` | D1 | Requires identity; POST performs the bounded FantasyCalc completed-trade refresh |
 | `/api/intel` | `GET` | None | Requires identity; generic feed is cached privately for five minutes |
 | `/api/rookies` | `GET` | None | Requires identity; returns the checked-in sanitized rookie-production artifact with no-store caching |
 
@@ -113,8 +114,8 @@ Write routes reject cross-origin requests. Private JSON responses use
 Authentication is supplied through hosted `oai-authenticated-user-*` headers;
 application code must not invent or trust browser-submitted identities.
 
-`worker/index.ts` contains only route dispatch, asset fallback, and scheduled
-orchestration. `worker/routes/` owns capability handlers, `worker/http.ts` owns
+`worker/index.ts` contains only route dispatch and asset fallback.
+`worker/routes/` owns capability handlers, `worker/http.ts` owns
 shared response and request-boundary helpers, and `worker/intel-feed.ts`
 contains the imported RSS and Sleeper trend collection behavior.
 
@@ -127,6 +128,7 @@ D1 contains several bounded capability groups:
   trade-value snapshots, ingestion-time roster contexts, and outcome checkpoints;
 - canonical intel events and per-user alert state;
 - dated market values, learning reports, and historical-source audits;
+- the deduplicated FantasyCalc completed-trade tape and observable refresh runs;
 - historical league/player/news research tape and its coverage runs.
 
 Historical roster IDs are scoped to a Sleeper league season. Never resolve an
@@ -150,18 +152,24 @@ unvalidated projection writer and reader were removed. Runtime table creation
 can be removed only after clean and existing D1 migration rehearsals both
 succeed.
 
-## Scheduled work
+## Refresh work
 
-The Worker has a five-minute cron trigger. It refreshes:
+OpenAI Sites production logs did not show invocations for the repository's
+configured cron handler during the window we inspected, so runtime correctness
+does not depend on unproven background execution. Refreshes are observable and
+user-triggered:
 
-- canonical news alerts;
-- tracked market tapes;
-- historical source audits;
-- due research observations.
+- News refreshes only when its private inbox is due and requested.
+- The Evidence view writes the current league tape and advances one bounded
+  historical-source batch when opened with fresh evidence.
+- Research and the Sleeper journal have explicit same-origin sync actions.
+- Trade Lab's historical-tape button scans a fixed FantasyCalc anchor sample,
+  deduplicates completed trades, and records success, partial failure, or error.
 
-Each capability owns its own due/stale logic and should preserve the last good
-read state when an upstream refresh fails. Scheduled work may refresh evidence;
-it must not execute trades or contact other managers.
+These triggers may refresh evidence; they cannot execute trades, contact other
+managers, train sklearn inside a request, or promote an artifact. If Sites later
+supports observable schedules, a schedule may call these same capability
+functions without creating a second collection architecture.
 
 ## Model boundary
 

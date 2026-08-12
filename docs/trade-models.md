@@ -11,6 +11,21 @@ under ignored `data/raw/trade_models/`; the collector is throttled, retries
 bounded failures, and never publishes a raw trade mirror. The committed health
 report links FantasyCalc's methodology and terms.
 
+The hosted Trade Lab has a separate, authenticated **Refresh historical tape**
+action because OpenAI Sites did not execute the repository's cron trigger in
+the production window we inspected. One click scans 40 position/value-stratified anchors, strips
+provider usernames, deduplicates completed trades by provider trade ID, and
+upserts the rolling tape into D1. It records the last attempt, last success,
+anchor coverage, new rows, and bounded errors. A partial refresh remains visible
+and may be safely retried.
+
+Hosted collection and model promotion are deliberately separate. The button
+does not train sklearn inside a Worker request and does not rewrite the shipped
+health artifact. The Trade Lab shows the D1 tape state alongside the dated
+artifact so fresh raw data cannot be mistaken for newly validated evidence.
+Offline retraining remains the review point for chronological splits, metrics,
+and promotion gates.
+
 Anchor players are sampled across positions and the full current value range.
 Every completed package is deduplicated by trade ID. Asset history is requested
 for every observed package asset and, when `--history-scope universe` is used,
@@ -81,7 +96,7 @@ FantasyCalc's completed-trade rows do not contain full historical rosters or
 legal lineups. Market outcome therefore cannot be renamed lineup outcome. The
 journal now creates 365-day checkpoints and stores an ingestion-time pre/post
 roster context for new completed league trades. Lineup outcome remains
-`collecting` until those league-local snapshots produce enough valid labels.
+`needs-data` until those league-local snapshots produce enough valid labels.
 
 ## Trade Lab behavior
 
@@ -98,6 +113,11 @@ The default weights preserve the existing raw-market comparison. User weights
 are private league preferences. Missing or unpromoted evidence is never treated
 as zero and is never silently redistributed; the panel reports weight coverage
 and withholds a complete directional interpretation.
+
+The historical refresh button is available before a package is selected. It is
+the supported collection trigger; the UI never claims that an inactive model is
+automatically collecting in the background. Models below their declared gates
+use the explicit `needs-data` status.
 
 Accepted trades cannot identify rejected-offer acceptance probability. These
 models must not be used to claim that another manager will accept an offer.

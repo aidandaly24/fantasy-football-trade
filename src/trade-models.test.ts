@@ -34,7 +34,7 @@ describe('trade model evidence layers', () => {
     }, { x: 4 })).toBe(5)
   })
 
-  it('does not use collecting models as trade evidence', () => {
+  it('does not use models that still need data as trade evidence', () => {
     const signals = modelSignalsForTrade({
       rawMarketPercent: 4, lineupPercent: 2, structure: null, health: null,
       weights: { market: 50, lineup: 20, exchange: 20, outcome: 10, outcomeHorizon: 180, outcomeVariant: 'premiumAware' },

@@ -1,12 +1,12 @@
 # Trade model health
 
-Generated: `2026-08-12T01:33:30.555079Z`
+Generated: `2026-08-12T03:11:33.309465Z`
 
 The raw provider total remains unchanged. These models are separate evidence layers.
 
 ## Exchange-premium model
 
-- Status: **collecting**
+- Status: **needs-data**
 - Eligible completed trades: **267**
 - Unique source leagues: **263**
 - Date span: **28 days**
@@ -14,12 +14,12 @@ The raw provider total remains unchanged. These models are separate evidence lay
 
 ## Outcome challengers
 
-- 90d: **collecting**, 0 labels; premium-aware lift vs structure-only 0.0%
-- 180d: **collecting**, 0 labels; premium-aware lift vs structure-only 0.0%
-- 365d: **collecting**, 0 labels; premium-aware lift vs structure-only 0.0%
+- 90d: **needs-data**, 0 labels; premium-aware lift vs structure-only 0.0%
+- 180d: **needs-data**, 0 labels; premium-aware lift vs structure-only 0.0%
+- 365d: **needs-data**, 0 labels; premium-aware lift vs structure-only 0.0%
 
 ## Known boundary
 
-FantasyCalc exposes completed packages, format fields, ages and point-in-time market values, but not the full historical rosters needed to measure lineup outcomes. The lineup target remains collecting from league-local snapshots and cannot be substituted with market return.
+FantasyCalc exposes completed packages, format fields, ages and point-in-time market values, but not the full historical rosters needed to measure lineup outcomes. The lineup target still needs league-local snapshots and cannot be substituted with market return.
 
 Sources: https://fantasycalc.com/frequently-asked-questions, https://fantasycalc.com/terms-of-usage
