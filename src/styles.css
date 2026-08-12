@@ -449,7 +449,7 @@ a {
   min-height: 66px;
   padding: 8px 12px;
   display: grid;
-  grid-template-columns: 32px 38px minmax(170px, 1fr) minmax(130px, 0.8fr) 22px;
+  grid-template-columns: 32px 38px minmax(145px, 1fr) minmax(116px, 0.7fr) minmax(112px, 0.65fr) 22px;
   align-items: center;
   gap: 12px;
   color: var(--ink);
@@ -557,6 +557,44 @@ a {
   font-size: 9px;
 }
 
+.rank-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.rank-comparison > span {
+  min-width: 0;
+  padding: 6px 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  background: #f1efe7;
+  border: 1px solid transparent;
+  border-radius: 7px;
+}
+
+.rank-comparison > span.active {
+  background: #e9f6bd;
+  border-color: #cadd84;
+}
+
+.rank-comparison small,
+.scout-rank-pair small {
+  color: #858a81;
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.rank-comparison b,
+.scout-rank-pair b {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+}
+
 .rank-score-block {
   display: flex;
   flex-direction: column;
@@ -635,11 +673,24 @@ a {
   letter-spacing: 0.07em;
 }
 
-.overall-rank {
-  color: #abb1a7;
-  font-family: 'DM Mono', monospace;
-  font-size: 9px;
-  text-transform: uppercase;
+.scout-rank-pair {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.scout-rank-pair > span {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.scout-rank-pair small {
+  color: #8f968c;
+}
+
+.scout-rank-pair b {
+  color: #f4f5ef;
 }
 
 .scout-identity {
@@ -3433,22 +3484,29 @@ footer a {
   }
 
   .ranking-row {
-    grid-template-columns: 29px 35px minmax(0, 1fr) 52px;
+    grid-template-columns: 29px 35px minmax(0, 1fr) 96px;
     gap: 8px;
   }
 
   .ranking-row > svg,
   .rank-track,
-  .rank-score-line small {
+  .rank-score-block {
     display: none;
   }
 
-  .rank-score-line {
-    justify-content: flex-end;
+  .rank-comparison {
+    gap: 3px;
   }
 
-  .rank-score-line b {
-    font-size: 17px;
+  .rank-comparison > span {
+    padding: 5px 4px;
+    align-items: center;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .rank-comparison b {
+    font-size: 10px;
   }
 
   .scout-section.metrics-grid {

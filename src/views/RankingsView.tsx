@@ -3,6 +3,8 @@ import { useMemo } from 'react'
 import type { LeagueContext } from '../league-context'
 import { strategyProfileForLeague } from '../leagues'
 import { TeamStrategyPlan } from '../leagues/TeamStrategyPlan'
+import { buildTeamRankComparisons } from '../rank-comparison'
+import type { TeamRankComparison } from '../rank-comparison'
 import { rosterProfile } from '../rankings'
 import type { RankingMode, Team } from '../types'
 import { AssetBadge, Avatar, formatValue, MetricBar } from '../components/domain-ui'
@@ -25,11 +27,13 @@ const modeCopy: Record<RankingMode, { label: string; description: string }> = {
 function RankingBoard({
   teams,
   mode,
+  comparisons,
   selectedId,
   onSelect,
 }: {
   teams: Team[]
   mode: RankingMode
+  comparisons: Map<number, TeamRankComparison>
   selectedId: number
   onSelect: (id: number) => void
 }) {
@@ -40,11 +44,21 @@ function RankingBoard({
           <span className="eyebrow">League table</span>
           <h2>{modeCopy[mode].label}</h2>
         </div>
-        <span className="method-note">Observed value or validated model output</span>
+        <span className="method-note">Market and power ranks stay visible together</span>
       </div>
       <div className="ranking-list">
         {teams.map((team, index) => {
           const score = team.metrics[mode]
+          const comparison = comparisons.get(team.rosterId) ?? {
+            marketRank: index + 1,
+            powerRank: index + 1,
+            powerGap: 0,
+          }
+          const activeRank = mode === 'overall'
+            ? comparison.marketRank
+            : mode === 'contender'
+              ? comparison.powerRank
+              : index + 1
           return (
             <button
               type="button"
@@ -52,11 +66,24 @@ function RankingBoard({
               key={team.rosterId}
               onClick={() => onSelect(team.rosterId)}
             >
-              <span className={`rank-number rank-${index + 1}`}>{index + 1}</span>
+              <span className={`rank-number rank-${activeRank}`}>{activeRank}</span>
               <Avatar team={team} size="sm" />
               <span className="rank-team-copy">
                 <strong>{team.teamName}</strong>
                 <small>@{team.ownerName}</small>
+              </span>
+              <span
+                className="rank-comparison"
+                aria-label={`Market rank ${comparison.marketRank}; current-season power rank ${comparison.powerRank}`}
+              >
+                <span className={mode === 'overall' ? 'active' : ''}>
+                  <small>Market</small>
+                  <b>#{comparison.marketRank}</b>
+                </span>
+                <span className={mode === 'contender' ? 'active' : ''}>
+                  <small>Power</small>
+                  <b>#{comparison.powerRank}</b>
+                </span>
               </span>
               <span className="rank-score-block">
                 <span className="rank-score-line">
@@ -76,16 +103,21 @@ function RankingBoard({
 function TeamScout({ team, teams }: { team: Team; teams: Team[] }) {
   const profile = rosterProfile(team, teams)
   const topAssets = [...team.players, ...team.picks].sort((a, b) => b.value - a.value).slice(0, 6)
-  const rank = [...teams]
-    .sort((a, b) => b.metrics.overall - a.metrics.overall)
-    .findIndex((item) => item.rosterId === team.rosterId) + 1
+  const comparison = buildTeamRankComparisons(teams).get(team.rosterId) ?? {
+    marketRank: teams.length,
+    powerRank: teams.length,
+    powerGap: 0,
+  }
 
   return (
     <aside className="team-scout panel">
       <div className="scout-hero">
         <div className="scout-topline">
           <span className="window-pill"><Sparkles size={14} /> {profile.label}</span>
-          <span className="overall-rank">#{rank} overall</span>
+          <span className="scout-rank-pair">
+            <span><small>Market</small><b>#{comparison.marketRank}</b></span>
+            <span><small>Power</small><b>#{comparison.powerRank}</b></span>
+          </span>
         </div>
         <div className="scout-identity">
           <Avatar team={team} size="lg" />
@@ -163,6 +195,7 @@ export function RankingsView({
     () => [...teams].sort((a, b) => b.metrics[mode] - a.metrics[mode]),
     [mode, teams],
   )
+  const comparisons = useMemo(() => buildTeamRankComparisons(teams), [teams])
   const selectedTeam = teams.find((team) => team.rosterId === selectedId) ?? sorted[0]
   const lineupLeader = [...teams].sort((a, b) => b.metrics.contender - a.metrics.contender)[0]
   const coreLeader = [...teams].sort((a, b) => b.metrics.core - a.metrics.core)[0]
@@ -212,7 +245,13 @@ export function RankingsView({
       </section>
 
       <section className="rankings-layout">
-        <RankingBoard teams={sorted} mode={mode} selectedId={selectedTeam.rosterId} onSelect={setSelectedId} />
+        <RankingBoard
+          teams={sorted}
+          mode={mode}
+          comparisons={comparisons}
+          selectedId={selectedTeam.rosterId}
+          onSelect={setSelectedId}
+        />
         <TeamScout team={selectedTeam} teams={teams} />
       </section>
     </main>
