@@ -319,32 +319,15 @@ function nearestPackages(outgoing: RawPackage[], targetValue: number, limit = 4)
   return nearest
 }
 
-function rebuildPackageOrder(a: ComparablePackage, b: ComparablePackage): number {
-  return (
-    (b.portfolio?.trackedAssetLowerPnl30 ?? Number.NEGATIVE_INFINITY) - (a.portfolio?.trackedAssetLowerPnl30 ?? Number.NEGATIVE_INFINITY)
-    || (b.portfolio?.expectedPnl30 ?? Number.NEGATIVE_INFINITY) - (a.portfolio?.expectedPnl30 ?? Number.NEGATIVE_INFINITY)
-    || a.marketDistancePercent - b.marketDistancePercent
-    || b.marketNetToMe - a.marketNetToMe
-    || a.send.length - b.send.length
-    || a.key.localeCompare(b.key)
-  )
-}
-
-/** Finds non-dominated single-target deals across the league. Each target is
- * paired with the best visible Pareto option among its four closest
- * current-value packages, then compared across the league. The rebuild display
- * tie-break prioritizes tracked downside and promoted 30-day return before
- * current-price distance; this declared order is not a hidden score. */
-export function findTradeFrontier(
+function targetCandidateSet(
   teams: Team[],
   options: TradeFrontierOptions,
-  limit = 8,
-): TradeFrontierCandidate[] {
+): { mine: Team; strategy: ResolvedTeamStrategy; candidates: TradeFrontierCandidate[] } | null {
   const mine = teams.find((team) => team.rosterId === options.myRosterId)
-  if (!mine) return []
+  if (!mine) return null
   const strategy = options.strategy ?? resolveTeamStrategy(mine)
   const outgoing = enumeratePackages([...mine.players, ...mine.picks])
-  if (!outgoing.length) return []
+  if (!outgoing.length) return null
 
   const candidates = teams
     .filter((team) => team.rosterId !== mine.rosterId)
@@ -374,11 +357,38 @@ export function findTradeFrontier(
         ))[0]
       }))
 
-  const frontier = markParetoFrontier(candidates, strategy)
+  return { mine, strategy, candidates }
+}
+
+function rebuildPackageOrder(a: ComparablePackage, b: ComparablePackage): number {
+  return (
+    (b.portfolio?.trackedAssetLowerPnl30 ?? Number.NEGATIVE_INFINITY) - (a.portfolio?.trackedAssetLowerPnl30 ?? Number.NEGATIVE_INFINITY)
+    || (b.portfolio?.expectedPnl30 ?? Number.NEGATIVE_INFINITY) - (a.portfolio?.expectedPnl30 ?? Number.NEGATIVE_INFINITY)
+    || a.marketDistancePercent - b.marketDistancePercent
+    || b.marketNetToMe - a.marketNetToMe
+    || a.send.length - b.send.length
+    || a.key.localeCompare(b.key)
+  )
+}
+
+/** Finds non-dominated single-target deals across the league. Each target is
+ * paired with the best visible Pareto option among its four closest
+ * current-value packages, then compared across the league. The rebuild display
+ * tie-break prioritizes tracked downside and promoted 30-day return before
+ * current-price distance; this declared order is not a hidden score. */
+export function findTradeFrontier(
+  teams: Team[],
+  options: TradeFrontierOptions,
+  limit = 8,
+): TradeFrontierCandidate[] {
+  const result = targetCandidateSet(teams, options)
+  if (!result) return []
+
+  const frontier = markParetoFrontier(result.candidates, result.strategy)
     .filter((candidate) => candidate.frontier)
   return frontier
     .sort((a, b) => (
-      (strategy.mode === 'rebuilding' || strategy.mode === 'retooling' ? rebuildPackageOrder(a, b) : 0)
+      (result.strategy.mode === 'rebuilding' || result.strategy.mode === 'retooling' ? rebuildPackageOrder(a, b) : 0)
       || b.marketNetToMe - a.marketNetToMe
       || a.marketDistancePercent - b.marketDistancePercent
       || (b.lineupDeltaMe ?? Number.NEGATIVE_INFINITY) - (a.lineupDeltaMe ?? Number.NEGATIVE_INFINITY)

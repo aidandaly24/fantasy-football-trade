@@ -1,7 +1,8 @@
 # Target discovery and trade research system
 
-**Status:** Design proposal. The repository does not yet implement every signal
-or workflow described here.
+**Status:** Partial implementation. V7.8 implements the league-relative
+actionable trade book; owner-utility negotiation, private offer labels, news
+timing, and pick-specific opportunity cost remain advancement-gated work.
 
 This document defines the evidence RosterLab should assemble before it calls a
 player a trade target. It is a product and modeling contract, not a claim that
@@ -55,6 +56,12 @@ Every surfaced candidate should state which thesis it belongs to:
 A player can satisfy more than one category, but the evidence for each thesis
 must remain visible. A cheap declining veteran is not automatically a flip, and
 roster surplus does not prove an owner will sell cheaply.
+
+The implemented V7.8 surface uses `long-term compounder`, `catalyst flip`, and
+`liquidity conversion` as its actionable books. Forced/surplus-sale evidence is
+deferred to V7.9 because it requires complete counterparty utility analysis,
+not merely a target screen. See
+[Trade edge advantage roadmap](trade-edge-advantage-roadmap.md).
 
 ## Decision memo
 
