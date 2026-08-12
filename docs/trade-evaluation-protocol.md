@@ -14,6 +14,7 @@ Evaluate every proposed trade through separate lanes:
 | Covered production | What lineup points are supported by the held-out forecast? | The production model is enabled and required starters are covered. |
 | Exchange premium | What premium has the market paid for this package structure? | The exchange model passes all gates and this trade matches its eligible structure. |
 | Future outcome | Did similar premium decisions preserve value after 90/180/365 days? | That exact horizon and challenger pass every chronological holdout gate. |
+| Asset return | What same-source market return and tracked-asset downside are supported for each asset? | That exact horizon and QB-format model passes every embargoed holdout gate. |
 
 Do not combine the lanes into a hidden grade. The user may weight promoted
 signals, and uncovered weight must remain visible rather than being silently
@@ -50,6 +51,8 @@ For any trade recommendation, report:
 - the user's competitive horizon and the asset's likely hold period;
 - age/decay, injury, role, liquidity, and exit risks without inventing precise
   probabilities;
+- promoted asset-return evidence at its exact horizon, while keeping the
+  source's incomplete disappearance/failure boundary visible;
 - for negotiation, an ambitious opening offer, a fair target, and a hard
   walk-away price based on declared evidence.
 

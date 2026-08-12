@@ -1,0 +1,48 @@
+{
+  "anchor": {
+    "id": 715,
+    "name": "Aaron Rodgers",
+    "position": "QB"
+  },
+  "auditedAt": "2026-08-12T04:43:10.189019Z",
+  "conclusion": "The observed endpoint returned the same capped rows for base, page=2, and offset=100. No older-page contract is proven; keep incremental cached collection for exchange-price research and use the separate daily asset histories for return/risk modeling.",
+  "localTape": {
+    "anchorQueryFiles": 20,
+    "dateSpanDays": 30,
+    "firstTradeAt": "2026-07-12",
+    "latestTradeAt": "2026-08-11",
+    "trades": 1674
+  },
+  "observedRowCap": 50,
+  "offset100Identical": true,
+  "olderBackfillProven": false,
+  "page2Identical": true,
+  "paginationProven": false,
+  "probes": {
+    "base": {
+      "firstTradeAt": "2026-08-08",
+      "latestTradeAt": "2026-08-11",
+      "orderedIdDigest": "2bd06d14b58a8d6f0ffdd357af90c8a8ce064d7e7c49efe973cb94c7f66e9e6d",
+      "rows": 50
+    },
+    "offset100": {
+      "firstTradeAt": "2026-08-08",
+      "latestTradeAt": "2026-08-11",
+      "orderedIdDigest": "2bd06d14b58a8d6f0ffdd357af90c8a8ce064d7e7c49efe973cb94c7f66e9e6d",
+      "rows": 50
+    },
+    "page2": {
+      "firstTradeAt": "2026-08-08",
+      "latestTradeAt": "2026-08-11",
+      "orderedIdDigest": "2bd06d14b58a8d6f0ffdd357af90c8a8ce064d7e7c49efe973cb94c7f66e9e6d",
+      "rows": 50
+    }
+  },
+  "schemaVersion": 1,
+  "source": {
+    "endpoint": "https://api.fantasycalc.com/trades",
+    "methodology": "https://fantasycalc.com/frequently-asked-questions",
+    "name": "FantasyCalc public completed-trade endpoint",
+    "terms": "https://fantasycalc.com/terms-of-usage"
+  }
+}
