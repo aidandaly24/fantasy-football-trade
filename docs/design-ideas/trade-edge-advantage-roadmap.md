@@ -35,8 +35,10 @@ trade a fleece merely because one composite sum is larger.
 
 V7.8 uses the existing current league state and the promoted 30-day asset-return
 artifact. It introduces no collector, background process, database, or new
-model. Thresholds come from the current league population or the candidate
-package population and are displayed in the UI.
+model. It evaluates one concrete package for every priced opponent target; the
+older truncated Pareto list is not its input filter. Thresholds come from the
+current league population or the candidate package population and are displayed
+in the UI.
 
 The three books are:
 

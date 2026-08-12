@@ -56,6 +56,11 @@ export type TradeFrontierCandidate = ComparablePackage & {
   targetAsset: Asset
 }
 
+export type TradeDiscovery = {
+  candidates: TradeFrontierCandidate[]
+  frontier: TradeFrontierCandidate[]
+}
+
 export type NegotiationStage = 'ambitious-opening' | 'fair-target' | 'walk-away'
 
 export type NegotiationStep = {
@@ -371,6 +376,33 @@ function rebuildPackageOrder(a: ComparablePackage, b: ComparablePackage): number
   )
 }
 
+/** Computes one visible package for every priced opponent target, then marks
+ * the non-dominated league-wide frontier. Consumers that screen for a separate
+ * named thesis should use `candidates`; the raw Pareto display uses `frontier`.
+ * Package enumeration happens once for both surfaces. */
+export function buildTradeDiscovery(
+  teams: Team[],
+  options: TradeFrontierOptions,
+  frontierLimit = 8,
+): TradeDiscovery {
+  const result = targetCandidateSet(teams, options)
+  if (!result) return { candidates: [], frontier: [] }
+
+  const candidates = markParetoFrontier(result.candidates, result.strategy)
+  const frontier = candidates
+    .filter((candidate) => candidate.frontier)
+    .sort((a, b) => (
+      (result.strategy.mode === 'rebuilding' || result.strategy.mode === 'retooling' ? rebuildPackageOrder(a, b) : 0)
+      || b.marketNetToMe - a.marketNetToMe
+      || a.marketDistancePercent - b.marketDistancePercent
+      || (b.lineupDeltaMe ?? Number.NEGATIVE_INFINITY) - (a.lineupDeltaMe ?? Number.NEGATIVE_INFINITY)
+      || b.targetAsset.value - a.targetAsset.value
+      || a.key.localeCompare(b.key)
+    ))
+    .slice(0, Math.max(1, Math.min(16, frontierLimit)))
+  return { candidates, frontier }
+}
+
 /** Finds non-dominated single-target deals across the league. Each target is
  * paired with the best visible Pareto option among its four closest
  * current-value packages, then compared across the league. The rebuild display
@@ -381,21 +413,7 @@ export function findTradeFrontier(
   options: TradeFrontierOptions,
   limit = 8,
 ): TradeFrontierCandidate[] {
-  const result = targetCandidateSet(teams, options)
-  if (!result) return []
-
-  const frontier = markParetoFrontier(result.candidates, result.strategy)
-    .filter((candidate) => candidate.frontier)
-  return frontier
-    .sort((a, b) => (
-      (result.strategy.mode === 'rebuilding' || result.strategy.mode === 'retooling' ? rebuildPackageOrder(a, b) : 0)
-      || b.marketNetToMe - a.marketNetToMe
-      || a.marketDistancePercent - b.marketDistancePercent
-      || (b.lineupDeltaMe ?? Number.NEGATIVE_INFINITY) - (a.lineupDeltaMe ?? Number.NEGATIVE_INFINITY)
-      || b.targetAsset.value - a.targetAsset.value
-      || a.key.localeCompare(b.key)
-    ))
-    .slice(0, Math.max(1, Math.min(16, limit)))
+  return buildTradeDiscovery(teams, options, limit).frontier
 }
 
 /** Builds negotiation anchors from the actual displayed package set. The

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildActionableTradeBook } from './actionable-targets'
-import { buildNegotiationLadder, findComparablePackages, findTradeFrontier, resolveTeamStrategy } from './strategy'
+import { buildNegotiationLadder, buildTradeDiscovery, findComparablePackages, findTradeFrontier, resolveTeamStrategy } from './strategy'
 import type { AssetReturnHealthBundle } from './asset-returns'
 import type { Asset, Team } from './types'
 
@@ -136,6 +136,20 @@ describe('evidence-only strategy inventory', () => {
     expect(neutral.some((candidate) => candidate.targetAsset.id === 'old-target')).toBe(true)
   })
 
+  it('keeps every priced target available to downstream thesis screens', () => {
+    const mine = team(1, [asset('inventory', 'WR', 500)])
+    const targets = Array.from({ length: 20 }, (_, index) => asset(`target-${index}`, 'WR', 100 + index * 20, { age: 22 + (index % 5) }))
+    const discovery = buildTradeDiscovery([mine, team(2, targets)], {
+      myRosterId: 1,
+      rosterPositions,
+      strategy: { mode: 'rebuilding', horizonYears: 3, flipPriority: 0 },
+    }, 4)
+
+    expect(discovery.candidates).toHaveLength(20)
+    expect(discovery.frontier.length).toBeLessThanOrEqual(4)
+    expect(new Set(discovery.candidates.map((candidate) => candidate.targetAsset.id)).size).toBe(20)
+  })
+
   it('adds promoted return evidence to a declared rebuild without inventing a score', () => {
     const mine = team(1, [asset('out', 'WR', 500, { name: 'Out' })])
     const theirs = team(2, [asset('target', 'WR', 500, { name: 'Target' })])
@@ -175,14 +189,14 @@ describe('evidence-only strategy inventory', () => {
     ])
     const teams = [mine, team(2, [young]), team(3, [old])]
     const strategy = { mode: 'rebuilding' as const, horizonYears: 3 as const, flipPriority: 0 }
-    const frontier = findTradeFrontier(teams, {
+    const discovery = buildTradeDiscovery(teams, {
       myRosterId: 1,
       rosterPositions,
       strategy,
       assetReturnHealth: health,
       numQbs: 2,
     })
-    const book = buildActionableTradeBook({ teams, myRosterId: 1, strategy, assetReturnHealth: health, numQbs: 2, candidates: frontier })
+    const book = buildActionableTradeBook({ teams, myRosterId: 1, strategy, assetReturnHealth: health, numQbs: 2, candidates: discovery.candidates })
 
     expect(book.candidates.map((candidate) => candidate.targetAsset.id)).toContain('young')
     expect(book.candidates.map((candidate) => candidate.targetAsset.id)).not.toContain('old')
@@ -202,14 +216,14 @@ describe('evidence-only strategy inventory', () => {
     ])
     const teams = [mine, team(2, [flip]), team(3, [anchor])]
     const strategy = { mode: 'rebuilding' as const, horizonYears: 3 as const, flipPriority: 0 }
-    const frontier = findTradeFrontier(teams, {
+    const discovery = buildTradeDiscovery(teams, {
       myRosterId: 1,
       rosterPositions,
       strategy,
       assetReturnHealth: health,
       numQbs: 2,
     })
-    const book = buildActionableTradeBook({ teams, myRosterId: 1, strategy, assetReturnHealth: health, numQbs: 2, candidates: frontier })
+    const book = buildActionableTradeBook({ teams, myRosterId: 1, strategy, assetReturnHealth: health, numQbs: 2, candidates: discovery.candidates })
     const candidate = book.candidates.find((item) => item.targetAsset.id === 'flip')
 
     expect(candidate?.book).toBe('catalyst-flip')
@@ -225,14 +239,14 @@ describe('evidence-only strategy inventory', () => {
     ])
     const teams = [mine, team(2, [], [futurePick])]
     const strategy = { mode: 'rebuilding' as const, horizonYears: 3 as const, flipPriority: 0 }
-    const frontier = findTradeFrontier(teams, {
+    const discovery = buildTradeDiscovery(teams, {
       myRosterId: 1,
       rosterPositions,
       strategy,
       assetReturnHealth: health,
       numQbs: 2,
     })
-    const book = buildActionableTradeBook({ teams, myRosterId: 1, strategy, assetReturnHealth: health, numQbs: 2, candidates: frontier })
+    const book = buildActionableTradeBook({ teams, myRosterId: 1, strategy, assetReturnHealth: health, numQbs: 2, candidates: discovery.candidates })
     const candidate = book.candidates.find((item) => item.targetAsset.id === 'future-first')
 
     expect(candidate?.book).toBe('liquidity-conversion')

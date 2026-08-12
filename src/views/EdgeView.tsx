@@ -16,7 +16,7 @@ import type { ManagerProfile } from '../negotiation'
 import type { ResearchPipelineBundle } from '../research'
 import { buildActionableTradeBook } from '../actionable-targets'
 import type { ActionableTargetBook } from '../actionable-targets'
-import { buildNegotiationLadder, findComparablePackages, findTradeFrontier, resolveTeamStrategy } from '../strategy'
+import { buildNegotiationLadder, buildTradeDiscovery, findComparablePackages, resolveTeamStrategy } from '../strategy'
 import type { AssetReturnHealthBundle } from '../asset-returns'
 import { currentSeasonLineup } from '../team-power'
 import type { EdgeStateBundle, IntelFeed, JournalBundle, LeaguePreferences, Team, ValueBundle } from '../types'
@@ -151,10 +151,11 @@ export function EdgeView({
     () => new Map(negotiationLadder.map((step) => [step.package.key, step])),
     [negotiationLadder],
   )
-  const allTradeFrontier = useMemo(
-    () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy, assetReturnHealth, numQbs: leagueContext.marketFormat.numQbs }, 16),
+  const tradeDiscovery = useMemo(
+    () => buildTradeDiscovery(teams, { myRosterId, rosterPositions, strategy: teamStrategy, assetReturnHealth, numQbs: leagueContext.marketFormat.numQbs }, 16),
     [teams, myRosterId, rosterPositions, teamStrategy, assetReturnHealth, leagueContext.marketFormat.numQbs],
   )
+  const allTradeFrontier = tradeDiscovery.frontier
   const actionableTradeBook = useMemo(
     () => buildActionableTradeBook({
       teams,
@@ -162,10 +163,10 @@ export function EdgeView({
       strategy: teamStrategy,
       assetReturnHealth,
       numQbs: leagueContext.marketFormat.numQbs,
-      candidates: allTradeFrontier,
+      candidates: tradeDiscovery.candidates,
       limit: 8,
     }),
-    [teams, myRosterId, rosterPositions, teamStrategy, assetReturnHealth, leagueContext.marketFormat.numQbs, allTradeFrontier],
+    [teams, myRosterId, teamStrategy, assetReturnHealth, leagueContext.marketFormat.numQbs, tradeDiscovery.candidates],
   )
   const actionableTargets = privateStrategy?.kind === 'power-climb'
     ? currentPowerReady
@@ -458,7 +459,7 @@ export function EdgeView({
               })}>Stress-test package <ChevronRight size={14} /></button>
             </article>
           ))}
-        </div> : <div className="intel-empty"><Target size={22} /><strong>No target clears an actionable thesis today.</strong><span>{actionableTradeBook.evaluatedTargets ? `${actionableTradeBook.evaluatedTargets} Pareto targets were checked; ${actionableTradeBook.qualifyingTargets} cleared a raw thesis before private league policy.` : 'The promoted return tape or a complete package population is unavailable.'} Holding is better than manufacturing a small-value trade.</span></div>}
+        </div> : <div className="intel-empty"><Target size={22} /><strong>No target clears an actionable thesis today.</strong><span>{actionableTradeBook.evaluatedTargets ? `${actionableTradeBook.evaluatedTargets} rostered targets were checked; ${actionableTradeBook.qualifyingTargets} cleared a raw thesis before private league policy.` : 'The promoted return tape or a complete package population is unavailable.'} Holding is better than manufacturing a small-value trade.</span></div>}
         <div className="actionability-thresholds">
           <span><small>Material starter value</small><b>{formatValue(actionableTradeBook.thresholds.starterValueFloor)}</b></span>
           <span><small>Median covered liquidity</small><b>{actionableTradeBook.thresholds.liquidityFloor === null ? 'Unavailable' : actionableTradeBook.thresholds.liquidityFloor.toFixed(4)}</b></span>
