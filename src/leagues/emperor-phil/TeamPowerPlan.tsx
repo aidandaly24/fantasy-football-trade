@@ -1,7 +1,7 @@
 import { ArrowUpRight, LockKeyhole, ShieldCheck, Target } from 'lucide-react'
 import { buildTeamPowerTable } from '../../team-power'
 import type { Team } from '../../types'
-import type { LeagueStrategyProfile } from '../types'
+import type { PowerClimbStrategyProfile } from '../types'
 
 function signed(value: number): string {
   return `${value > 0 ? '+' : ''}${Math.round(value).toLocaleString()}`
@@ -14,7 +14,7 @@ export function EmperorPhilTeamPowerPlan({
 }: {
   teams: Team[]
   rosterPositions: string[]
-  profile: LeagueStrategyProfile
+  profile: PowerClimbStrategyProfile
 }) {
   const table = buildTeamPowerTable(teams, rosterPositions, profile.targetRank)
   const mine = table.find((row) => row.team.rosterId === profile.rosterId)
@@ -31,7 +31,7 @@ export function EmperorPhilTeamPowerPlan({
 
   if (!mine.complete) {
     return (
-      <section className="phil-power-plan panel" aria-label="Emperor Phil team power plan">
+      <section className="league-strategy-plan phil-power-plan panel" aria-label="Emperor Phil team power plan">
         <header>
           <div><span className="eyebrow">Emperor Phil · private strategy</span><h2>Lineup power is temporarily unavailable</h2><p>{mine.covered}/{mine.required} legal skill slots have a current redraft value. RosterLab will not rank a partial lineup or substitute dynasty value.</p></div>
           <span className="power-policy"><ShieldCheck size={16} /> {mine.coveragePercent}% covered</span>
@@ -41,7 +41,7 @@ export function EmperorPhilTeamPowerPlan({
   }
 
   return (
-    <section className="phil-power-plan panel" aria-label="Emperor Phil team power plan">
+    <section className="league-strategy-plan phil-power-plan panel" aria-label="Emperor Phil team power plan">
       <header>
         <div>
           <span className="eyebrow">Emperor Phil · private strategy</span>
@@ -68,7 +68,7 @@ export function EmperorPhilTeamPowerPlan({
 
       <div className="power-plan-rules">
         <div><Target size={17} /><span><strong>Move gate</strong><small>Prefer a single acquisition worth at least +{profile.minimumMeaningfulPowerGain}; target +{profile.idealPowerGain} before paying a premium.</small></span></div>
-        <div><LockKeyhole size={17} /><span><strong>Protected liquidity</strong><small>Keep the {protectedFirst.year} {protectedFirst.round === 1 ? 'first' : `round ${protectedFirst.round}`} until {protectedFirst.until}.</small></span></div>
+        <div><LockKeyhole size={17} /><span><strong>Protected liquidity</strong><small>Keep the {protectedFirst.label} until {protectedFirst.until}.</small></span></div>
         <div><ArrowUpRight size={17} /><span><strong>Week {profile.reassessAfterWeek} gate</strong><small>{currentGate?.action ?? 'Reassess the roster against the declared rank bands.'}</small></span></div>
       </div>
     </section>

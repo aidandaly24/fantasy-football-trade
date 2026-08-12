@@ -10,6 +10,7 @@ describe('Emperor Phil private strategy boundary', () => {
   })
 
   it('declares a top-six power goal and protects the 2027 first', () => {
+    expect(emperorPhilStrategy.kind).toBe('power-climb')
     expect(emperorPhilStrategy.targetRank).toBe(6)
     expect(emperorPhilStrategy.minimumMeaningfulPowerGain).toBeLessThan(emperorPhilStrategy.idealPowerGain)
     expect(emperorPhilStrategy.protectedAssets).toContainEqual(expect.objectContaining({ year: 2027, round: 1 }))

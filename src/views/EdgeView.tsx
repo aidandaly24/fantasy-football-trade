@@ -3,8 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchEdgeState, fetchIntel, fetchResearchState, saveMarketTape } from '../api'
 import { marketTapeLeagueContext } from '../league-context'
 import type { LeagueContext } from '../league-context'
-import { strategyProfileForLeague } from '../leagues'
-import { EmperorPhilTeamPowerPlan } from '../leagues/emperor-phil/TeamPowerPlan'
+import { evaluateLeagueTradePolicy, strategyProfileForLeague } from '../leagues'
+import { TeamStrategyPlan } from '../leagues/TeamStrategyPlan'
 import { buildEdgeBoard, marketTapeAssets } from '../edge'
 import type { EdgeCategory, TeamDirection, TeamDirectionOverride } from '../edge'
 import { buildMarketDislocations } from '../dislocations'
@@ -86,11 +86,15 @@ export function EdgeView({
   const [selectedKey, setSelectedKey] = useState('')
   const tapeDigest = useRef('')
   const myTeam = teams.find((team) => team.rosterId === myRosterId) ?? teams[0]
-  const teamStrategy = useMemo(
-    () => resolveTeamStrategy(myTeam, preferences.settings.teamStrategy),
-    [myTeam, preferences.settings.teamStrategy],
-  )
   const privateStrategy = strategyProfileForLeague(leagueContext.id, myRosterId)
+  const configuredStrategy = preferences.settings.teamStrategy
+  const effectiveStrategy = privateStrategy?.kind === 'value-build' && (!configuredStrategy || configuredStrategy.mode === 'auto')
+    ? privateStrategy.declaredStrategy
+    : configuredStrategy
+  const teamStrategy = useMemo(
+    () => resolveTeamStrategy(myTeam, effectiveStrategy),
+    [effectiveStrategy, myTeam],
+  )
   const currentPowerReady = currentSeasonLineup(myTeam.players, rosterPositions).complete
 
   useEffect(() => {
@@ -143,12 +147,23 @@ export function EdgeView({
     () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy, assetReturnHealth, numQbs: leagueContext.marketFormat.numQbs }, 16),
     [teams, myRosterId, rosterPositions, teamStrategy, assetReturnHealth, leagueContext.marketFormat.numQbs],
   )
-  const tradeFrontier = privateStrategy && currentPowerReady
-    ? allTradeFrontier.filter((candidate) => (
-      candidate.currentSeasonPowerDeltaMe !== null
-      && candidate.currentSeasonPowerDeltaMe >= privateStrategy.minimumMeaningfulPowerGain
-    )).slice(0, 8)
-    : privateStrategy ? [] : allTradeFrontier.slice(0, 8)
+  const tradeFrontier = privateStrategy?.kind === 'power-climb'
+    ? currentPowerReady
+      ? allTradeFrontier.filter((candidate) => evaluateLeagueTradePolicy(privateStrategy, {
+        marketNetToMe: candidate.marketNetToMe,
+        currentSeasonPowerDelta: candidate.currentSeasonPowerDeltaMe,
+        outgoing: candidate.send,
+        incoming: candidate.receive,
+      }).status === 'pass').slice(0, 8)
+      : []
+    : privateStrategy?.kind === 'value-build'
+      ? allTradeFrontier.filter((candidate) => evaluateLeagueTradePolicy(privateStrategy, {
+        marketNetToMe: candidate.marketNetToMe,
+        currentSeasonPowerDelta: candidate.currentSeasonPowerDeltaMe,
+        outgoing: candidate.send,
+        incoming: candidate.receive,
+      }).status !== 'block').slice(0, 8)
+      : allTradeFrontier.slice(0, 8)
   const dislocations = useMemo(
     () => buildMarketDislocations(teams, { myRosterId, rosterPositions, directions, strategy: teamStrategy }),
     [teams, myRosterId, rosterPositions, directions, teamStrategy],
@@ -226,7 +241,7 @@ export function EdgeView({
       </section>
 
       <div className="league-context-note panel"><span><strong>{leagueContext.label} evidence book</strong> · {leagueContext.labels.format}</span><small>Snapshots and outcomes stay isolated under this league and context fingerprint. Prices use the broad {leagueContext.labels.market}; exact TEP affects covered lineup evidence, not provider prices.</small></div>
-      {privateStrategy && <EmperorPhilTeamPowerPlan teams={teams} rosterPositions={rosterPositions} profile={privateStrategy} />}
+      {privateStrategy && <TeamStrategyPlan teams={teams} rosterPositions={rosterPositions} profile={privateStrategy} />}
 
       <section className="edge-stats" aria-label="Edge desk status">
         <article className="panel"><small>Rostered assets</small><strong>{allOpportunities.length}</strong><span>{opportunities.filter((item) => item.intel).length} linked news watches</span></article>
@@ -362,10 +377,10 @@ export function EdgeView({
 
       <section className="trade-frontier-board panel">
         <div className="panel-heading">
-          <div><span className="eyebrow">League-wide Pareto discovery</span><h2>{privateStrategy ? 'Lineup-power trade frontier' : teamStrategy.mode === 'rebuilding' ? 'Rebuild trade frontier' : 'Trade frontier'}</h2></div>
+          <div><span className="eyebrow">League-wide Pareto discovery</span><h2>{privateStrategy?.kind === 'power-climb' ? 'Lineup-power trade frontier' : privateStrategy?.kind === 'value-build' ? 'BC value-build frontier' : teamStrategy.mode === 'rebuilding' ? 'Rebuild trade frontier' : 'Trade frontier'}</h2></div>
           <span className="method-note">No weighted score</span>
         </div>
-        <div className="package-evidence-banner"><Info size={16} /><span>{privateStrategy ? currentPowerReady ? `Only Pareto options adding at least ${privateStrategy.minimumMeaningfulPowerGain} current-season lineup power are shown here. The ideal Phil-league move adds ${privateStrategy.idealPowerGain}; an empty result means patience, not a reason to lower the bar.` : 'The current redraft feed does not cover every legal lineup slot, so the private power frontier is guarded instead of falling back to dynasty value.' : 'Each priced league target is paired with the closest one-to-three-asset package from up to your 50 highest-priced assets. These options are not clearly beaten across the visible market, lineup-coverage, and declared-window facts; display order is only a tie-break.'}</span></div>
+        <div className="package-evidence-banner"><Info size={16} /><span>{privateStrategy?.kind === 'power-climb' ? currentPowerReady ? `Only Pareto options adding at least ${privateStrategy.minimumMeaningfulPowerGain} current-season lineup power are shown here. The ideal Phil-league move adds ${privateStrategy.idealPowerGain}; an empty result means patience, not a reason to lower the bar.` : 'The current redraft feed does not cover every legal lineup slot, so the private power frontier is guarded instead of falling back to dynasty value.' : privateStrategy?.kind === 'value-build' ? 'Pareto options use the shared evidence engine, then the BC policy removes only hard triple-loss packages. Market value, current power, draft capital, age, and covered production remain separate; review cases stay visible.' : 'Each priced league target is paired with the closest one-to-three-asset package from up to your 50 highest-priced assets. These options are not clearly beaten across the visible market, lineup-coverage, and declared-window facts; display order is only a tie-break.'}</span></div>
         <div className="trade-frontier-list">
           {tradeFrontier.length ? tradeFrontier.map((candidate) => (
             <article key={`frontier-${candidate.key}`}>
@@ -390,7 +405,7 @@ export function EdgeView({
                 selectedB: candidate.receive.map((asset) => asset.id),
               })}>Open scenarios <ChevronRight size={14} /></button>
             </article>
-          )) : <div className="intel-empty"><Target size={22} /><strong>{privateStrategy ? currentPowerReady ? 'No current package clears your power gate.' : 'The power frontier is guarded.' : 'No complete frontier is available.'}</strong><span>{privateStrategy ? currentPowerReady ? `None of the visible Pareto packages adds at least ${privateStrategy.minimumMeaningfulPowerGain} lineup-power points. Hold rather than manufacture a depth trade.` : 'Wait for complete current-season coverage; no substitute score is being manufactured.' : 'Priced assets or outgoing package evidence is missing.'}</span></div>}
+          )) : <div className="intel-empty"><Target size={22} /><strong>{privateStrategy?.kind === 'power-climb' ? currentPowerReady ? 'No current package clears your power gate.' : 'The power frontier is guarded.' : privateStrategy?.kind === 'value-build' ? 'No BC package survives the value-build guard.' : 'No complete frontier is available.'}</strong><span>{privateStrategy?.kind === 'power-climb' ? currentPowerReady ? `None of the visible Pareto packages adds at least ${privateStrategy.minimumMeaningfulPowerGain} lineup-power points. Hold rather than manufacture a depth trade.` : 'Wait for complete current-season coverage; no substitute score is being manufactured.' : privateStrategy?.kind === 'value-build' ? 'Every visible Pareto package currently loses market value, current power, and a pick together. Keep the liquidity and wait for a better asymmetry.' : 'Priced assets or outgoing package evidence is missing.'}</span></div>}
         </div>
         <div className="model-caveat"><Info size={17} /><span>“Pareto” means no shown option is better on every displayed objective. It does not mean the other manager will accept, and it does not predict resale profit.</span></div>
       </section>

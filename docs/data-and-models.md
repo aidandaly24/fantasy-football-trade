@@ -127,9 +127,14 @@ display ordering is a tie-break only. Neither frontier estimates acceptance or
 resale return.
 
 The private Emperor Phil profile adds a declared top-six objective and explicit
-move, timing, and protected-pick gates. That policy is isolated under
-`src/leagues/emperor-phil/`; the reusable lineup-power calculation contains no
-Phil-specific threshold or roster identity.
+move, timing, and protected-pick gates. The BC profile instead declares a
+top-eight starter/power readiness gate, protected pick liquidity, and a hard
+veto when a package simultaneously loses current market value, current-season
+power, and net draft capital. The Burden first-round pick swap and the McCarthy deal
+are regression cases for that rule. Policies are isolated under `src/leagues/`;
+the reusable lineup-power, trade-evidence, and Pareto calculations contain no
+league-specific thresholds or roster identities. Policy decisions consume the
+visible lanes after calculation and never reprice them or create a trade grade.
 
 ## Current-state market dislocations
 
