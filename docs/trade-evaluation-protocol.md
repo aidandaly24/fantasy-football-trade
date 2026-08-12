@@ -51,7 +51,8 @@ For any trade recommendation, report:
 - current market difference and source freshness;
 - covered lineup impact, or why it is unavailable;
 - historical-model state and whether it contributes to this trade;
-- the user's competitive horizon and the asset's likely hold period;
+- the user's competitive horizon and one declared 30/90/180/365-day holding
+  period for forward market evidence;
 - age/decay, injury, role, liquidity, and exit risks without inventing precise
   probabilities;
 - promoted asset-return evidence at its exact horizon, while keeping the
@@ -69,16 +70,18 @@ For any trade recommendation, report:
 ## Decision workflow
 
 1. Select the exact incoming and outgoing assets in Trade Lab.
-2. Read the direct current-price comparison and each promoted evidence lane.
-3. Inspect the counterparty's whole-roster needs and blockers. Use the
+2. Select the intended holding period. Read only that exact horizon's forward
+   evidence; `unavailable` is not permission to substitute 30-day output.
+3. Read the direct current-price comparison and each promoted evidence lane.
+4. Inspect the counterparty's whole-roster needs and blockers. Use the
    ambitious/fair/walk-away ladder as price anchors; do not reinterpret roster
    fit as a predicted acceptance rate.
-4. For picks, compare the provider price range with the separate rookie
+5. For picks, compare the provider price range with the separate rookie
    opportunity set. A blocked or unresolved class supplies no invented player
    ranking.
-5. Read current catalysts only as timing context unless the market-event gate
+6. Read current catalysts only as timing context unless the market-event gate
    is enabled.
-6. Before contacting the manager, save the proposal and write the thesis, hold
+7. Before contacting the manager, save the proposal and write the thesis, hold
    period, and exit/failure condition. Update the record when it is offered,
    countered, accepted, rejected, or withdrawn so future evaluation has real
    decision labels rather than reconstructed intent.

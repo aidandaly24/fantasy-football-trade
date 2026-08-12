@@ -8,6 +8,11 @@ import type { LeagueContext } from '../league-context'
 import type { JournalBundle, JournalTrade } from '../types'
 import { AssetBadge, formatValue } from '../components/domain-ui'
 
+function formatForwardPnl(value: number | null | undefined, legacy: number | null): string {
+  const resolved = value === undefined ? legacy : value
+  return resolved === null ? 'Unavailable' : `${resolved >= 0 ? '+' : ''}${resolved.toFixed(0)} FC`
+}
+
 export function TradeJournalView({
   journal,
   syncing,
@@ -114,7 +119,7 @@ export function TradeJournalView({
         <div className="panel-heading"><div><span className="eyebrow">V8.0 private negotiation labels</span><h2>Researching, offered, countered, and rejected packages</h2></div><span className="method-note">{decisions.length} saved decisions</span></div>
         {decisions.length ? <div className="decision-ledger-list">{decisions.map((decision) => <article key={decision.id}>
           <header><div><small>{new Date(decision.updatedAt).toLocaleString()}</small><strong>{decision.receive.map((asset) => asset.name).join(' + ')}</strong><span>for {decision.send.map((asset) => asset.name).join(' + ')}</span></div><select aria-label={`Status for ${decision.receive.map((asset) => asset.name).join(' + ')}`} value={decision.status} disabled={updatingDecision === decision.id} onChange={(event) => void setDecisionStatus(decision.id, event.target.value as TradeDecisionStatus)}><option value="researching">Researching</option><option value="offered">Offered</option><option value="countered">Countered</option><option value="accepted">Accepted</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></header>
-          <div className="decision-snapshot-facts"><span><small>Saved market net</small><b className={decision.snapshot.marketNetToMe >= 0 ? 'positive' : 'negative'}>{decision.snapshot.marketNetToMe >= 0 ? '+' : ''}{formatValue(decision.snapshot.marketNetToMe)}</b></span><span><small>30-day P&amp;L</small><b>{decision.snapshot.expectedPnl30 === null ? 'Unavailable' : `${decision.snapshot.expectedPnl30 >= 0 ? '+' : ''}${decision.snapshot.expectedPnl30.toFixed(0)} FC`}</b></span><span><small>Tracked downside</small><b>{decision.snapshot.trackedAssetLowerPnl30 === null ? 'Unavailable' : `${decision.snapshot.trackedAssetLowerPnl30 >= 0 ? '+' : ''}${decision.snapshot.trackedAssetLowerPnl30.toFixed(0)} FC`}</b></span><span><small>Catalysts attached</small><b>{decision.catalysts.length}</b></span></div>
+          <div className="decision-snapshot-facts"><span><small>Saved market net</small><b className={decision.snapshot.marketNetToMe >= 0 ? 'positive' : 'negative'}>{decision.snapshot.marketNetToMe >= 0 ? '+' : ''}{formatValue(decision.snapshot.marketNetToMe)}</b></span><span><small>{decision.snapshot.holdingPeriodDays ?? 30}-day forward P&amp;L</small><b>{formatForwardPnl(decision.snapshot.forwardExpectedPnl, decision.snapshot.expectedPnl30)}</b></span><span><small>Tracked downside</small><b>{formatForwardPnl(decision.snapshot.forwardTrackedLowerPnl, decision.snapshot.trackedAssetLowerPnl30)}</b></span><span><small>Forward model</small><b>{decision.snapshot.forwardStatus ?? '30d legacy'}</b></span></div>
           <p><strong>Thesis:</strong> {decision.thesis}</p><p><strong>Hold:</strong> {decision.holdPeriod} <strong>Exit:</strong> {decision.exitCondition}</p>
         </article>)}</div> : <div className="journal-empty"><BookOpen size={22} /><strong>No negotiation decisions saved yet.</strong><span>Build a package in Trade Lab and save the thesis before sending it.</span></div>}
       </section>

@@ -1725,6 +1725,10 @@ a {
   margin-top: 18px;
   overflow: hidden;
 }
+.holding-period-control { min-width: 190px; display: grid; gap: 5px; }
+.holding-period-control > span { color: var(--ink-soft); font-size: 7px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; }
+.holding-period-control select { width: 100%; padding: 8px 10px; color: var(--ink); background: #f0eee7; border: 1px solid var(--line); border-radius: 8px; font-size: 8px; font-weight: 800; }
+.holding-period-control small { color: var(--ink-soft); font-size: 7px; text-align: right; }
 
 .portfolio-delta-grid,
 .asset-return-model-grid {
@@ -1733,6 +1737,8 @@ a {
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
+.portfolio-delta-grid.forward-market-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.portfolio-delta-grid.forward-market-grid article:nth-child(3n) { border-right: 0; }
 
 .portfolio-delta-grid article,
 .asset-return-model-grid article {
@@ -1780,6 +1786,12 @@ a {
 .asset-research-heading { padding: 11px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #eeece5; }
 .asset-research-heading span { display: inline-flex; align-items: center; gap: 7px; font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; }
 .asset-research-heading small { color: var(--ink-soft); font-size: 7px; }
+.outlook-horizon-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.outlook-horizon-strip > span { min-height: 42px; padding: 8px 10px; display: grid; align-content: center; gap: 2px; background: #f2f0e9; border-right: 1px solid var(--line); }
+.outlook-horizon-strip > span:last-child { border-right: 0; }
+.outlook-horizon-strip > span.selected { background: rgba(216, 255, 104, .24); box-shadow: inset 0 -2px var(--acid-deep); }
+.outlook-horizon-strip b { font-family: 'DM Mono', monospace; font-size: 8px; }
+.outlook-horizon-strip em { color: var(--ink-soft); font-size: 6px; font-style: normal; text-transform: uppercase; }
 .asset-research > p { margin: 0; padding: 14px; color: var(--ink-soft); font-size: 8px; line-height: 1.55; }
 .asset-research-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .asset-research-grid article { min-height: 108px; padding: 13px; display: flex; flex-direction: column; gap: 7px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -1803,6 +1815,9 @@ a {
   .asset-return-model-grid article,
   .asset-research-grid article { min-height: 0; border-right: 0; }
   .asset-research-heading { align-items: flex-start; flex-direction: column; }
+  .holding-period-control { width: 100%; }
+  .holding-period-control small { text-align: left; }
+  .portfolio-delta-grid.forward-market-grid { grid-template-columns: 1fr; }
 }
 .negative { color: var(--red); }
 

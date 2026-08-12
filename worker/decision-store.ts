@@ -113,6 +113,12 @@ function snapshot(value: unknown): TradeDecisionSnapshot {
   const versions = object(input.evidenceVersions)
   const capturedAt = text(input.capturedAt, 'snapshot time', 40)
   if (!Number.isFinite(Date.parse(capturedAt))) throw new Error('Invalid snapshot time')
+  const holdingPeriodDays = input.holdingPeriodDays === undefined
+    ? undefined
+    : Math.round(number(input.holdingPeriodDays, 'holding period days', 30, 365)) as 30 | 90 | 180 | 365
+  if (holdingPeriodDays !== undefined && ![30, 90, 180, 365].includes(holdingPeriodDays)) throw new Error('Invalid holding period days')
+  const forwardStatus = input.forwardStatus === undefined ? undefined : String(input.forwardStatus)
+  if (forwardStatus !== undefined && !['needs-data', 'shadow', 'validated', 'unavailable'].includes(forwardStatus)) throw new Error('Invalid forward status')
   return {
     capturedAt,
     marketNetToMe: number(input.marketNetToMe, 'market net', -500_000, 500_000),
@@ -126,6 +132,11 @@ function snapshot(value: unknown): TradeDecisionSnapshot {
     expectedPnl30: nullableNumber(input.expectedPnl30, 'expected return', -500_000, 500_000),
     trackedAssetLowerPnl30: nullableNumber(input.trackedAssetLowerPnl30, 'tracked downside', -500_000, 500_000),
     returnCoverage: nullableNumber(input.returnCoverage, 'return coverage', 0, 1),
+    holdingPeriodDays,
+    forwardExpectedPnl: input.forwardExpectedPnl === undefined ? undefined : nullableNumber(input.forwardExpectedPnl, 'forward expected return', -500_000, 500_000),
+    forwardTrackedLowerPnl: input.forwardTrackedLowerPnl === undefined ? undefined : nullableNumber(input.forwardTrackedLowerPnl, 'forward tracked downside', -500_000, 500_000),
+    forwardCoverage: input.forwardCoverage === undefined ? undefined : nullableNumber(input.forwardCoverage, 'forward coverage', 0, 1),
+    forwardStatus: forwardStatus as TradeDecisionSnapshot['forwardStatus'],
     strategy: {
       mode: text(strategy.mode, 'strategy mode', 40),
       horizonYears: number(strategy.horizonYears, 'strategy horizon', 1, 4),

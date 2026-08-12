@@ -20,8 +20,8 @@ import {
 } from '../trade-models'
 import { AssetBadge, Avatar, formatValue } from '../components/domain-ui'
 import { AssetResearchPanel } from '../components/AssetResearchPanel'
-import { evaluateRebuildPortfolioTrade } from '../asset-returns'
-import type { AssetReturnHealthBundle, PortfolioTradeDelta } from '../asset-returns'
+import { evaluateForwardPortfolioTrade, evaluateRebuildPortfolioTrade } from '../asset-returns'
+import type { AssetReturnHealthBundle, ForwardHorizonDays, ForwardPortfolioTradeDelta, PortfolioTradeDelta } from '../asset-returns'
 import type { TradeDraft } from './types'
 import { buildIntelSignals } from '../intel'
 import { buildCatalystTimingRead } from '../catalyst-timing'
@@ -354,7 +354,7 @@ function ScenarioPanel({
       <div className="model-note scenario-note">
         <Info size={16} />
         <span>{objectiveApplies
-          ? `Side A is your saved team, so the ${strategy.mode} objective is shown as explicit horizon facts. The separate portfolio memo uses only promoted 30-day resale evidence.`
+          ? `Side A is your saved team, so the ${strategy.mode} objective is shown as explicit horizon facts. The separate portfolio memo uses only the exact declared holding period when its return model is promoted.`
           : `Your saved strategy belongs to another roster. This deal keeps the ${strategy.horizonYears}-year age facts visible but does not label either side as your rebuild.`}</span>
       </div>
     </section>
@@ -363,46 +363,78 @@ function ScenarioPanel({
 
 function RebuildPortfolioPanel({
   portfolio,
+  forward,
   team,
   incoming,
   bundle,
   numQbs,
   horizonYears,
+  holdingPeriodDays,
+  onHoldingPeriodChange,
 }: {
   portfolio: PortfolioTradeDelta
+  forward: ForwardPortfolioTradeDelta
   team: Team
   incoming: Asset[]
   bundle: AssetReturnHealthBundle | null
   numQbs: 1 | 2
   horizonYears: number
+  holdingPeriodDays: ForwardHorizonDays
+  onHoldingPeriodChange: (value: ForwardHorizonDays) => void
 }) {
   const signed = (value: number | null, unit = '', digits = 0) => value === null
     ? 'Unavailable'
     : `${value > 0 ? '+' : ''}${value.toFixed(digits)}${unit}`
-  const lowerImproves = (portfolio.trackedAssetLowerPnl30 ?? 0) >= 0
+  const lowerImproves = (forward.trackedLowerPnl ?? 0) >= 0
   return (
     <section className="rebuild-portfolio panel">
       <div className="panel-heading">
-        <div><span className="eyebrow">V7.7 rebuild portfolio memo</span><h2>Return, downside, liquidity, and decay stay separate</h2></div>
-        <span className="method-note">{team.teamName} · {horizonYears}-year objective</span>
+        <div><span className="eyebrow">Forward-value portfolio memo</span><h2>Return, downside, liquidity, and decay stay separate</h2></div>
+        <label className="holding-period-control"><span>Intended holding period</span><select value={holdingPeriodDays} onChange={(event) => onHoldingPeriodChange(Number(event.target.value) as ForwardHorizonDays)}><option value={30}>30-day flip</option><option value={90}>90 days</option><option value={180}>180 days</option><option value={365}>365 days</option></select><small>{team.teamName} · {horizonYears}-year roster objective</small></label>
       </div>
       <div className="portfolio-delta-grid">
         <article><small>Current Tradyr value</small><strong className={portfolio.currentValue >= 0 ? 'positive' : 'negative'}>{signed(portfolio.currentValue)}</strong><span>Today’s composite-price change</span></article>
-        <article><small>Expected 30-day P&amp;L</small><strong className={(portfolio.expectedPnl30 ?? 0) >= 0 ? 'positive' : 'negative'}>{signed(portfolio.expectedPnl30)}</strong><span>FantasyCalc-value units · {Math.round(portfolio.returnCoverage * 100)}% post-trade coverage</span></article>
-        <article><small>Tracked downside P&amp;L</small><strong className={lowerImproves ? 'positive' : 'negative'}>{signed(portfolio.trackedAssetLowerPnl30)}</strong><span>Change in the calibrated tracked-asset lower interval</span></article>
+        <article><small>Expected {holdingPeriodDays}-day P&amp;L</small><strong className={(forward.expectedPnl ?? 0) >= 0 ? 'positive' : 'negative'}>{signed(forward.expectedPnl)}</strong><span>{forward.enabled ? `FantasyCalc-value units · ${Math.round(forward.coverage * 100)}% post-trade coverage` : `${forward.status} · no return assumed`}</span></article>
+        <article><small>{holdingPeriodDays}-day tracked downside</small><strong className={lowerImproves ? 'positive' : 'negative'}>{signed(forward.trackedLowerPnl)}</strong><span>{forward.enabled ? 'Change in the calibrated tracked-asset lower interval' : 'Unavailable horizons cannot borrow the 30-day interval'}</span></article>
         <article><small>Draft capital</small><strong className={portfolio.pickValue >= 0 ? 'positive' : 'negative'}>{signed(portfolio.pickValue)}</strong><span>Pick-share change {signed(portfolio.pickValueShare === null ? null : portfolio.pickValueShare * 100, ' pp', 1)}</span></article>
         <article><small>Concentration</small><strong>{signed(portfolio.concentrationHhi, '', 3)}</strong><span>HHI change · lower is more diversified</span></article>
         <article><small>Age at your horizon</small><strong>{signed(portfolio.valueWeightedAgeAtHorizon, ' yrs', 1)}</strong><span>Change in value-weighted player age</span></article>
         <article><small>Historical drawdown</small><strong>{signed(portfolio.maxDrawdown180 === null ? null : portfolio.maxDrawdown180 * 100, ' pp', 1)}</strong><span>Change in weighted 180-day max drawdown · {Math.round(portfolio.historicalRiskCoverage * 100)}% coverage</span></article>
         <article><small>Market liquidity</small><strong>{signed(portfolio.tradeFrequency, '/day', 1)}</strong><span>Change in weighted FantasyCalc trade frequency</span></article>
       </div>
-      <div className="portfolio-boundary"><Info size={16} /><span>The 30-day model is promoted for this exact horizon. It does not forecast your three-year roster value, manager acceptance, or a guaranteed flip. Missing assets contribute no assumed return.</span></div>
+      <div className="portfolio-boundary"><Info size={16} /><span>{forward.boundary} The declared holding period is distinct from your {horizonYears}-year roster window and does not predict manager acceptance or a guaranteed exit.</span></div>
       {incoming.length > 0 && <div className="incoming-research-stack">
         <div className="panel-heading"><div><span className="eyebrow">Incoming asset research</span><h3>Hold and exit evidence</h3></div><span className="method-note">Up to three incoming assets</span></div>
-        {incoming.slice(0, 3).map((asset) => <AssetResearchPanel key={asset.id} asset={asset} bundle={bundle} numQbs={numQbs} horizonYears={horizonYears} compact />)}
+        {incoming.slice(0, 3).map((asset) => <AssetResearchPanel key={asset.id} asset={asset} bundle={bundle} numQbs={numQbs} horizonYears={horizonYears} horizonDays={holdingPeriodDays} compact />)}
       </div>}
     </section>
   )
+}
+
+function ForwardMarketPanel({
+  forward,
+  incoming,
+  bundle,
+  numQbs,
+  horizonYears,
+  holdingPeriodDays,
+  onHoldingPeriodChange,
+}: {
+  forward: ForwardPortfolioTradeDelta
+  incoming: Asset[]
+  bundle: AssetReturnHealthBundle | null
+  numQbs: 1 | 2
+  horizonYears: number
+  holdingPeriodDays: ForwardHorizonDays
+  onHoldingPeriodChange: (value: ForwardHorizonDays) => void
+}) {
+  const signed = (value: number | null) => value === null ? 'Unavailable' : `${value > 0 ? '+' : ''}${value.toFixed(0)}`
+  return <section className="rebuild-portfolio panel">
+    <div className="panel-heading"><div><span className="eyebrow">Forward market value</span><h2>Declare the hold before reading the return evidence</h2></div><label className="holding-period-control"><span>Intended holding period</span><select value={holdingPeriodDays} onChange={(event) => onHoldingPeriodChange(Number(event.target.value) as ForwardHorizonDays)}><option value={30}>30-day flip</option><option value={90}>90 days</option><option value={180}>180 days</option><option value={365}>365 days</option></select></label></div>
+    <div className="portfolio-delta-grid forward-market-grid"><article><small>Model state</small><strong>{forward.status}</strong><span>{forward.enabled ? 'Eligible at this exact horizon' : 'Cannot influence this trade'}</span></article><article><small>Expected P&amp;L</small><strong>{signed(forward.expectedPnl)}</strong><span>FantasyCalc units · {Math.round(forward.coverage * 100)}% coverage</span></article><article><small>Tracked downside</small><strong>{signed(forward.trackedLowerPnl)}</strong><span>Not complete career-failure risk</span></article></div>
+    <div className="portfolio-boundary"><Info size={16} /><span>{forward.boundary}</span></div>
+    {incoming.slice(0, 3).map((asset) => <AssetResearchPanel key={asset.id} asset={asset} bundle={bundle} numQbs={numQbs} horizonYears={horizonYears} horizonDays={holdingPeriodDays} compact />)}
+  </section>
 }
 
 function CatalystTimingPanel({ read }: { read: CatalystTimingRead }) {
@@ -672,6 +704,9 @@ export function TradeView({
   const [tapeError, setTapeError] = useState<string | null>(null)
   const [intelFeed, setIntelFeed] = useState<IntelFeed | null>(null)
   const [tradeEdgeState, setTradeEdgeState] = useState<EdgeStateBundle | null>(null)
+  const [holdingPeriodDays, setHoldingPeriodDays] = useState<ForwardHorizonDays>(
+    strategy.mode === 'rebuilding' ? 365 : strategy.mode === 'retooling' ? 180 : 30,
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -754,6 +789,16 @@ export function TradeView({
         horizonYears: strategy.horizonYears,
       })
     : null
+  const forwardPortfolio = ready && strategyTeam
+    ? evaluateForwardPortfolioTrade({
+        team: strategyTeam,
+        outgoing: strategyOutgoing,
+        incoming: strategyIncoming,
+        bundle: assetReturnHealth,
+        numQbs: leagueContext.marketFormat.numQbs,
+        horizonDays: holdingPeriodDays,
+      })
+    : null
   const pickOpportunityReads = useMemo(
     () => ready && strategyTeam
       ? [...strategyOutgoing, ...strategyIncoming]
@@ -804,6 +849,11 @@ export function TradeView({
         expectedPnl30: portfolio?.expectedPnl30 ?? null,
         trackedAssetLowerPnl30: portfolio?.trackedAssetLowerPnl30 ?? null,
         returnCoverage: portfolio?.returnCoverage ?? null,
+        holdingPeriodDays,
+        forwardExpectedPnl: forwardPortfolio?.expectedPnl ?? null,
+        forwardTrackedLowerPnl: forwardPortfolio?.trackedLowerPnl ?? null,
+        forwardCoverage: forwardPortfolio?.coverage ?? null,
+        forwardStatus: forwardPortfolio?.status ?? 'unavailable',
         strategy: { mode: strategy.mode, horizonYears: strategy.horizonYears },
         evidenceVersions: {
           market: marketVersion,
@@ -812,7 +862,7 @@ export function TradeView({
         },
       },
       thesis: `Acquire ${strategyIncoming.map((asset) => asset.name).join(' + ')} for ${strategyOutgoing.map((asset) => asset.name).join(' + ')}. Current composite net is ${marketNetToMe >= 0 ? '+' : ''}${marketNetToMe.toFixed(0)}; the ${strategy.horizonYears}-year ${strategy.mode} facts and every missing evidence lane are preserved in this snapshot.`,
-      holdPeriod: portfolio?.expectedPnl30 === null || portfolio?.expectedPnl30 === undefined ? 'Reassess at 30, 90, and 180 days.' : '30–90 days for the promoted return thesis; reassess before treating it as a long-term hold.',
+      holdPeriod: `${holdingPeriodDays} days declared. ${forwardPortfolio?.enabled ? 'Reassess at the matching promoted checkpoint.' : 'Forward market value is unavailable at this horizon; reassess using current price, production, role, and liquidity without extrapolation.'}`,
       exitCondition: 'Exit or reprice if role, liquidity, downside, or the declared rebuild-window thesis breaks.',
       catalysts,
     } satisfies TradeDecisionDraft
@@ -897,10 +947,11 @@ export function TradeView({
       </section>
 
       <RosterImpact teamA={teamA} teamB={teamB} sideA={assetsA} sideB={assetsB} result={result} horizonYears={strategy.horizonYears} />
-      {portfolio && strategyTeam && <RebuildPortfolioPanel portfolio={portfolio} team={strategyTeam} incoming={strategyIncoming} bundle={assetReturnHealth} numQbs={leagueContext.marketFormat.numQbs} horizonYears={strategy.horizonYears} />}
+      {portfolio && forwardPortfolio && strategyTeam && <RebuildPortfolioPanel portfolio={portfolio} forward={forwardPortfolio} team={strategyTeam} incoming={strategyIncoming} bundle={assetReturnHealth} numQbs={leagueContext.marketFormat.numQbs} horizonYears={strategy.horizonYears} holdingPeriodDays={holdingPeriodDays} onHoldingPeriodChange={setHoldingPeriodDays} />}
+      {!portfolio && forwardPortfolio && strategyTeam && <ForwardMarketPanel forward={forwardPortfolio} incoming={strategyIncoming} bundle={assetReturnHealth} numQbs={leagueContext.marketFormat.numQbs} horizonYears={strategy.horizonYears} holdingPeriodDays={holdingPeriodDays} onHoldingPeriodChange={setHoldingPeriodDays} />}
       {ready && strategyTeam && <CatalystTimingPanel read={catalystRead} />}
       <PickOpportunityPanel reads={pickOpportunityReads} />
-      {decisionDraft && <DecisionJournalPanel key={`${decisionDraft.counterpartRosterId}:${decisionDraft.send.map((asset) => asset.id).join('+')}:${decisionDraft.receive.map((asset) => asset.id).join('+')}`} draft={decisionDraft} />}
+      {decisionDraft && <DecisionJournalPanel key={`${decisionDraft.counterpartRosterId}:${holdingPeriodDays}:${decisionDraft.send.map((asset) => asset.id).join('+')}:${decisionDraft.receive.map((asset) => asset.id).join('+')}`} draft={decisionDraft} />}
       <PremiumModelPanel structure={structure} health={tradeModelHealth} weights={weights} weighted={weighted} onWeightsChange={setWeights} onWeightsCommit={onTradeModelWeightsChange} tape={tape} tapeRefreshing={tapeRefreshing} tapeError={tapeError} onTapeRefresh={() => void runTapeRefresh()} />
       {ready && <ScenarioPanel result={result} teamA={teamA} strategy={strategy} strategyRosterId={strategyRosterId} />}
     </main>

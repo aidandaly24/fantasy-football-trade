@@ -1,6 +1,7 @@
 import type { Asset, Team } from './types'
 
 export type AssetReturnStatus = 'needs-data' | 'shadow' | 'validated'
+export type ForwardHorizonDays = 30 | 90 | 180 | 365
 
 export type AssetReturnGate = {
   id: string
@@ -147,6 +148,32 @@ export type PortfolioTradeDelta = {
   returnCoverage: number
   historicalRiskCoverage: number
   notes: string[]
+}
+
+export type ForwardPortfolioEvidence = {
+  horizonDays: ForwardHorizonDays
+  status: AssetReturnStatus | 'unavailable'
+  enabled: boolean
+  currentValue: number
+  sourceValue: number
+  expectedPnl: number | null
+  trackedLowerPnl: number | null
+  trackedUpperPnl: number | null
+  coverage: number
+  boundary: string
+}
+
+export type ForwardPortfolioTradeDelta = {
+  horizonDays: ForwardHorizonDays
+  status: AssetReturnStatus | 'unavailable'
+  enabled: boolean
+  before: ForwardPortfolioEvidence
+  after: ForwardPortfolioEvidence
+  expectedPnl: number | null
+  trackedLowerPnl: number | null
+  trackedUpperPnl: number | null
+  coverage: number
+  boundary: string
 }
 
 function ordinal(round: number): string {
@@ -304,6 +331,84 @@ function postTradeAssets(team: Team, outgoing: Asset[], incoming: Asset[]): Asse
   const existing = [...team.players, ...team.picks].filter((asset) => !outgoingIds.has(asset.id))
   const existingIds = new Set(existing.map((asset) => asset.id))
   return [...existing, ...incoming.filter((asset) => !existingIds.has(asset.id))]
+}
+
+export function summarizeForwardPortfolio(options: {
+  assets: Asset[]
+  bundle: AssetReturnHealthBundle | null
+  numQbs: 1 | 2
+  horizonDays: ForwardHorizonDays
+}): ForwardPortfolioEvidence {
+  const assets = options.assets.filter((asset) => asset.value > 0)
+  const currentValue = assets.reduce((sum, asset) => sum + asset.value, 0)
+  const index = buildAssetReturnIndex(options.bundle, options.numQbs)
+  const model = options.bundle?.models.find((item) => (
+    item.format === `${options.numQbs}qb` && item.horizonDays === options.horizonDays
+  ))
+  const rows = assets.map((asset) => {
+    const evidence = assetReturnEvidence(asset, index)
+    const horizon = evidence?.horizons[String(options.horizonDays) as keyof AssetReturnAsset['horizons']]
+    const enabled = Boolean(model?.enabled && horizon?.enabled)
+    return {
+      coverageWeight: asset.value,
+      sourceWeight: evidence?.currentValue ?? 0,
+      expected: enabled ? horizon?.expectedReturn ?? null : null,
+      lower: enabled ? horizon?.trackedAssetLower ?? null : null,
+      upper: enabled ? horizon?.trackedAssetUpper ?? null : null,
+    }
+  })
+  const covered = rows.filter((row) => row.expected !== null)
+  const coveredValue = covered.reduce((sum, row) => sum + row.coverageWeight, 0)
+  const sourceValue = covered.reduce((sum, row) => sum + row.sourceWeight, 0)
+  const status = model?.status ?? 'unavailable'
+  return {
+    horizonDays: options.horizonDays,
+    status,
+    enabled: Boolean(model?.enabled),
+    currentValue,
+    sourceValue,
+    expectedPnl: coveredPnl(rows.map((row) => ({ weight: row.sourceWeight, value: row.expected }))),
+    trackedLowerPnl: coveredPnl(rows.map((row) => ({ weight: row.sourceWeight, value: row.lower }))),
+    trackedUpperPnl: coveredPnl(rows.map((row) => ({ weight: row.sourceWeight, value: row.upper }))),
+    coverage: currentValue ? coveredValue / currentValue : model?.enabled ? 1 : 0,
+    boundary: model?.enabled
+      ? `Only assets covered by the promoted ${options.horizonDays}-day ${options.numQbs === 2 ? 'superflex' : '1QB'} model contribute.`
+      : `Forward market value is unavailable at ${options.horizonDays} days; ${status === 'unavailable' ? 'no matching model artifact exists' : `the matching model is ${status}`} and contributes no assumed return.`,
+  }
+}
+
+export function evaluateForwardPortfolioTrade(options: {
+  team: Team
+  outgoing: Asset[]
+  incoming: Asset[]
+  bundle: AssetReturnHealthBundle | null
+  numQbs: 1 | 2
+  horizonDays: ForwardHorizonDays
+}): ForwardPortfolioTradeDelta {
+  const before = summarizeForwardPortfolio({
+    assets: [...options.team.players, ...options.team.picks],
+    bundle: options.bundle,
+    numQbs: options.numQbs,
+    horizonDays: options.horizonDays,
+  })
+  const after = summarizeForwardPortfolio({
+    assets: postTradeAssets(options.team, options.outgoing, options.incoming),
+    bundle: options.bundle,
+    numQbs: options.numQbs,
+    horizonDays: options.horizonDays,
+  })
+  return {
+    horizonDays: options.horizonDays,
+    status: after.status,
+    enabled: after.enabled,
+    before,
+    after,
+    expectedPnl: nullableDelta(after.expectedPnl, before.expectedPnl),
+    trackedLowerPnl: nullableDelta(after.trackedLowerPnl, before.trackedLowerPnl),
+    trackedUpperPnl: nullableDelta(after.trackedUpperPnl, before.trackedUpperPnl),
+    coverage: after.coverage,
+    boundary: after.boundary,
+  }
 }
 
 export function evaluateRebuildPortfolioTrade(options: {

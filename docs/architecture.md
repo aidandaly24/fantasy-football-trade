@@ -65,7 +65,7 @@ Offline training does not run in the request path.
 | `worker/*-store.ts` | D1 schemas, normalization, persistence, refreshes, and read models by capability |
 | `db/schema.ts` | Drizzle schema used to generate checked-in migrations |
 | `drizzle/` | Ordered D1 migrations shipped with the Sites build |
-| `ml/` | Offline production, rookie, source-audit, historical trade, and evaluation pipelines |
+| `ml/` | Offline production, rookie, source-audit, historical trade, return, and evaluation pipelines; `asset_potential.py` is a blocked shadow experiment and has no runtime consumer |
 | `public/data/` | Browser-safe generated artifacts for models intentionally public to the deployed asset layer |
 | `.openai/hosting.json` | Logical Sites project and D1 binding declaration |
 | `build/sites-vite-plugin.ts` | Copies Sites configuration and migrations into the deployment bundle |
