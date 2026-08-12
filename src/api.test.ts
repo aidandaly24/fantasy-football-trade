@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchIntel, fetchJournal, fetchSleeperPlayers, selectSleeperPlayers } from './api'
+import { fetchIntel, fetchJournal, fetchSleeperPlayers, fetchValues, selectSleeperPlayers } from './api'
 import type { SleeperPlayer } from './types'
 
 afterEach(() => {
@@ -63,5 +63,17 @@ describe('secondary workspace request reuse', () => {
     await fetchJournal('999999999999999999')
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('shares market requests for leagues using the same provider format', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ data: [], meta: { generatedAt: '2026-08-11T00:00:00.000Z' } }))
+      .mockResolvedValueOnce(Response.json({ data: [], meta: { generatedAt: '2026-08-11T00:00:00.000Z' } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchValues({ numQbs: 2, tep: true, numTeams: 10 })
+    await fetchValues({ numQbs: 2, tep: true, numTeams: 10 })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

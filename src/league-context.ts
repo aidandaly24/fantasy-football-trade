@@ -1,8 +1,8 @@
 import type { LeagueBundle, MarketTapeLeagueContext, PlayerProjection } from './types'
 
 export const SUPPORTED_LEAGUES = [
-  { id: '1336087922847289344', label: 'BC League' },
-  { id: '1312112570039037952', label: 'Emperor Phil' },
+  { id: '1336087922847289344', label: 'BC League', marketFormat: { numQbs: 2, tep: true, numTeams: 12 } },
+  { id: '1312112570039037952', label: 'Emperor Phil', marketFormat: { numQbs: 2, tep: true, numTeams: 12 } },
 ] as const
 
 export type SupportedLeagueId = typeof SUPPORTED_LEAGUES[number]['id']
