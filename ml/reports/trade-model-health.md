@@ -1,6 +1,6 @@
 # Trade model health
 
-Generated: `2026-08-12T04:16:18.582481Z`
+Generated: `2026-08-12T04:54:39.197189Z`
 
 Training dataset: `sha256:49ee4d82f6ec22936aba2bdebbfaaf1705c5a020e8f2aa9cf03e9352a3a54368`
 Point-in-time coverage: **1583/1674 trades**
@@ -14,6 +14,10 @@ The raw provider total remains unchanged. These models are separate evidence lay
 - Unique source leagues: **427**
 - Date span: **28 days**
 - Median observed premium: **0.16465041832319582**
+- Best simple baseline: **structure-segmented median**
+- Later unseen-league rows: **87**
+- Held-out MAE lift vs best baseline: **8.0%**
+- League-balanced MAE lift: **7.8%**
 
 ## Outcome challengers
 

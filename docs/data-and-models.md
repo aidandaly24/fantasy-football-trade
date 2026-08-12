@@ -327,6 +327,25 @@ exported interval a tracked-asset interval, not a complete downside
 probability. The model never overwrites the current market composite and never
 predicts manager acceptance.
 
+### V7.5 rebuild portfolio objective
+
+`src/asset-returns.ts` joins players by Sleeper ID and draft picks to the exact
+or explicit midpoint FantasyCalc pick bucket. It summarizes the roster before
+and after a trade through separate, unit-bearing facts: current value, pick
+share, concentration HHI, value-weighted age at the declared horizon, promoted
+30-day expected FantasyCalc-value P&L and tracked-asset interval, observed 30/90-day
+movement, 180-day drawdown, trade frequency, and matched age/position cohort
+return. Coverage is reported for every evidence family.
+
+There is no rebuild score. Missing evidence stays null, longer unpromoted
+horizons stay unavailable, and the historical population warning travels with
+every portfolio comparison. V7.7 may use these dimensions in a Pareto
+optimizer; it may not silently collapse them into a grade.
+
+Current Tradyr value and FantasyCalc return P&L remain on their labeled source
+scales. Uncovered assets contribute neither zero return nor extrapolated P&L;
+their missing portfolio weight is reported as return coverage.
+
 ## Trade journal and outcomes
 
 The durable journal follows linked Sleeper league seasons, ingests completed
