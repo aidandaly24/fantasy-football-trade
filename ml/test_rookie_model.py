@@ -5,7 +5,9 @@ import pandas as pd
 
 from ml.rookie_model import (
     PRODUCTION_FEATURES,
+    evaluate_pick_slots,
     exact_one_sided_sign_p_value,
+    pick_slot_label,
     simple_baseline_baskets,
     sleeper_basket,
 )
@@ -43,6 +45,53 @@ class RookieModelTests(unittest.TestCase):
     def test_five_straight_fold_wins_clear_exact_one_sided_sign_gate(self) -> None:
         self.assertEqual(exact_one_sided_sign_p_value(5, 5), 0.03125)
         self.assertGreater(exact_one_sided_sign_p_value(4, 5), 0.05)
+
+    def test_pick_slot_labels_use_twelve_team_rounds(self) -> None:
+        self.assertEqual(pick_slot_label(8), "1.08")
+        self.assertEqual(pick_slot_label(12), "1.12")
+        self.assertEqual(pick_slot_label(16), "2.04")
+        self.assertEqual(pick_slot_label(24), "2.12")
+
+    def test_pick_slot_evaluation_separates_availability_and_selection_rules(self) -> None:
+        frame = pd.DataFrame({
+            "name": ["A", "B", "C", "D"],
+            "position": ["QB", "RB", "WR", "TE"],
+            "rookie_market_rank": [1, 2, 3, 4],
+            "draft_pick": [40, 30, 20, 10],
+            "drafted": [1.0, 1.0, 1.0, 1.0],
+            "rookie_production_percentile": [0.1, 0.3, 0.9, 0.2],
+        })
+
+        results = evaluate_pick_slots(
+            frame,
+            full_prediction=np.array([0.9, 0.3, 0.1, 0.8]),
+            capital_prediction=np.array([0.1, 0.4, 0.8, 0.2]),
+        )
+        market_slot_three = next(
+            item for item in results
+            if item["availabilityRule"] == "marketOrder" and item["slot"] == 3
+        )
+        draft_slot_three = next(
+            item for item in results
+            if item["availabilityRule"] == "nflDraftOrder" and item["slot"] == 3
+        )
+
+        self.assertEqual(
+            market_slot_three["selections"]["learnedMarketPlusCapital"]["player"],
+            "C",
+        )
+        self.assertEqual(
+            market_slot_three["selections"]["fullModel"]["player"],
+            "D",
+        )
+        self.assertAlmostEqual(
+            market_slot_three["selections"]["fullModel"]["selectionRegret"],
+            0.7,
+        )
+        self.assertEqual(
+            draft_slot_three["selections"]["marketOrder"]["player"],
+            "A",
+        )
 
     def test_production_features_exclude_every_nfl_outcome_column(self) -> None:
         forbidden = {

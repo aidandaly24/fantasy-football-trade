@@ -83,6 +83,7 @@ ARTIFACTS = ROOT / "ml" / "artifacts"
 REPORTS = ROOT / "ml" / "reports"
 REPORT_JSON = REPORTS / "rookie-model-latest.json"
 REPORT_MARKDOWN = REPORTS / "rookie-model-latest.md"
+KNOWN_PICK_JSON = REPORTS / "rookie-known-pick-latest.json"
 ROOKIE_BOARD_JSON = ROOT / "worker" / "generated" / "rookie-board.json"
 MODEL_PATH = ARTIFACTS / "rookie-return-models.pkl"
 
@@ -939,10 +940,202 @@ def build_browser_rookie_bundle(report: dict[str, Any]) -> dict[str, Any]:
     })
 
 
+def _current_pick_order(
+    board: list[dict[str, Any]],
+    rule: str,
+) -> list[dict[str, Any]]:
+    if rule == "marketOrder":
+        return sorted(board, key=lambda player: (
+            player["rookieMarketRank"],
+            player["evidence"].get("nflDraftOverall") or 10_000,
+            player["name"],
+        ))
+    if rule == "nflDraftOrder":
+        return sorted(board, key=lambda player: (
+            player["evidence"].get("nflDraftOverall") or 10_000,
+            player["rookieMarketRank"],
+            player["name"],
+        ))
+    if rule == "learnedMarketPlusCapital":
+        return sorted(board, key=lambda player: (
+            -player["learnedMarketPlusCapitalExpectedProductionPercentile"],
+            player["rookieMarketRank"],
+            player["name"],
+        ))
+    if rule == "fullModel":
+        return sorted(board, key=lambda player: (
+            -player["expectedRookieProductionPercentile"],
+            player["rookieMarketRank"],
+            player["name"],
+        ))
+    raise ValueError(f"Unknown current pick ordering rule: {rule}")
+
+
+def build_known_pick_artifact(report: dict[str, Any]) -> dict[str, Any]:
+    """Build an offline advisory contract that cannot affect the live site."""
+    evaluation = report["knownPickEvaluation"]
+    known_pick = evaluation["knownPick"]
+    slot = int(known_pick["slot"])
+    board = list(report["currentDraftBoard"])
+    availability_rules = [item["id"] for item in evaluation["availabilityRules"]]
+    available_by_rule: dict[str, list[dict[str, Any]]] = {}
+    selections: dict[str, dict[str, Any]] = {}
+    candidate_ids: list[str] = []
+    for rule in availability_rules:
+        availability_order = _current_pick_order(board, rule)
+        unavailable_ids = {
+            str(player["fpId"]) for player in availability_order[:slot - 1]
+        }
+        available = [
+            player for player in board if str(player["fpId"]) not in unavailable_ids
+        ]
+        available_by_rule[rule] = available
+        capital_order = _current_pick_order(available, "learnedMarketPlusCapital")
+        full_order = _current_pick_order(available, "fullModel")
+        selections[rule] = {
+            "learnedMarketPlusCapital": capital_order[0]["name"],
+            "fullModelShadowComparison": full_order[0]["name"],
+        }
+        for player in capital_order[:4]:
+            fp_id = str(player["fpId"])
+            if fp_id not in candidate_ids:
+                candidate_ids.append(fp_id)
+
+    by_id = {str(player["fpId"]): player for player in board}
+    likely_candidates = []
+    for fp_id in candidate_ids:
+        player = by_id[fp_id]
+        likely_candidates.append({
+            "fpId": fp_id,
+            "sleeperId": player.get("sleeperId"),
+            "name": player["name"],
+            "position": player["position"],
+            "team": player.get("team"),
+            "college": player.get("college"),
+            "rookieMarketRank": player["rookieMarketRank"],
+            "nflDraftOverall": player["evidence"].get("nflDraftOverall"),
+            "availableAt1.12ByRule": {
+                rule: any(str(item["fpId"]) == fp_id for item in available)
+                for rule, available in available_by_rule.items()
+            },
+            "selectedAt1.12ByRule": {
+                rule: selections[rule]["learnedMarketPlusCapital"] == player["name"]
+                for rule in availability_rules
+            },
+            "productionTargetEstimates": {
+                "learnedMarketPlusCapital": player[
+                    "learnedMarketPlusCapitalExpectedProductionPercentile"
+                ],
+                "fullModelShadowComparison": player[
+                    "expectedRookieProductionPercentile"
+                ],
+                "marketOnlyComparator": player[
+                    "marketOnlyExpectedProductionPercentile"
+                ],
+            },
+            "uncertainty": {
+                "learnedMarketPlusCapitalEnsembleStd": player[
+                    "learnedMarketPlusCapitalDisagreement"
+                ],
+                "learnedMarketPlusCapitalHistoricalResidualBand80": player[
+                    "learnedMarketPlusCapitalResidualBand80"
+                ],
+                "fullModelEnsembleStd": player["modelDisagreement"],
+                "fullModelHistoricalResidualBand80": player[
+                    "historicalResidualBand80"
+                ],
+            },
+        })
+
+    gate_result = known_pick["extraFeatureFamiliesGate"]
+    blockers = [
+        "Availability at 1.12 is simulated rather than observed; market order is primary and two alternate rules are sensitivity checks.",
+        "The production target is not a dynasty-value or trade-return target and is not converted into either.",
+        "The known-pick rule remains advisory until it is tracked prospectively on the 2026 class.",
+    ]
+    if not gate_result["passed"]:
+        blockers.insert(
+            0,
+            "The richer full model did not demonstrate repeatable incremental value over learned market-plus-capital for the exact 1.12 decision.",
+        )
+    return clean_json({
+        "version": "rookie-known-pick-v6.3-shadow-1",
+        "sourceModelVersion": report["version"],
+        "generatedAt": report["generatedAt"],
+        "status": "shadow",
+        "advisoryOnly": True,
+        "liveTradeIntegration": False,
+        "knownPick": {
+            "class": 2026,
+            "slot": slot,
+            "label": known_pick["pick"],
+            "leagueTeams": 12,
+        },
+        "validatedDecisionBoundary": {
+            "rule": "top eight model predictions after rookie market rank 24",
+            "appliesToKnownPick": False,
+            "meaning": "The passed V6.3 basket gate does not validate a 1.12 selection rule.",
+        },
+        "decisionPolicy": {
+            "primaryAvailabilityRule": evaluation["primaryAvailabilityRule"],
+            "primaryDecisionModel": "learnedMarketPlusCapital",
+            "richerFullModelStatus": (
+                "eligible-for-review" if gate_result["passed"] else "not-promoted"
+            ),
+            "currentSelectionsByAvailabilityRule": selections,
+        },
+        "targets": {
+            "rookieProduction": {
+                "meaning": evaluation["target"],
+                "unit": "percentile within historical position and rookie class",
+                "models": [
+                    "learnedMarketPlusCapital",
+                    "fullModelShadowComparison",
+                    "marketOnlyComparator",
+                ],
+            },
+            "dynastyValue": {
+                "status": "not-modeled",
+                "estimate": None,
+            },
+            "marketReturn": {
+                "status": "blocked",
+                "estimate": None,
+            },
+        },
+        "likelyCandidateBasket": {
+            "construction": "union of the top four learned market-plus-capital candidates remaining under each declared availability rule",
+            "players": likely_candidates,
+        },
+        "evaluation": {
+            "heldOutClasses": [
+                item["rookieYear"] for item in evaluation["heldOutClasses"]
+            ],
+            "slotsEvaluated": evaluation["slots"],
+            "specialReportingWindow": evaluation["specialReportingWindow"],
+            "availabilityRules": evaluation["availabilityRules"],
+            "knownPickClassComparisons": known_pick["classComparisons"],
+            "extraFeatureFamiliesGate": gate_result,
+        },
+        "provenance": {
+            "sourceReport": str(REPORT_JSON.relative_to(ROOT)),
+            "pipeline": "ml/rookie_pipeline.py",
+            "historicalTargetSource": report["targets"]["draftProduction"]["source"],
+            "trainingClasses": report["tape"]["classes"],
+            "availabilityRules": availability_rules,
+            "candidateBasketDecisionModel": "learnedMarketPlusCapital",
+        },
+        "blockers": blockers,
+    })
+
+
 def write_report_outputs(report: dict[str, Any]) -> None:
     ROOKIE_BOARD_JSON.parent.mkdir(parents=True, exist_ok=True)
     REPORT_JSON.write_text(json.dumps(report, indent=2) + "\n")
     REPORT_MARKDOWN.write_text(render_markdown(report))
+    KNOWN_PICK_JSON.write_text(
+        json.dumps(build_known_pick_artifact(report), indent=2) + "\n"
+    )
     ROOKIE_BOARD_JSON.write_text(
         json.dumps(build_browser_rookie_bundle(report), indent=2) + "\n"
     )
@@ -1168,6 +1361,7 @@ def build_report(
         },
         "evaluation": [asdict(item) for item in metrics],
         "productionBacktest": production_backtest_dict(production_backtest),
+        "knownPickEvaluation": production_backtest.pick_slot_evaluation,
         "productionFeatureImportance": production_feature_importance,
         "currentDraftBoard": draft_board,
         "currentShadowBoard": predictions,
@@ -1175,8 +1369,10 @@ def build_report(
             "The market-return head still uses expert consensus rather than a complete historical completed-trade tape.",
             "Current Sleeper add/drop counts lack historical point-in-time counterparts and therefore do not change forecasts.",
             "The 2026 production board has passed retrospective rolling gates but still needs prospective tracking before its lift can be treated as permanent.",
+            "Known-pick availability is simulated; the 1.12 advisory remains separate from live trade values and recommendations.",
         ],
         "decisionBoundary": [
+            "The currently validated rule applies only to the top-eight basket after rookie market rank 24; it does not validate a known pick-slot decision.",
             "Use the production board to prioritize film and price checks among late rookies.",
             "College and athletic features improve the selected basket on average but do not beat the learned market-plus-capital model in every class; show their evidence separately.",
             "Do not translate production percentiles into guaranteed trade profit or exact pick values.",
@@ -1189,6 +1385,7 @@ def build_report(
 def render_markdown(report: dict[str, Any]) -> str:
     phases = report["phases"]
     production = report["productionBacktest"]
+    known_pick = report["knownPickEvaluation"]
     lines = [
         "# Rookie sleeper model",
         "",
@@ -1196,7 +1393,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         "",
         "## Decision",
         "",
-        "The rookie-production evidence board passed its rolling sleeper-basket gate. The market-return head remains shadow-only because its target is expert consensus rather than completed-trade pricing.",
+        "The rookie-production evidence board passed its rolling sleeper-basket gate. That validation applies only to the top-eight basket after rookie market rank 24, not to any known pick slot. The known-pick evaluation and market-return head remain shadow-only.",
         "",
         "| Phase | Status | Evidence |",
         "|---|---:|---|",
@@ -1252,6 +1449,112 @@ def render_markdown(report: dict[str, Any]) -> str:
             f"{item['marketClassWins']}/{item['folds']} | {item['draftMeanLift']:+.3f} | "
             f"{item['draftClassWins']}/{item['folds']} | {'pass' if item['passed'] else 'fail'} |"
         )
+    primary_rule = known_pick["primaryAvailabilityRule"]
+    focus_slots = range(
+        known_pick["specialReportingWindow"]["firstSlot"],
+        known_pick["specialReportingWindow"]["lastSlot"] + 1,
+    )
+    lines.extend([
+        "",
+        "## Shadow known-pick evaluation",
+        "",
+        "Slots 1-24 are evaluated in every rolling held-out class. The primary availability assumption removes earlier players in historical rookie market order; NFL draft order and learned market-plus-capital order are sensitivity checks. Selection regret is the remaining hindsight-best production percentile minus the selected player's percentile.",
+        "",
+        "The learned market-plus-capital model is the primary baseline and decision model. The richer full model is not promoted unless its extra college and athletic feature families demonstrate repeatable value for the exact 1.12 decision.",
+        "",
+        "### Special window: 1.08-2.04",
+        "",
+        "| Selection model | Mean outcome | Mean selection regret |",
+        "|---|---:|---:|",
+    ])
+    for model in known_pick["comparisonModels"]:
+        summaries = [
+            item for item in known_pick["slotSummaries"]
+            if item["availabilityRule"] == primary_rule
+            and item["slot"] in focus_slots
+            and item["model"] == model
+        ]
+        mean_outcome = float(np.mean([
+            item["meanOutcomePercentile"] for item in summaries
+        ]))
+        mean_regret = float(np.mean([
+            item["meanSelectionRegret"] for item in summaries
+        ]))
+        lines.append(f"| {model} | {mean_outcome:.3f} | {mean_regret:.3f} |")
+    lines.extend([
+        "",
+        "### Every held-out class",
+        "",
+        "| Class | Full regret, slots 1-24 | Capital regret, slots 1-24 | Full regret, 1.08-2.04 | Capital regret, 1.08-2.04 |",
+        "|---:|---:|---:|---:|---:|",
+    ])
+    for rookie_year in sorted({
+        item["rookieYear"] for item in known_pick["heldOutClassSummaries"]
+    }):
+        by_model = {
+            item["model"]: item
+            for item in known_pick["heldOutClassSummaries"]
+            if item["rookieYear"] == rookie_year
+            and item["availabilityRule"] == primary_rule
+        }
+        full = by_model["fullModel"]
+        capital = by_model["learnedMarketPlusCapital"]
+        lines.append(
+            f"| {rookie_year} | {full['allSlots']['meanSelectionRegret']:.3f} | "
+            f"{capital['allSlots']['meanSelectionRegret']:.3f} | "
+            f"{full['focus1.08To2.04']['meanSelectionRegret']:.3f} | "
+            f"{capital['focus1.08To2.04']['meanSelectionRegret']:.3f} |"
+        )
+    lines.extend([
+        "",
+        "### Exact 1.12 decision by held-out class",
+        "",
+        "| Class | Full selection | Full outcome | Full regret | Capital selection | Capital outcome | Capital regret | Full lift |",
+        "|---:|---|---:|---:|---|---:|---:|---:|",
+    ])
+    exact_primary = [
+        item for item in known_pick["knownPick"]["classComparisons"]
+        if item["availabilityRule"] == primary_rule
+    ]
+    for item in exact_primary:
+        full = item["fullModel"]
+        capital = item["learnedMarketPlusCapital"]
+        lines.append(
+            f"| {item['rookieYear']} | {full['player']} | {full['outcomePercentile']:.3f} | "
+            f"{full['selectionRegret']:.3f} | {capital['player']} | "
+            f"{capital['outcomePercentile']:.3f} | {capital['selectionRegret']:.3f} | "
+            f"{item['fullModelOutcomeLift']:+.3f} |"
+        )
+    exact_gate = known_pick["knownPick"]["extraFeatureFamiliesGate"]
+    lines.extend([
+        "",
+        f"Extra-feature exact-slot gate: **{'pass' if exact_gate['passed'] else 'fail'}**; "
+        f"{exact_gate['primaryAvailabilityClassWins']}/{exact_gate['eligibleClasses']} primary-rule class wins, "
+        f"mean lift {exact_gate['primaryAvailabilityMeanLift']:+.3f}, minimum lift "
+        f"{exact_gate['primaryAvailabilityMinimumLift']:+.3f}, exact sign p "
+        f"{exact_gate['exactOneSidedSignPValue']:.5f}.",
+        "",
+        "### 1.12 availability sensitivity",
+        "",
+        "| Availability rule | Selection model | Mean outcome | Mean regret |",
+        "|---|---|---:|---:|",
+    ])
+    for rule in [item["id"] for item in known_pick["availabilityRules"]]:
+        for model in known_pick["comparisonModels"]:
+            summary = next(
+                item for item in known_pick["slotSummaries"]
+                if item["availabilityRule"] == rule
+                and item["slot"] == known_pick["knownPick"]["slot"]
+                and item["model"] == model
+            )
+            lines.append(
+                f"| {rule} | {model} | {summary['meanOutcomePercentile']:.3f} | "
+                f"{summary['meanSelectionRegret']:.3f} |"
+            )
+    lines.extend([
+        "",
+        "Positional slices for every model, availability rule, and both the full 1-24 range and 1.08-2.04 window are included in the JSON report.",
+    ])
     lines.extend([
         "",
         "## Shadow market-return evaluation",
@@ -1329,6 +1632,7 @@ def build_and_train(*, refresh: bool, offline: bool) -> dict[str, Any]:
         current,
         production_artifact,
         production_backtest.residual_band_80,
+        production_backtest.capital_residual_band_80,
     )
 
     metrics: list[HorizonMetrics] = []

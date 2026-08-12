@@ -6,9 +6,11 @@ import pandas as pd
 
 from ml.rookie_pipeline import (
     CommitPoint,
+    KNOWN_PICK_JSON,
     REPORT_JSON,
     ROOKIE_BOARD_JSON,
     build_browser_rookie_bundle,
+    build_known_pick_artifact,
     build_class_rows,
     normalize_market_snapshot,
     parse_commit_log,
@@ -53,6 +55,67 @@ class RookiePipelineTests(unittest.TestCase):
         self.assertEqual(list(old_frame["name"]), list(new_frame["name"]))
         self.assertEqual(list(old_frame["market_percentile"]), [1.0, 0.0])
         self.assertEqual(list(new_frame["market_percentile"]), [1.0, 0.0])
+
+    def test_known_pick_artifact_is_shadow_advisory_and_pipeline_derived(self) -> None:
+        report = json.loads(REPORT_JSON.read_text())
+        evaluation = report["knownPickEvaluation"]
+        expected = build_known_pick_artifact(report)
+        artifact = json.loads(KNOWN_PICK_JSON.read_text())
+
+        self.assertEqual(artifact, expected)
+        self.assertEqual(artifact["knownPick"]["label"], "1.12")
+        self.assertEqual(artifact["status"], "shadow")
+        self.assertTrue(artifact["advisoryOnly"])
+        self.assertFalse(artifact["liveTradeIntegration"])
+        self.assertEqual(
+            artifact["decisionPolicy"]["primaryDecisionModel"],
+            "learnedMarketPlusCapital",
+        )
+        self.assertFalse(
+            artifact["validatedDecisionBoundary"]["appliesToKnownPick"]
+        )
+        self.assertEqual(
+            [item["slot"] for item in evaluation["slots"]],
+            list(range(1, 25)),
+        )
+        self.assertEqual(
+            evaluation["specialReportingWindow"],
+            {
+                "firstSlot": 8,
+                "lastSlot": 16,
+                "firstPick": "1.08",
+                "lastPick": "2.04",
+            },
+        )
+        self.assertEqual(len(evaluation["heldOutClasses"]), 5)
+        for class_result in evaluation["heldOutClasses"]:
+            self.assertEqual(len(class_result["results"]), 72)
+            for result in class_result["results"]:
+                self.assertEqual(
+                    set(result["selections"]),
+                    {
+                        "fullModel",
+                        "marketOrder",
+                        "nflDraftOrder",
+                        "learnedMarketPlusCapital",
+                    },
+                )
+                self.assertTrue(all(
+                    selection["selectionRegret"] >= 0
+                    for selection in result["selections"].values()
+                ))
+        self.assertGreater(len(evaluation["positionalSlices"]), 0)
+        self.assertIsNone(artifact["targets"]["dynastyValue"]["estimate"])
+        self.assertIsNone(artifact["targets"]["marketReturn"]["estimate"])
+        self.assertGreater(len(artifact["likelyCandidateBasket"]["players"]), 0)
+        if not artifact["evaluation"]["extraFeatureFamiliesGate"]["passed"]:
+            self.assertEqual(
+                artifact["decisionPolicy"]["richerFullModelStatus"],
+                "not-promoted",
+            )
+        serialized = json.dumps(artifact)
+        for forbidden in ("tradeValue", "dynastyValueEstimate", "profitEstimate"):
+            self.assertNotIn(forbidden, serialized)
 
     def test_commit_selection_never_uses_future_data_for_features(self) -> None:
         points = parse_commit_log(

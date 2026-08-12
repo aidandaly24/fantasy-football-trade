@@ -120,6 +120,7 @@ The aggregate audit is retained in:
 
 - `ml/reports/rookie-model-latest.json`
 - `ml/reports/rookie-model-latest.md`
+- `ml/reports/rookie-known-pick-latest.json` (offline shadow/advisory contract)
 - `worker/generated/rookie-board.json` (sanitized private-site contract)
 
 V6.0 builds the historical tape. V6.1 compares a small market-return model with
@@ -130,12 +131,21 @@ add/drop trends are collected as corroborating evidence only; they cannot alter
 the forecast until equivalent historical data exists.
 
 V6.3 adds a distinct production target: position-relative rookie regular-season
-PPR percentile, including zero-stat players. Its exact sleeper rule selects the
-top eight forecasts after rookie market rank 24. Rolling class tests compare
-that basket with an oracle that takes the best of market order, NFL draft order
-and capital/market gap in each class. The production board is enabled only if it
+PPR percentile, including zero-stat players. Its currently validated rule is
+limited to the top-eight basket after rookie market rank 24; that result does
+not validate any known pick slot. Rolling class tests compare that basket with
+an oracle that takes the best of market order, NFL draft order and
+capital/market gap in each class. The production board is enabled only if it
 wins at least five eligible rolling classes, wins every class, and clears the
 declared exact sign-test gate.
+
+The offline known-pick extension evaluates slots 1-24 in every rolling held-out
+class and calls out 1.08-2.04. It reports selection regret, positional slices,
+and three assumed availability rules. Learned market-plus-capital is the
+primary baseline and advisory decision model. The richer college/athletic model
+remains a shadow comparison unless it adds repeatable held-out value for the
+exact slot, beginning with 1.12. This artifact is not published to the Worker
+and cannot change trade values or recommendations.
 
 The production board is evidence for prioritizing film and acquisition-price
 checks; it is not a player grade or a promised return. The market-return head

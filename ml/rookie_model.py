@@ -2,8 +2,9 @@
 
 The model predicts a prospect's position-relative rookie-season PPR percentile.
 It does not predict a guaranteed fantasy outcome, a trade price, or a synthetic
-player grade. Sleeper selection is evaluated on the exact decision rule used in
-the current board: the eight highest predictions after rookie market rank 24.
+player grade. The currently validated selection rule is limited to the eight
+highest predictions after rookie market rank 24. Known pick-slot evaluation is
+a separate rolling, shadow-only experiment.
 """
 
 from __future__ import annotations
@@ -33,6 +34,16 @@ SLEEPER_BASKET_SIZE = 8
 SENSITIVITY_BASKET_SIZES = (6, 8, 10, 12)
 MIN_ROLLING_TRAIN_ROWS = 350
 ENSEMBLE_SEEDS = (11, 23, 37, 53, 71)
+PICK_SLOTS = tuple(range(1, 25))
+PICK_SLOT_FOCUS = tuple(range(8, 17))
+KNOWN_PICK_SLOT = 12
+AVAILABILITY_RULES = ("marketOrder", "nflDraftOrder", "learnedMarketPlusCapital")
+PICK_SLOT_MODELS = (
+    "fullModel",
+    "marketOrder",
+    "nflDraftOrder",
+    "learnedMarketPlusCapital",
+)
 
 MARKET_PRODUCTION_FEATURES = [
     "initial_market_percentile",
@@ -96,8 +107,10 @@ class ProductionBacktest:
     mean_lift_over_learned_capital_model: float | None
     learned_capital_model_class_wins: int
     residual_band_80: float | None
+    capital_residual_band_80: float | None
     basket_sensitivity: list[dict[str, Any]]
     sensitivity_passed: bool
+    pick_slot_evaluation: dict[str, Any]
     passed: bool
 
 
@@ -189,6 +202,282 @@ def _spearman(actual: np.ndarray, predicted: np.ndarray) -> float:
     return float(statistic) if statistic is not None else math.nan
 
 
+def pick_slot_label(slot: int, teams: int = 12) -> str:
+    round_number = (slot - 1) // teams + 1
+    pick_number = (slot - 1) % teams + 1
+    return f"{round_number}.{pick_number:02d}"
+
+
+def _ordered_pick_slot_candidates(
+    frame: pd.DataFrame,
+    rule: str,
+) -> pd.DataFrame:
+    if rule == "marketOrder":
+        return frame.sort_values(
+            ["rookie_market_rank", "draft_pick", "name"],
+            ascending=[True, True, True],
+        )
+    if rule == "nflDraftOrder":
+        return frame.sort_values(
+            ["draft_pick", "rookie_market_rank", "name"],
+            ascending=[True, True, True],
+        )
+    if rule == "learnedMarketPlusCapital":
+        return frame.sort_values(
+            ["capital_prediction", "rookie_market_rank", "draft_pick", "name"],
+            ascending=[False, True, True, True],
+        )
+    if rule == "fullModel":
+        return frame.sort_values(
+            ["full_prediction", "rookie_market_rank", "draft_pick", "name"],
+            ascending=[False, True, True, True],
+        )
+    raise ValueError(f"Unknown pick-slot ordering rule: {rule}")
+
+
+def _selection_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    outcomes = [float(row["outcomePercentile"]) for row in rows]
+    regrets = [float(row["selectionRegret"]) for row in rows]
+    return {
+        "selections": len(rows),
+        "meanOutcomePercentile": float(np.mean(outcomes)) if outcomes else None,
+        "meanSelectionRegret": float(np.mean(regrets)) if regrets else None,
+    }
+
+
+def evaluate_pick_slots(
+    frame: pd.DataFrame,
+    full_prediction: np.ndarray,
+    capital_prediction: np.ndarray,
+) -> list[dict[str, Any]]:
+    """Evaluate one rolling class under declared pick-availability assumptions."""
+    target = "rookie_production_percentile"
+    candidates = frame.copy().reset_index(drop=True)
+    candidates["full_prediction"] = full_prediction
+    candidates["capital_prediction"] = capital_prediction
+    results: list[dict[str, Any]] = []
+    for availability_rule in AVAILABILITY_RULES:
+        availability_order = _ordered_pick_slot_candidates(candidates, availability_rule)
+        for slot in PICK_SLOTS:
+            unavailable = set(availability_order.head(slot - 1).index)
+            available = candidates.loc[~candidates.index.isin(unavailable)].copy()
+            if available.empty:
+                continue
+            oracle = available.sort_values(
+                [target, "rookie_market_rank", "name"],
+                ascending=[False, True, True],
+            ).iloc[0]
+            oracle_outcome = float(oracle[target])
+            selections: dict[str, Any] = {}
+            for model in PICK_SLOT_MODELS:
+                selected = _ordered_pick_slot_candidates(available, model).iloc[0]
+                selected_outcome = float(selected[target])
+                selections[model] = {
+                    "player": str(selected["name"]),
+                    "position": str(selected["position"]),
+                    "rookieMarketRank": int(selected["rookie_market_rank"]),
+                    "nflDraftOverall": (
+                        None
+                        if float(selected["drafted"]) == 0
+                        else int(selected["draft_pick"])
+                    ),
+                    "outcomePercentile": selected_outcome,
+                    "selectionRegret": oracle_outcome - selected_outcome,
+                }
+            results.append({
+                "availabilityRule": availability_rule,
+                "slot": slot,
+                "pick": pick_slot_label(slot),
+                "availableCandidates": len(available),
+                "oracle": {
+                    "player": str(oracle["name"]),
+                    "position": str(oracle["position"]),
+                    "outcomePercentile": oracle_outcome,
+                },
+                "selections": selections,
+            })
+    return results
+
+
+def summarize_pick_slot_evaluation(
+    class_results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    flat_rows: list[dict[str, Any]] = []
+    for class_result in class_results:
+        rookie_year = class_result["rookieYear"]
+        for result in class_result["results"]:
+            for model, selection in result["selections"].items():
+                flat_rows.append({
+                    "rookieYear": rookie_year,
+                    "availabilityRule": result["availabilityRule"],
+                    "slot": result["slot"],
+                    "pick": result["pick"],
+                    "model": model,
+                    **selection,
+                })
+
+    slot_summaries: list[dict[str, Any]] = []
+    for availability_rule in AVAILABILITY_RULES:
+        for slot in PICK_SLOTS:
+            for model in PICK_SLOT_MODELS:
+                rows = [
+                    row for row in flat_rows
+                    if row["availabilityRule"] == availability_rule
+                    and row["slot"] == slot
+                    and row["model"] == model
+                ]
+                slot_summaries.append({
+                    "availabilityRule": availability_rule,
+                    "slot": slot,
+                    "pick": pick_slot_label(slot),
+                    "model": model,
+                    **_selection_summary(rows),
+                })
+
+    class_summaries: list[dict[str, Any]] = []
+    for rookie_year in sorted({int(row["rookieYear"]) for row in flat_rows}):
+        for availability_rule in AVAILABILITY_RULES:
+            for model in PICK_SLOT_MODELS:
+                rows = [
+                    row for row in flat_rows
+                    if row["rookieYear"] == rookie_year
+                    and row["availabilityRule"] == availability_rule
+                    and row["model"] == model
+                ]
+                focus_rows = [row for row in rows if row["slot"] in PICK_SLOT_FOCUS]
+                class_summaries.append({
+                    "rookieYear": rookie_year,
+                    "availabilityRule": availability_rule,
+                    "model": model,
+                    "allSlots": _selection_summary(rows),
+                    "focus1.08To2.04": _selection_summary(focus_rows),
+                })
+
+    positional_slices: list[dict[str, Any]] = []
+    for availability_rule in AVAILABILITY_RULES:
+        for window, slots in (("slots1To24", PICK_SLOTS), ("1.08To2.04", PICK_SLOT_FOCUS)):
+            for model in PICK_SLOT_MODELS:
+                model_rows = [
+                    row for row in flat_rows
+                    if row["availabilityRule"] == availability_rule
+                    and row["slot"] in slots
+                    and row["model"] == model
+                ]
+                for position in POSITIONS:
+                    rows = [row for row in model_rows if row["position"] == position]
+                    if rows:
+                        positional_slices.append({
+                            "availabilityRule": availability_rule,
+                            "window": window,
+                            "model": model,
+                            "selectedPosition": position,
+                            **_selection_summary(rows),
+                        })
+
+    known_pick_classes: list[dict[str, Any]] = []
+    for class_result in class_results:
+        for result in class_result["results"]:
+            if result["slot"] != KNOWN_PICK_SLOT:
+                continue
+            full = result["selections"]["fullModel"]
+            capital = result["selections"]["learnedMarketPlusCapital"]
+            known_pick_classes.append({
+                "rookieYear": class_result["rookieYear"],
+                "availabilityRule": result["availabilityRule"],
+                "fullModel": full,
+                "learnedMarketPlusCapital": capital,
+                "fullModelOutcomeLift": (
+                    full["outcomePercentile"] - capital["outcomePercentile"]
+                ),
+                "fullModelRegretReduction": (
+                    capital["selectionRegret"] - full["selectionRegret"]
+                ),
+                "selectionChanged": full["player"] != capital["player"],
+            })
+
+    primary_known_pick = [
+        row for row in known_pick_classes if row["availabilityRule"] == "marketOrder"
+    ]
+    primary_lifts = [float(row["fullModelOutcomeLift"]) for row in primary_known_pick]
+    wins = sum(lift > 0 for lift in primary_lifts)
+    p_value = exact_one_sided_sign_p_value(wins, len(primary_lifts))
+    availability_mean_lifts = {
+        rule: float(np.mean([
+            row["fullModelOutcomeLift"]
+            for row in known_pick_classes
+            if row["availabilityRule"] == rule
+        ]))
+        for rule in AVAILABILITY_RULES
+    }
+    gate_passed = bool(
+        len(primary_lifts) >= 5
+        and wins == len(primary_lifts)
+        and min(primary_lifts, default=-math.inf) > 0
+        and p_value is not None
+        and p_value <= 0.05
+        and all(value > 0 for value in availability_mean_lifts.values())
+    )
+
+    return {
+        "status": "shadow",
+        "target": "position-relative rookie regular-season PPR percentile",
+        "slots": [
+            {"slot": slot, "pick": pick_slot_label(slot)} for slot in PICK_SLOTS
+        ],
+        "specialReportingWindow": {
+            "firstSlot": PICK_SLOT_FOCUS[0],
+            "lastSlot": PICK_SLOT_FOCUS[-1],
+            "firstPick": pick_slot_label(PICK_SLOT_FOCUS[0]),
+            "lastPick": pick_slot_label(PICK_SLOT_FOCUS[-1]),
+        },
+        "primaryAvailabilityRule": "marketOrder",
+        "primaryBaseline": "learnedMarketPlusCapital",
+        "comparisonModels": list(PICK_SLOT_MODELS),
+        "availabilityRules": [
+            {
+                "id": "marketOrder",
+                "meaning": "earlier selections follow historical rookie market order",
+            },
+            {
+                "id": "nflDraftOrder",
+                "meaning": "earlier selections follow NFL draft order",
+            },
+            {
+                "id": "learnedMarketPlusCapital",
+                "meaning": "earlier selections follow the learned market-plus-capital model",
+            },
+        ],
+        "heldOutClasses": class_results,
+        "heldOutClassSummaries": class_summaries,
+        "slotSummaries": slot_summaries,
+        "positionalSlices": positional_slices,
+        "knownPick": {
+            "slot": KNOWN_PICK_SLOT,
+            "pick": pick_slot_label(KNOWN_PICK_SLOT),
+            "classComparisons": known_pick_classes,
+            "extraFeatureFamiliesGate": {
+                "passed": gate_passed,
+                "eligibleClasses": len(primary_lifts),
+                "primaryAvailabilityClassWins": wins,
+                "primaryAvailabilityMinimumLift": (
+                    min(primary_lifts) if primary_lifts else None
+                ),
+                "primaryAvailabilityMeanLift": (
+                    float(np.mean(primary_lifts)) if primary_lifts else None
+                ),
+                "exactOneSidedSignPValue": p_value,
+                "meanLiftByAvailabilityRule": availability_mean_lifts,
+                "requirement": (
+                    "full model must beat learned market-plus-capital at 1.12 in every "
+                    "eligible rolling class with exact one-sided p <= 0.05, positive "
+                    "minimum class lift, and positive mean lift under every declared "
+                    "availability rule"
+                ),
+            },
+        },
+    }
+
+
 def backtest_production_model(frame: pd.DataFrame) -> ProductionBacktest:
     target = "rookie_production_percentile"
     usable = frame[np.isfinite(frame[target])].copy()
@@ -202,6 +491,7 @@ def backtest_production_model(frame: pd.DataFrame) -> ProductionBacktest:
         size: {"market": [], "draft": []}
         for size in SENSITIVITY_BASKET_SIZES
     }
+    pick_slot_classes: list[dict[str, Any]] = []
 
     for rookie_year in years:
         train = usable[usable["rookie_year"] < rookie_year].copy()
@@ -224,6 +514,16 @@ def backtest_production_model(frame: pd.DataFrame) -> ProductionBacktest:
         oof_model.extend(production_prediction)
         oof_market.extend(market_prediction)
         oof_capital.extend(capital_prediction)
+        pick_slot_classes.append({
+            "rookieYear": rookie_year,
+            "trainingRows": len(train),
+            "classRows": len(test),
+            "results": evaluate_pick_slots(
+                test,
+                production_prediction,
+                capital_prediction,
+            ),
+        })
 
         model_basket = sleeper_basket(test, production_prediction)
         learned_capital_basket = sleeper_basket(test, capital_prediction)
@@ -271,6 +571,9 @@ def backtest_production_model(frame: pd.DataFrame) -> ProductionBacktest:
     p_value = exact_one_sided_sign_p_value(wins, len(folds))
     residual_band = (
         float(np.quantile(np.abs(actual - model_prediction), 0.80)) if len(actual) else math.nan
+    )
+    capital_residual_band = (
+        float(np.quantile(np.abs(actual - capital_prediction), 0.80)) if len(actual) else math.nan
     )
     basket_sensitivity = []
     for size in SENSITIVITY_BASKET_SIZES:
@@ -330,8 +633,12 @@ def backtest_production_model(frame: pd.DataFrame) -> ProductionBacktest:
         mean_lift_over_learned_capital_model=float(np.mean(capital_lifts)) if capital_lifts else None,
         learned_capital_model_class_wins=sum(value > 0 for value in capital_lifts),
         residual_band_80=residual_band if math.isfinite(residual_band) else None,
+        capital_residual_band_80=(
+            capital_residual_band if math.isfinite(capital_residual_band) else None
+        ),
         basket_sensitivity=basket_sensitivity,
         sensitivity_passed=sensitivity_passed,
+        pick_slot_evaluation=summarize_pick_slot_evaluation(pick_slot_classes),
         passed=passed,
     )
 
@@ -341,6 +648,7 @@ def fit_production_artifact(frame: pd.DataFrame) -> dict[str, Any]:
     usable = frame[np.isfinite(frame[target])].copy()
     production_models = fit_ensemble(usable, PRODUCTION_FEATURES, target)
     market_models = fit_ensemble(usable, MARKET_PRODUCTION_FEATURES, target)
+    capital_models = fit_ensemble(usable, CAPITAL_PRODUCTION_FEATURES, target)
     importance = np.vstack([model.feature_importances_ for model in production_models]).mean(axis=0)
     feature_importance = [
         {"feature": feature, "importance": float(value)}
@@ -353,9 +661,11 @@ def fit_production_artifact(frame: pd.DataFrame) -> dict[str, Any]:
         "target": target,
         "features": PRODUCTION_FEATURES,
         "marketFeatures": MARKET_PRODUCTION_FEATURES,
+        "capitalFeatures": CAPITAL_PRODUCTION_FEATURES,
         "seeds": list(ENSEMBLE_SEEDS),
         "productionModels": production_models,
         "marketModels": market_models,
+        "capitalModels": capital_models,
         "featureImportance": feature_importance,
     }
 
@@ -364,6 +674,7 @@ def predict_current_production(
     current: pd.DataFrame,
     artifact: dict[str, Any],
     residual_band_80: float | None,
+    capital_residual_band_80: float | None = None,
 ) -> list[dict[str, Any]]:
     production, disagreement = predict_ensemble(
         artifact["productionModels"], current, artifact["features"]
@@ -371,11 +682,16 @@ def predict_current_production(
     market, _ = predict_ensemble(
         artifact["marketModels"], current, artifact["marketFeatures"]
     )
+    capital, capital_disagreement = predict_ensemble(
+        artifact["capitalModels"], current, artifact["capitalFeatures"]
+    )
     board = current.copy()
     board["production_prediction"] = np.clip(production, 0, 1)
     board["market_expected_production"] = np.clip(market, 0, 1)
+    board["capital_expected_production"] = np.clip(capital, 0, 1)
     board["evidence_delta"] = board["production_prediction"] - board["market_expected_production"]
     board["model_disagreement"] = disagreement
+    board["capital_model_disagreement"] = capital_disagreement
     eligible = board["rookie_market_rank"] > LATE_ROOKIE_RANK
     selected = set(
         board.loc[eligible]
@@ -407,11 +723,28 @@ def predict_current_production(
             "inValidatedSleeperBasket": index in selected,
             "expectedRookieProductionPercentile": estimate,
             "marketOnlyExpectedProductionPercentile": float(row["market_expected_production"]),
+            "learnedMarketPlusCapitalExpectedProductionPercentile": float(
+                row["capital_expected_production"]
+            ),
             "evidenceAdjustment": float(row["evidence_delta"]),
             "modelDisagreement": float(row["model_disagreement"]),
+            "learnedMarketPlusCapitalDisagreement": float(
+                row["capital_model_disagreement"]
+            ),
             "historicalResidualBand80": {
                 "lower": max(0.0, estimate - band) if math.isfinite(band) else None,
                 "upper": min(1.0, estimate + band) if math.isfinite(band) else None,
+                "meaning": "empirical rolling-backtest error band, not a probability guarantee",
+            },
+            "learnedMarketPlusCapitalResidualBand80": {
+                "lower": (
+                    max(0.0, float(row["capital_expected_production"]) - capital_residual_band_80)
+                    if capital_residual_band_80 is not None else None
+                ),
+                "upper": (
+                    min(1.0, float(row["capital_expected_production"]) + capital_residual_band_80)
+                    if capital_residual_band_80 is not None else None
+                ),
                 "meaning": "empirical rolling-backtest error band, not a probability guarantee",
             },
             "evidence": {
@@ -437,4 +770,6 @@ def _optional_float(value: Any) -> float | None:
 
 
 def production_backtest_dict(backtest: ProductionBacktest) -> dict[str, Any]:
-    return asdict(backtest)
+    payload = asdict(backtest)
+    payload.pop("pick_slot_evaluation", None)
+    return payload

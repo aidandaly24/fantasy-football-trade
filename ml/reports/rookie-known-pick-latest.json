@@ -1,0 +1,810 @@
+{
+  "version": "rookie-known-pick-v6.3-shadow-1",
+  "sourceModelVersion": "rookie-evidence-v6.3",
+  "generatedAt": "2026-08-11T22:10:05.210132Z",
+  "status": "shadow",
+  "advisoryOnly": true,
+  "liveTradeIntegration": false,
+  "knownPick": {
+    "class": 2026,
+    "slot": 12,
+    "label": "1.12",
+    "leagueTeams": 12
+  },
+  "validatedDecisionBoundary": {
+    "rule": "top eight model predictions after rookie market rank 24",
+    "appliesToKnownPick": false,
+    "meaning": "The passed V6.3 basket gate does not validate a 1.12 selection rule."
+  },
+  "decisionPolicy": {
+    "primaryAvailabilityRule": "marketOrder",
+    "primaryDecisionModel": "learnedMarketPlusCapital",
+    "richerFullModelStatus": "not-promoted",
+    "currentSelectionsByAvailabilityRule": {
+      "marketOrder": {
+        "learnedMarketPlusCapital": "De'Zhaun Stribling",
+        "fullModelShadowComparison": "Denzel Boston"
+      },
+      "nflDraftOrder": {
+        "learnedMarketPlusCapital": "Denzel Boston",
+        "fullModelShadowComparison": "Denzel Boston"
+      },
+      "learnedMarketPlusCapital": {
+        "learnedMarketPlusCapital": "KC Concepcion",
+        "fullModelShadowComparison": "KC Concepcion"
+      }
+    }
+  },
+  "targets": {
+    "rookieProduction": {
+      "meaning": "position-relative rookie regular-season PPR percentile",
+      "unit": "percentile within historical position and rookie class",
+      "models": [
+        "learnedMarketPlusCapital",
+        "fullModelShadowComparison",
+        "marketOnlyComparator"
+      ]
+    },
+    "dynastyValue": {
+      "status": "not-modeled",
+      "estimate": null
+    },
+    "marketReturn": {
+      "status": "blocked",
+      "estimate": null
+    }
+  },
+  "likelyCandidateBasket": {
+    "construction": "union of the top four learned market-plus-capital candidates remaining under each declared availability rule",
+    "players": [
+      {
+        "fpId": "28138",
+        "sleeperId": "13417",
+        "name": "De'Zhaun Stribling",
+        "position": "WR",
+        "team": "SFO",
+        "college": "Mississippi",
+        "rookieMarketRank": 15,
+        "nflDraftOverall": 33,
+        "availableAt1.12ByRule": {
+          "marketOrder": true,
+          "nflDraftOrder": false,
+          "learnedMarketPlusCapital": false
+        },
+        "selectedAt1.12ByRule": {
+          "marketOrder": true,
+          "nflDraftOrder": false,
+          "learnedMarketPlusCapital": false
+        },
+        "productionTargetEstimates": {
+          "learnedMarketPlusCapital": 0.9218295520248041,
+          "fullModelShadowComparison": 0.9038134076680493,
+          "marketOnlyComparator": 0.888229241799784
+        },
+        "uncertainty": {
+          "learnedMarketPlusCapitalEnsembleStd": 0.0041164469148521066,
+          "learnedMarketPlusCapitalHistoricalResidualBand80": {
+            "lower": 0.6909089372946405,
+            "upper": 1.0,
+            "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+          },
+          "fullModelEnsembleStd": 0.00391455861110719,
+          "fullModelHistoricalResidualBand80": {
+            "lower": 0.6724829676393108,
+            "upper": 1.0,
+            "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+          }
+        }
+      },
+      {
+        "fpId": "27339",
+        "sleeperId": "13346",
+        "name": "Denzel Boston",
+        "position": "WR",
+        "team": "CLE",
+        "college": "Washington",
+        "rookieMarketRank": 12,
+        "nflDraftOverall": 39,
+        "availableAt1.12ByRule": {
+          "marketOrder": true,
+          "nflDraftOrder": true,
+          "learnedMarketPlusCapital": false
+        },
+        "selectedAt1.12ByRule": {
+          "marketOrder": false,
+          "nflDraftOrder": true,
+          "learnedMarketPlusCapital": false
+        },
+        "productionTargetEstimates": {
+          "learnedMarketPlusCapital": 0.9205252735130955,
+          "fullModelShadowComparison": 0.9198772223878873,
+          "marketOnlyComparator": 0.9131749583874136
+        },
+        "uncertainty": {
+          "learnedMarketPlusCapitalEnsembleStd": 0.0030808407527782382,
+          "learnedMarketPlusCapitalHistoricalResidualBand80": {
+            "lower": 0.689604658782932,
+            "upper": 1.0,
+            "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+          },
+          "fullModelEnsembleStd": 0.005079538912381178,
+          "fullModelHistoricalResidualBand80": {
+            "lower": 0.6885467823591488,
+            "upper": 1.0,
+            "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+          }
+        }
+      },
+      {
+        "fpId": "26039",
+        "sleeperId": "13274",
+        "name": "Germie Bernard",
+        "position": "WR",
+        "team": "PIT",
+        "college": "Alabama",
+        "rookieMarketRank": 17,
+        "nflDraftOverall": 47,
+        "availableAt1.12ByRule": {
+          "marketOrder": true,
+          "nflDraftOrder": true,
+          "learnedMarketPlusCapital": true
+        },
+        "selectedAt1.12ByRule": {
+          "marketOrder": false,
+          "nflDraftOrder": false,
+          "learnedMarketPlusCapital": false
+        },
+        "productionTargetEstimates": {
+          "learnedMarketPlusCapital": 0.8970662142266688,
+          "fullModelShadowComparison": 0.8745572365627494,
+          "marketOnlyComparator": 0.8822508297811966
+        },
+        "uncertainty": {
+          "learnedMarketPlusCapitalEnsembleStd": 0.0030383442878829684,
+          "learnedMarketPlusCapitalHistoricalResidualBand80": {
+            "lower": 0.6661455994965052,
+            "upper": 1.0,
+            "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+          },
+          "fullModelEnsembleStd": 0.004279326304310375,
+          "fullModelHistoricalResidualBand80": {
+            "lower": 0.6432267965340109,
+            "upper": 1.0,
+            "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+          }
+        }
+      },
+      {
+        "fpId": "25418",
+        "sleeperId": "13301",
+        "name": "Antonio Williams",
+        "position": "WR",
+        "team": "WAS",
+        "college": "Clemson",
+        "rookieMarketRank": 13,
+        "nflDraftOverall": 71,
+        "availableAt1.12ByRule": {
+          "marketOrder": true,
+          "nflDraftOrder": true,
+          "learnedMarketPlusCapital": true
+        },
+        "selectedAt1.12ByRule": {
+          "marketOrder": false,
+          "nflDraftOrder": false,
+          "learnedMarketPlusCapital": false
+        },
+        "productionTargetEstimates": {
+          "learnedMarketPlusCapital": 0.8443786488166634,
+          "fullModelShadowComparison": 0.8436699398416486,
+          "marketOnlyComparator": 0.8828770595981682
+        },
+        "uncertainty": {
+          "learnedMarketPlusCapitalEnsembleStd": 0.0030535462173883403,
+          "learnedMarketPlusCapitalHistoricalResidualBand80": {
+            "lower": 0.6134580340864998,
+            "upper": 1.0,
+            "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+          },
+          "fullModelEnsembleStd": 0.003589407987028595,
+          "fullModelHistoricalResidualBand80": {
+            "lower": 0.6123394998129101,
+            "upper": 1.0,
+            "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+          }
+        }
+      },
+      {
+        "fpId": "23144",
+        "sleeperId": "13349",
+        "name": "Eli Stowers",
+        "position": "TE",
+        "team": "PHI",
+        "college": "Vanderbilt",
+        "rookieMarketRank": 9,
+        "nflDraftOverall": 54,
+        "availableAt1.12ByRule": {
+          "marketOrder": false,
+          "nflDraftOrder": true,
+          "learnedMarketPlusCapital": true
+        },
+        "selectedAt1.12ByRule": {
+          "marketOrder": false,
+          "nflDraftOrder": false,
+          "learnedMarketPlusCapital": false
+        },
+        "productionTargetEstimates": {
+          "learnedMarketPlusCapital": 0.8760703215971354,
+          "fullModelShadowComparison": 0.8833435053510914,
+          "marketOnlyComparator": 0.9155152673890365
+        },
+        "uncertainty": {
+          "learnedMarketPlusCapitalEnsembleStd": 0.00491939399447221,
+          "learnedMarketPlusCapitalHistoricalResidualBand80": {
+            "lower": 0.6451497068669718,
+            "upper": 1.0,
+            "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+          },
+          "fullModelEnsembleStd": 0.00466811643306685,
+          "fullModelHistoricalResidualBand80": {
+            "lower": 0.6520130653223529,
+            "upper": 1.0,
+            "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+          }
+        }
+      },
+      {
+        "fpId": "27331",
+        "sleeperId": "13298",
+        "name": "KC Concepcion",
+        "position": "WR",
+        "team": "CLE",
+        "college": "Texas A&M",
+        "rookieMarketRank": 7,
+        "nflDraftOverall": 24,
+        "availableAt1.12ByRule": {
+          "marketOrder": false,
+          "nflDraftOrder": false,
+          "learnedMarketPlusCapital": true
+        },
+        "selectedAt1.12ByRule": {
+          "marketOrder": false,
+          "nflDraftOrder": false,
+          "learnedMarketPlusCapital": true
+        },
+        "productionTargetEstimates": {
+          "learnedMarketPlusCapital": 0.9162326803114069,
+          "fullModelShadowComparison": 0.9332485307187206,
+          "marketOnlyComparator": 0.9122442805453655
+        },
+        "uncertainty": {
+          "learnedMarketPlusCapitalEnsembleStd": 0.0018802456090476723,
+          "learnedMarketPlusCapitalHistoricalResidualBand80": {
+            "lower": 0.6853120655812434,
+            "upper": 1.0,
+            "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+          },
+          "fullModelEnsembleStd": 0.0033825728985586814,
+          "fullModelHistoricalResidualBand80": {
+            "lower": 0.7019180906899821,
+            "upper": 1.0,
+            "meaning": "empirical rolling-backtest error band, not a probability guarantee"
+          }
+        }
+      }
+    ]
+  },
+  "evaluation": {
+    "heldOutClasses": [
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "slotsEvaluated": [
+      {
+        "slot": 1,
+        "pick": "1.01"
+      },
+      {
+        "slot": 2,
+        "pick": "1.02"
+      },
+      {
+        "slot": 3,
+        "pick": "1.03"
+      },
+      {
+        "slot": 4,
+        "pick": "1.04"
+      },
+      {
+        "slot": 5,
+        "pick": "1.05"
+      },
+      {
+        "slot": 6,
+        "pick": "1.06"
+      },
+      {
+        "slot": 7,
+        "pick": "1.07"
+      },
+      {
+        "slot": 8,
+        "pick": "1.08"
+      },
+      {
+        "slot": 9,
+        "pick": "1.09"
+      },
+      {
+        "slot": 10,
+        "pick": "1.10"
+      },
+      {
+        "slot": 11,
+        "pick": "1.11"
+      },
+      {
+        "slot": 12,
+        "pick": "1.12"
+      },
+      {
+        "slot": 13,
+        "pick": "2.01"
+      },
+      {
+        "slot": 14,
+        "pick": "2.02"
+      },
+      {
+        "slot": 15,
+        "pick": "2.03"
+      },
+      {
+        "slot": 16,
+        "pick": "2.04"
+      },
+      {
+        "slot": 17,
+        "pick": "2.05"
+      },
+      {
+        "slot": 18,
+        "pick": "2.06"
+      },
+      {
+        "slot": 19,
+        "pick": "2.07"
+      },
+      {
+        "slot": 20,
+        "pick": "2.08"
+      },
+      {
+        "slot": 21,
+        "pick": "2.09"
+      },
+      {
+        "slot": 22,
+        "pick": "2.10"
+      },
+      {
+        "slot": 23,
+        "pick": "2.11"
+      },
+      {
+        "slot": 24,
+        "pick": "2.12"
+      }
+    ],
+    "specialReportingWindow": {
+      "firstSlot": 8,
+      "lastSlot": 16,
+      "firstPick": "1.08",
+      "lastPick": "2.04"
+    },
+    "availabilityRules": [
+      {
+        "id": "marketOrder",
+        "meaning": "earlier selections follow historical rookie market order"
+      },
+      {
+        "id": "nflDraftOrder",
+        "meaning": "earlier selections follow NFL draft order"
+      },
+      {
+        "id": "learnedMarketPlusCapital",
+        "meaning": "earlier selections follow the learned market-plus-capital model"
+      }
+    ],
+    "knownPickClassComparisons": [
+      {
+        "rookieYear": 2021,
+        "availabilityRule": "marketOrder",
+        "fullModel": {
+          "player": "Rashod Bateman",
+          "position": "WR",
+          "rookieMarketRank": 13,
+          "nflDraftOverall": 27,
+          "outcomePercentile": 0.9264705882352942,
+          "selectionRegret": 0.07352941176470584
+        },
+        "learnedMarketPlusCapital": {
+          "player": "Rashod Bateman",
+          "position": "WR",
+          "rookieMarketRank": 13,
+          "nflDraftOverall": 27,
+          "outcomePercentile": 0.9264705882352942,
+          "selectionRegret": 0.07352941176470584
+        },
+        "fullModelOutcomeLift": 0.0,
+        "fullModelRegretReduction": 0.0,
+        "selectionChanged": false
+      },
+      {
+        "rookieYear": 2021,
+        "availabilityRule": "nflDraftOrder",
+        "fullModel": {
+          "player": "Javonte Williams",
+          "position": "RB",
+          "rookieMarketRank": 8,
+          "nflDraftOverall": 35,
+          "outcomePercentile": 0.9772727272727273,
+          "selectionRegret": 0.0
+        },
+        "learnedMarketPlusCapital": {
+          "player": "Javonte Williams",
+          "position": "RB",
+          "rookieMarketRank": 8,
+          "nflDraftOverall": 35,
+          "outcomePercentile": 0.9772727272727273,
+          "selectionRegret": 0.0
+        },
+        "fullModelOutcomeLift": 0.0,
+        "fullModelRegretReduction": 0.0,
+        "selectionChanged": false
+      },
+      {
+        "rookieYear": 2021,
+        "availabilityRule": "learnedMarketPlusCapital",
+        "fullModel": {
+          "player": "Terrace Marshall",
+          "position": "WR",
+          "rookieMarketRank": 17,
+          "nflDraftOverall": 59,
+          "outcomePercentile": 0.8529411764705882,
+          "selectionRegret": 0.1470588235294118
+        },
+        "learnedMarketPlusCapital": {
+          "player": "Elijah Moore",
+          "position": "WR",
+          "rookieMarketRank": 16,
+          "nflDraftOverall": 34,
+          "outcomePercentile": 0.9411764705882353,
+          "selectionRegret": 0.05882352941176472
+        },
+        "fullModelOutcomeLift": -0.08823529411764708,
+        "fullModelRegretReduction": -0.08823529411764708,
+        "selectionChanged": true
+      },
+      {
+        "rookieYear": 2022,
+        "availabilityRule": "marketOrder",
+        "fullModel": {
+          "player": "Alec Pierce",
+          "position": "WR",
+          "rookieMarketRank": 27,
+          "nflDraftOverall": 53,
+          "outcomePercentile": 0.9130434782608695,
+          "selectionRegret": 0.08695652173913049
+        },
+        "learnedMarketPlusCapital": {
+          "player": "George Pickens",
+          "position": "WR",
+          "rookieMarketRank": 12,
+          "nflDraftOverall": 52,
+          "outcomePercentile": 0.9565217391304348,
+          "selectionRegret": 0.04347826086956519
+        },
+        "fullModelOutcomeLift": -0.0434782608695653,
+        "fullModelRegretReduction": -0.0434782608695653,
+        "selectionChanged": true
+      },
+      {
+        "rookieYear": 2022,
+        "availabilityRule": "nflDraftOrder",
+        "fullModel": {
+          "player": "Skyy Moore",
+          "position": "WR",
+          "rookieMarketRank": 8,
+          "nflDraftOverall": 54,
+          "outcomePercentile": 0.8260869565217391,
+          "selectionRegret": 0.17391304347826086
+        },
+        "learnedMarketPlusCapital": {
+          "player": "George Pickens",
+          "position": "WR",
+          "rookieMarketRank": 12,
+          "nflDraftOverall": 52,
+          "outcomePercentile": 0.9565217391304348,
+          "selectionRegret": 0.04347826086956519
+        },
+        "fullModelOutcomeLift": -0.13043478260869568,
+        "fullModelRegretReduction": -0.13043478260869568,
+        "selectionChanged": true
+      },
+      {
+        "rookieYear": 2022,
+        "availabilityRule": "learnedMarketPlusCapital",
+        "fullModel": {
+          "player": "Alec Pierce",
+          "position": "WR",
+          "rookieMarketRank": 27,
+          "nflDraftOverall": 53,
+          "outcomePercentile": 0.9130434782608695,
+          "selectionRegret": 0.08695652173913049
+        },
+        "learnedMarketPlusCapital": {
+          "player": "Kenny Pickett",
+          "position": "QB",
+          "rookieMarketRank": 9,
+          "nflDraftOverall": 20,
+          "outcomePercentile": 1.0,
+          "selectionRegret": 0.0
+        },
+        "fullModelOutcomeLift": -0.08695652173913049,
+        "fullModelRegretReduction": -0.08695652173913049,
+        "selectionChanged": true
+      },
+      {
+        "rookieYear": 2023,
+        "availabilityRule": "marketOrder",
+        "fullModel": {
+          "player": "Sam LaPorta",
+          "position": "TE",
+          "rookieMarketRank": 15,
+          "nflDraftOverall": 34,
+          "outcomePercentile": 1.0,
+          "selectionRegret": 0.0
+        },
+        "learnedMarketPlusCapital": {
+          "player": "Michael Mayer",
+          "position": "TE",
+          "rookieMarketRank": 17,
+          "nflDraftOverall": 35,
+          "outcomePercentile": 0.8461538461538461,
+          "selectionRegret": 0.15384615384615385
+        },
+        "fullModelOutcomeLift": 0.15384615384615385,
+        "fullModelRegretReduction": 0.15384615384615385,
+        "selectionChanged": true
+      },
+      {
+        "rookieYear": 2023,
+        "availabilityRule": "nflDraftOrder",
+        "fullModel": {
+          "player": "Sam LaPorta",
+          "position": "TE",
+          "rookieMarketRank": 15,
+          "nflDraftOverall": 34,
+          "outcomePercentile": 1.0,
+          "selectionRegret": 0.0
+        },
+        "learnedMarketPlusCapital": {
+          "player": "Michael Mayer",
+          "position": "TE",
+          "rookieMarketRank": 17,
+          "nflDraftOverall": 35,
+          "outcomePercentile": 0.8461538461538461,
+          "selectionRegret": 0.15384615384615385
+        },
+        "fullModelOutcomeLift": 0.15384615384615385,
+        "fullModelRegretReduction": 0.15384615384615385,
+        "selectionChanged": true
+      },
+      {
+        "rookieYear": 2023,
+        "availabilityRule": "learnedMarketPlusCapital",
+        "fullModel": {
+          "player": "Dalton Kincaid",
+          "position": "TE",
+          "rookieMarketRank": 11,
+          "nflDraftOverall": 25,
+          "outcomePercentile": 0.9615384615384616,
+          "selectionRegret": 0.038461538461538436
+        },
+        "learnedMarketPlusCapital": {
+          "player": "Jonathan Mingo",
+          "position": "WR",
+          "rookieMarketRank": 21,
+          "nflDraftOverall": 39,
+          "outcomePercentile": 0.8169014084507042,
+          "selectionRegret": 0.18309859154929575
+        },
+        "fullModelOutcomeLift": 0.14463705308775732,
+        "fullModelRegretReduction": 0.14463705308775732,
+        "selectionChanged": true
+      },
+      {
+        "rookieYear": 2024,
+        "availabilityRule": "marketOrder",
+        "fullModel": {
+          "player": "Brian Thomas Jr.",
+          "position": "WR",
+          "rookieMarketRank": 13,
+          "nflDraftOverall": 23,
+          "outcomePercentile": 1.0,
+          "selectionRegret": 0.0
+        },
+        "learnedMarketPlusCapital": {
+          "player": "Brian Thomas Jr.",
+          "position": "WR",
+          "rookieMarketRank": 13,
+          "nflDraftOverall": 23,
+          "outcomePercentile": 1.0,
+          "selectionRegret": 0.0
+        },
+        "fullModelOutcomeLift": 0.0,
+        "fullModelRegretReduction": 0.0,
+        "selectionChanged": false
+      },
+      {
+        "rookieYear": 2024,
+        "availabilityRule": "nflDraftOrder",
+        "fullModel": {
+          "player": "Ladd McConkey",
+          "position": "WR",
+          "rookieMarketRank": 12,
+          "nflDraftOverall": 34,
+          "outcomePercentile": 0.9672131147540983,
+          "selectionRegret": 0.032786885245901676
+        },
+        "learnedMarketPlusCapital": {
+          "player": "Xavier Worthy",
+          "position": "WR",
+          "rookieMarketRank": 11,
+          "nflDraftOverall": 28,
+          "outcomePercentile": 0.9344262295081968,
+          "selectionRegret": 0.06557377049180324
+        },
+        "fullModelOutcomeLift": 0.032786885245901565,
+        "fullModelRegretReduction": 0.032786885245901565,
+        "selectionChanged": true
+      },
+      {
+        "rookieYear": 2024,
+        "availabilityRule": "learnedMarketPlusCapital",
+        "fullModel": {
+          "player": "Keon Coleman",
+          "position": "WR",
+          "rookieMarketRank": 15,
+          "nflDraftOverall": 33,
+          "outcomePercentile": 0.8688524590163934,
+          "selectionRegret": 0.1311475409836066
+        },
+        "learnedMarketPlusCapital": {
+          "player": "J.J. McCarthy",
+          "position": "QB",
+          "rookieMarketRank": 8,
+          "nflDraftOverall": 10,
+          "outcomePercentile": 0.35,
+          "selectionRegret": 0.65
+        },
+        "fullModelOutcomeLift": 0.5188524590163934,
+        "fullModelRegretReduction": 0.5188524590163934,
+        "selectionChanged": true
+      },
+      {
+        "rookieYear": 2025,
+        "availabilityRule": "marketOrder",
+        "fullModel": {
+          "player": "Matthew Golden",
+          "position": "WR",
+          "rookieMarketRank": 13,
+          "nflDraftOverall": 23,
+          "outcomePercentile": 0.8831168831168831,
+          "selectionRegret": 0.11688311688311692
+        },
+        "learnedMarketPlusCapital": {
+          "player": "Matthew Golden",
+          "position": "WR",
+          "rookieMarketRank": 13,
+          "nflDraftOverall": 23,
+          "outcomePercentile": 0.8831168831168831,
+          "selectionRegret": 0.11688311688311692
+        },
+        "fullModelOutcomeLift": 0.0,
+        "fullModelRegretReduction": 0.0,
+        "selectionChanged": false
+      },
+      {
+        "rookieYear": 2025,
+        "availabilityRule": "nflDraftOrder",
+        "fullModel": {
+          "player": "Luther Burden",
+          "position": "WR",
+          "rookieMarketRank": 14,
+          "nflDraftOverall": 39,
+          "outcomePercentile": 0.948051948051948,
+          "selectionRegret": 0.03020892151326937
+        },
+        "learnedMarketPlusCapital": {
+          "player": "Quinshon Judkins",
+          "position": "RB",
+          "rookieMarketRank": 12,
+          "nflDraftOverall": 36,
+          "outcomePercentile": 0.9347826086956522,
+          "selectionRegret": 0.04347826086956519
+        },
+        "fullModelOutcomeLift": 0.013269339356295817,
+        "fullModelRegretReduction": 0.013269339356295817,
+        "selectionChanged": true
+      },
+      {
+        "rookieYear": 2025,
+        "availabilityRule": "learnedMarketPlusCapital",
+        "fullModel": {
+          "player": "Tre Harris",
+          "position": "WR",
+          "rookieMarketRank": 17,
+          "nflDraftOverall": 55,
+          "outcomePercentile": 0.8701298701298701,
+          "selectionRegret": 0.1298701298701299
+        },
+        "learnedMarketPlusCapital": {
+          "player": "Cam Ward",
+          "position": "QB",
+          "rookieMarketRank": 6,
+          "nflDraftOverall": 1,
+          "outcomePercentile": 0.9473684210526315,
+          "selectionRegret": 0.052631578947368474
+        },
+        "fullModelOutcomeLift": -0.07723855092276144,
+        "fullModelRegretReduction": -0.07723855092276144,
+        "selectionChanged": true
+      }
+    ],
+    "extraFeatureFamiliesGate": {
+      "passed": false,
+      "eligibleClasses": 5,
+      "primaryAvailabilityClassWins": 1,
+      "primaryAvailabilityMinimumLift": -0.0434782608695653,
+      "primaryAvailabilityMeanLift": 0.022073578595317712,
+      "exactOneSidedSignPValue": 0.96875,
+      "meanLiftByAvailabilityRule": {
+        "marketOrder": 0.022073578595317712,
+        "nflDraftOrder": 0.013893519167931112,
+        "learnedMarketPlusCapital": 0.08221182906492235
+      },
+      "requirement": "full model must beat learned market-plus-capital at 1.12 in every eligible rolling class with exact one-sided p <= 0.05, positive minimum class lift, and positive mean lift under every declared availability rule"
+    }
+  },
+  "provenance": {
+    "sourceReport": "ml/reports/rookie-model-latest.json",
+    "pipeline": "ml/rookie_pipeline.py",
+    "historicalTargetSource": "nflverse regular-season player stats",
+    "trainingClasses": [
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "availabilityRules": [
+      "marketOrder",
+      "nflDraftOrder",
+      "learnedMarketPlusCapital"
+    ],
+    "candidateBasketDecisionModel": "learnedMarketPlusCapital"
+  },
+  "blockers": [
+    "The richer full model did not demonstrate repeatable incremental value over learned market-plus-capital for the exact 1.12 decision.",
+    "Availability at 1.12 is simulated rather than observed; market order is primary and two alternate rules are sensitivity checks.",
+    "The production target is not a dynasty-value or trade-return target and is not converted into either.",
+    "The known-pick rule remains advisory until it is tracked prospectively on the 2026 class."
+  ]
+}
