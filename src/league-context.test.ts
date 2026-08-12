@@ -56,6 +56,9 @@ describe('fixed private league context', () => {
       '1336087922847289344',
       '1312112570039037952',
     ])
+    expect(SUPPORTED_LEAGUES.every((league) => league.marketFormat.numQbs === 2
+      && league.marketFormat.tep
+      && league.marketFormat.numTeams === 12)).toBe(true)
     expect(isSupportedLeagueId('1336087922847289344')).toBe(true)
     expect(isSupportedLeagueId('999999999999999999')).toBe(false)
     expect(() => leagueContext(bundle({

@@ -27,6 +27,8 @@ import type { RookieBoardBundle } from './rookies'
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
 let sleeperPlayerCatalog: Promise<Record<string, SleeperPlayer>> | null = null
+let projectionRequest: Promise<ProjectionBundle | null> | null = null
+const valueRequests = new Map<string, Promise<ValueBundle>>()
 let modelHealthRequest: Promise<ModelHealthBundle | null> | null = null
 let eventModelHealthRequest: Promise<EventModelHealthBundle | null> | null = null
 let rookieBoardRequest: Promise<RookieBoardBundle> | null = null
@@ -73,6 +75,9 @@ export async function fetchValues(options: {
   tep: boolean
   numTeams: number
 }): Promise<ValueBundle> {
+  const cacheKey = `${options.numQbs}:${options.tep}:${options.numTeams}`
+  const existing = valueRequests.get(cacheKey)
+  if (existing) return existing
   const params = new URLSearchParams({
     format: 'dynasty',
     numQbs: String(options.numQbs),
@@ -84,21 +89,23 @@ export async function fetchValues(options: {
     numTeams: String(options.numTeams),
   })
 
-  const [players, picks] = await Promise.all([
+  const request = Promise.all([
     fetchJson<TradyrResponse<TradyrPlayer[]>>(`${TRADYR_BASE}/players?${params}`),
     fetchJson<TradyrResponse<PickValue[]>>(`${TRADYR_BASE}/picks?${pickParams}`),
-  ])
-
-  return { players: players.data, picks: picks.data, meta: players.meta }
+  ]).then(([players, picks]) => ({ players: players.data, picks: picks.data, meta: players.meta }))
+    .catch((error) => {
+      valueRequests.delete(cacheKey)
+      throw error
+    })
+  valueRequests.set(cacheKey, request)
+  return request
 }
 
 export async function fetchProjections(): Promise<ProjectionBundle | null> {
-  try {
-    const bundle = await fetchJson<ProjectionBundle>('/data/player-projections.json')
-    return bundle.enabled ? bundle : null
-  } catch {
-    return null
-  }
+  projectionRequest ??= fetchJson<ProjectionBundle>('/data/player-projections.json')
+    .then((bundle) => bundle.enabled ? bundle : null)
+    .catch(() => null)
+  return projectionRequest
 }
 
 export async function fetchModelHealth(): Promise<ModelHealthBundle | null> {

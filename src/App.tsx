@@ -11,7 +11,7 @@ import type { ManagerProfile } from './negotiation'
 import { buildTeams } from './rankings'
 import { resolveTeamStrategy } from './strategy'
 import type { RookieBoardBundle } from './rookies'
-import type { EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, PlayerProjection, RankingMode, Team, UserState, ValueBundle } from './types'
+import type { EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, PlayerProjection, ProjectionBundle, RankingMode, Team, UserState, ValueBundle } from './types'
 import { EdgeView } from './views/EdgeView'
 import { IntelView } from './views/IntelView'
 import { ModelView } from './views/ModelView'
@@ -23,6 +23,8 @@ import type { TradeDraft } from './views/types'
 
 const DEFAULT_LEAGUE_ID: SupportedLeagueId = SUPPORTED_LEAGUES[0].id
 const LAST_LEAGUE_KEY = 'rosterlab:last-league'
+const CORE_CACHE_PREFIX = 'rosterlab:core:v1:'
+const CORE_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000
 
 type AppData = {
   leagueBundle: LeagueBundle
@@ -40,6 +42,22 @@ type AppData = {
   preferences: LeaguePreferences
 }
 
+type CachedLeagueCore = {
+  version: 1
+  cachedAt: string
+  leagueBundle: LeagueBundle
+  valueBundle: ValueBundle
+  projectionBundle: ProjectionBundle | null
+  preferences: LeaguePreferences
+}
+
+type LeagueLoadPrefetch = {
+  league?: Promise<LeagueBundle>
+  values?: Promise<ValueBundle>
+  projections?: Promise<ProjectionBundle | null>
+  preferences?: LeaguePreferences
+}
+
 type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model'
 
 const EMPTY_JOURNAL: JournalBundle = {
@@ -48,6 +66,39 @@ const EMPTY_JOURNAL: JournalBundle = {
   snapshots: [],
   outcomes: [],
   sync: null,
+}
+
+function readCachedLeagueCore(id: SupportedLeagueId): CachedLeagueCore | null {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(`${CORE_CACHE_PREFIX}${id}`) ?? 'null') as CachedLeagueCore | null
+    if (!parsed || parsed.version !== 1 || parsed.leagueBundle?.league?.league_id !== id) return null
+    if (!Number.isFinite(Date.parse(parsed.cachedAt)) || Date.now() - Date.parse(parsed.cachedAt) > CORE_CACHE_MAX_AGE_MS) return null
+    if (!Array.isArray(parsed.valueBundle?.players) || !Array.isArray(parsed.valueBundle?.picks)) return null
+    if (parsed.preferences?.leagueId !== id || !parsed.preferences.settings) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeCachedLeagueCore(id: SupportedLeagueId, value: Omit<CachedLeagueCore, 'version' | 'cachedAt'>): void {
+  try {
+    window.localStorage.setItem(`${CORE_CACHE_PREFIX}${id}`, JSON.stringify({ version: 1, cachedAt: new Date().toISOString(), ...value }))
+  } catch {
+    // The live refresh remains authoritative when device storage is unavailable or full.
+  }
+}
+
+function writeCachedLeaguePreferences(preferences: LeaguePreferences): void {
+  if (!isSupportedLeagueId(preferences.leagueId)) return
+  const cached = readCachedLeagueCore(preferences.leagueId)
+  if (!cached) return
+  writeCachedLeagueCore(preferences.leagueId, {
+    leagueBundle: cached.leagueBundle,
+    valueBundle: cached.valueBundle,
+    projectionBundle: cached.projectionBundle,
+    preferences,
+  })
 }
 
 function AppHeader({
@@ -221,23 +272,60 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'auto' })
   }, [view, leagueId])
 
+  const showCachedLeague = (cached: CachedLeagueCore) => {
+    const context = leagueContext(cached.leagueBundle)
+    const playerProjections = new Map(cached.projectionBundle?.stale ? [] : Object.entries(cached.projectionBundle?.projections ?? {})
+      .map(([playerId, projection]) => [playerId, projectionForLeague(projection, context)] as const))
+    const teams = buildTeams(cached.leagueBundle, cached.valueBundle, new Map(), playerProjections)
+    const transactions = journalTransactionsForCurrentManagers(EMPTY_JOURNAL, cached.leagueBundle.league.league_id)
+    setData({
+      leagueBundle: cached.leagueBundle,
+      leagueContext: context,
+      valueBundle: cached.valueBundle,
+      playerProjections,
+      teams,
+      modelHealth: undefined,
+      eventModelHealth: undefined,
+      rookieBoard: undefined,
+      managerProfiles: buildManagerProfiles(transactions, teams, cached.valueBundle.players, cached.valueBundle.picks),
+      directions: buildTeamDirections({
+        teams,
+        transactions,
+        picks: cached.valueBundle.picks,
+        overrides: cached.preferences.settings.teamDirectionOverrides,
+      }),
+      journal: EMPTY_JOURNAL,
+      journalLoaded: false,
+      preferences: cached.preferences,
+    })
+    setMode(cached.preferences.settings.rankingMode ?? 'overall')
+    setLeagueId(context.id)
+    setSelectedId(teams[0]?.rosterId ?? 1)
+    setTradeDraft(null)
+  }
+
   const loadLeague = async (
     id: SupportedLeagueId,
     stateOverride: UserState | null = userState,
-    prefetchedLeague?: Promise<LeagueBundle>,
+    prefetch: LeagueLoadPrefetch = {},
   ) => {
     setLoading(true)
     setError(null)
     ;['rookies', 'model', 'event-model', 'journal'].forEach((kind) => secondaryLoads.current.delete(`${id}:${kind}`))
     try {
-      const leagueBundle = await (prefetchedLeague ?? fetchLeagueBundle(id))
+      const preset = SUPPORTED_LEAGUES.find((item) => item.id === id)!
+      const leagueRequest = prefetch.league ?? fetchLeagueBundle(id)
+      const valueRequest = prefetch.values ?? fetchValues(preset.marketFormat)
+      const projectionRequest = prefetch.projections ?? fetchProjections()
+      const leagueBundle = await leagueRequest
       const context = leagueContext(leagueBundle)
-      const existingPreference = stateOverride?.preferences.find((item) => item.leagueId === id)
+      const existingPreference = stateOverride?.preferences.find((item) => item.leagueId === id) ?? prefetch.preferences
+      const presetMatches = context.marketFormat.numQbs === preset.marketFormat.numQbs
+        && context.marketFormat.tep === preset.marketFormat.tep
+        && context.marketFormat.numTeams === preset.marketFormat.numTeams
       const [valueBundle, projectionBundle] = await Promise.all([
-        fetchValues({
-          ...context.marketFormat,
-        }),
-        fetchProjections(),
+        presetMatches ? valueRequest : fetchValues(context.marketFormat),
+        projectionRequest,
       ])
       const playerProjections = new Map(projectionBundle?.stale ? [] : Object.entries(projectionBundle?.projections ?? {})
         .map(([playerId, projection]) => [playerId, projectionForLeague(projection, context)] as const))
@@ -291,6 +379,7 @@ function App() {
       try { window.localStorage.setItem(LAST_LEAGUE_KEY, id) } catch { /* Device storage is an optional acceleration only. */ }
       setSelectedId(teams[0]?.rosterId ?? 1)
       setTradeDraft(null)
+      writeCachedLeagueCore(id, { leagueBundle, valueBundle, projectionBundle, preferences: basePreference })
 
       if (stateOverride) {
         void saveLeaguePreferences(basePreference).then((saved) => {
@@ -323,13 +412,20 @@ function App() {
         // Hosted preferences remain the source of truth when device storage is unavailable.
       }
       const initialLeague = localLeague ?? DEFAULT_LEAGUE_ID
+      const cached = readCachedLeagueCore(initialLeague)
+      if (cached) showCachedLeague(cached)
+      const preset = SUPPORTED_LEAGUES.find((item) => item.id === initialLeague)!
       const statePromise = fetchUserState()
       const leaguePromise = fetchLeagueBundle(initialLeague)
+      const valuePromise = fetchValues(preset.marketFormat)
+      const projectionPromise = fetchProjections()
       const state = await statePromise
       setUserState(state)
       const savedLeagueId = state?.preferences.find((item) => isSupportedLeagueId(item.leagueId))?.leagueId
       const savedLeague = localLeague ?? (isSupportedLeagueId(savedLeagueId) ? savedLeagueId : initialLeague)
-      await loadLeague(savedLeague, state, savedLeague === initialLeague ? leaguePromise : undefined)
+      await loadLeague(savedLeague, state, savedLeague === initialLeague
+        ? { league: leaguePromise, values: valuePromise, projections: projectionPromise, preferences: cached?.preferences }
+        : {})
     })()
   }, [])
 
@@ -445,6 +541,7 @@ function App() {
       },
     }
     let nextData: AppData = { ...data, preferences: next }
+    writeCachedLeaguePreferences(next)
     if (patch.settings && Object.prototype.hasOwnProperty.call(patch.settings, 'teamDirectionOverrides')) {
       const transactions = journalTransactionsForCurrentManagers(data.journal, data.leagueBundle.league.league_id)
       const teams = nextData.teams
@@ -474,7 +571,9 @@ function App() {
   }
 
   const selectLeague = (nextLeagueId: SupportedLeagueId) => {
-    void loadLeague(nextLeagueId)
+    const cached = readCachedLeagueCore(nextLeagueId)
+    if (cached) showCachedLeague(cached)
+    void loadLeague(nextLeagueId, userState, { preferences: cached?.preferences })
   }
 
   const openTradeDraft = (draft: Omit<TradeDraft, 'nonce'>) => {
