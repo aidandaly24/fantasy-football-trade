@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { buildActionableTradeBook } from './actionable-targets'
 import { buildNegotiationLadder, findComparablePackages, findTradeFrontier, resolveTeamStrategy } from './strategy'
 import type { AssetReturnHealthBundle } from './asset-returns'
 import type { Asset, Team } from './types'
@@ -8,6 +9,36 @@ function asset(id: string, position: Asset['position'], value: number, overrides
 }
 function team(id: number, players: Asset[], picks: Asset[] = [], contender = 50, future = 50): Team {
   return { rosterId: id, ownerId: String(id), ownerName: String(id), teamName: `Team ${id}`, avatar: null, players, picks, optimizedStarters: players.filter((item) => item.isStarter || item.depthChartOrder === 1).slice(0, 4), metrics: { lineupRaw: 0, coreRaw: 0, depthRaw: 0, picksRaw: 0, liquidityRaw: 0, marketRaw: 0, lineup: contender, core: future, depth: 50, picks: 50, liquidity: 50, market: 50, overall: 50, contender, future } }
+}
+
+function returnHealth(rows: Array<{
+  id: string
+  name?: string
+  value: number
+  age?: number
+  expected: number
+  lower: number
+  liquidity: number
+  drawdown: number
+}>): AssetReturnHealthBundle {
+  return {
+    sourceAudit: { survivorWarning: 'Tracked assets only.' },
+    models: [],
+    assets: Object.fromEntries(rows.map((row, index) => [row.id, {
+      fantasyCalcId: index + 1,
+      sleeperId: row.id,
+      name: row.name ?? row.id,
+      position: 'WR',
+      format: '2qb',
+      currentValue: row.value,
+      overallRank: index + 1,
+      age: row.age ?? 24,
+      tradeFrequency: row.liquidity,
+      consensusVariancePercent: 2,
+      risk: { observed30dReturn: 0, observed90dReturn: 0, monthlyVolatility30d: 0.1, maxDrawdown90d: row.drawdown, maxDrawdown180d: row.drawdown, observations180d: 180 },
+      horizons: { '30': { status: 'validated', enabled: true, expectedReturn: row.expected, trackedAssetLower: row.lower, trackedAssetUpper: row.expected + 0.1 }, '90': { status: 'shadow', enabled: false }, '180': { status: 'needs-data', enabled: false }, '365': { status: 'needs-data', enabled: false } },
+    }])),
+  } as unknown as AssetReturnHealthBundle
 }
 
 describe('evidence-only strategy inventory', () => {
@@ -131,6 +162,82 @@ describe('evidence-only strategy inventory', () => {
     expect(packages[0].portfolio?.expectedPnl30).toBeCloseTo(100)
     expect(packages[0].tradeoffs.join(' ')).toContain('FantasyCalc-value')
     expect(packages[0]).not.toHaveProperty('score')
+  })
+
+  it('builds an actionable trade book from visible league-relative gates', () => {
+    const mine = team(1, [asset('out', 'WR', 500, { name: 'Out', age: 25, isStarter: true })])
+    const young = asset('young', 'WR', 500, { name: 'Young', age: 22, isStarter: true })
+    const old = asset('old', 'WR', 500, { name: 'Old', age: 33, isStarter: true })
+    const health = returnHealth([
+      { id: 'out', name: 'Out', value: 500, age: 25, expected: -0.1, lower: -0.2, liquidity: 0.01, drawdown: -0.2 },
+      { id: 'young', name: 'Young', value: 500, age: 22, expected: 0.15, lower: 0.02, liquidity: 0.02, drawdown: -0.1 },
+      { id: 'old', name: 'Old', value: 500, age: 33, expected: 0.2, lower: -0.4, liquidity: 0.001, drawdown: -0.5 },
+    ])
+    const teams = [mine, team(2, [young]), team(3, [old])]
+    const strategy = { mode: 'rebuilding' as const, horizonYears: 3 as const, flipPriority: 0 }
+    const frontier = findTradeFrontier(teams, {
+      myRosterId: 1,
+      rosterPositions,
+      strategy,
+      assetReturnHealth: health,
+      numQbs: 2,
+    })
+    const book = buildActionableTradeBook({ teams, myRosterId: 1, strategy, assetReturnHealth: health, numQbs: 2, candidates: frontier })
+
+    expect(book.candidates.map((candidate) => candidate.targetAsset.id)).toContain('young')
+    expect(book.candidates.map((candidate) => candidate.targetAsset.id)).not.toContain('old')
+    expect(book.candidates[0].gates.every((gate) => gate.passed)).toBe(true)
+    expect(book.candidates[0]).not.toHaveProperty('score')
+    expect(book.method).toContain('no weighted target score')
+  })
+
+  it('allows a smaller catalyst only when promoted package P&L, downside, liquidity, age, and role all clear', () => {
+    const mine = team(1, [asset('core', 'WR', 700, { name: 'Core', age: 23, isStarter: true }), asset('out-small', 'WR', 300, { name: 'Out Small', age: 25, depthChartOrder: 3 })], [asset('out-pick', 'PICK', 200)])
+    const flip = asset('flip', 'WR', 300, { name: 'Flip', age: 22, depthChartOrder: 2 })
+    const anchor = asset('anchor', 'WR', 600, { name: 'Anchor', age: 25, isStarter: true })
+    const health = returnHealth([
+      { id: 'out-small', name: 'Out Small', value: 300, expected: -0.1, lower: -0.2, liquidity: 0.01, drawdown: -0.2 },
+      { id: 'flip', name: 'Flip', value: 300, age: 22, expected: 0.35, lower: 0.1, liquidity: 0.03, drawdown: -0.05 },
+      { id: 'anchor', name: 'Anchor', value: 600, age: 25, expected: 0, lower: -0.2, liquidity: 0.01, drawdown: -0.2 },
+    ])
+    const teams = [mine, team(2, [flip]), team(3, [anchor])]
+    const strategy = { mode: 'rebuilding' as const, horizonYears: 3 as const, flipPriority: 0 }
+    const frontier = findTradeFrontier(teams, {
+      myRosterId: 1,
+      rosterPositions,
+      strategy,
+      assetReturnHealth: health,
+      numQbs: 2,
+    })
+    const book = buildActionableTradeBook({ teams, myRosterId: 1, strategy, assetReturnHealth: health, numQbs: 2, candidates: frontier })
+    const candidate = book.candidates.find((item) => item.targetAsset.id === 'flip')
+
+    expect(candidate?.book).toBe('catalyst-flip')
+    expect(candidate?.holdPeriod).toContain('30–90 days')
+  })
+
+  it('surfaces a discounted conversion into draft liquidity', () => {
+    const mine = team(1, [asset('piece-a', 'WR', 250), asset('piece-b', 'WR', 250)])
+    const futurePick = asset('future-first', 'PICK', 500, { year: '2027', round: 1, projectedTier: 'mid' })
+    const health = returnHealth([
+      { id: 'piece-a', value: 250, expected: 0, lower: -0.1, liquidity: 0.01, drawdown: -0.1 },
+      { id: 'piece-b', value: 250, expected: 0, lower: -0.1, liquidity: 0.01, drawdown: -0.1 },
+    ])
+    const teams = [mine, team(2, [], [futurePick])]
+    const strategy = { mode: 'rebuilding' as const, horizonYears: 3 as const, flipPriority: 0 }
+    const frontier = findTradeFrontier(teams, {
+      myRosterId: 1,
+      rosterPositions,
+      strategy,
+      assetReturnHealth: health,
+      numQbs: 2,
+    })
+    const book = buildActionableTradeBook({ teams, myRosterId: 1, strategy, assetReturnHealth: health, numQbs: 2, candidates: frontier })
+    const candidate = book.candidates.find((item) => item.targetAsset.id === 'future-first')
+
+    expect(candidate?.book).toBe('liquidity-conversion')
+    expect(candidate?.marketNetToMe).toBeGreaterThanOrEqual(0)
+    expect(candidate?.send.length).toBeLessThanOrEqual(2)
   })
 
   it('derives negotiation anchors from visible packages without acceptance odds', () => {

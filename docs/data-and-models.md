@@ -126,6 +126,20 @@ current-value, lineup-coverage, and declared-window objectives. Deterministic
 display ordering is a tie-break only. Neither frontier estimates acceptance or
 resale return.
 
+V7.8 adds an actionable layer above the raw league-wide frontier. It uses only
+the current league population, the declared team horizon, and the promoted
+30-day return artifact to build three named books: long-term compounders,
+catalyst flips, and liquidity conversions. A target must pass every displayed
+gate for its book. Materiality, age, covered trade frequency, tracked drawdown,
+package return P&L, draft-capital flow, and current market net remain visible
+facts; they are never blended into a target score. League-relative thresholds
+are recalculated from the loaded league and candidate package population.
+
+The actionable book is a selection policy, not a new trained model. It adds no
+collector, storage, scheduled process, acceptance probability, or long-term
+return claim. Its holding period and exit condition are decision rules for the
+thesis, not forecasts.
+
 The private Emperor Phil profile adds a declared top-six objective and explicit
 move, timing, and protected-pick gates. The BC profile instead declares a
 top-eight starter/power readiness gate, protected pick liquidity, and a hard

@@ -14,6 +14,8 @@ import { buildIntelSignals } from '../intel'
 import { journalTradeSides, tradePartyNames } from '../journal'
 import type { ManagerProfile } from '../negotiation'
 import type { ResearchPipelineBundle } from '../research'
+import { buildActionableTradeBook } from '../actionable-targets'
+import type { ActionableTargetBook } from '../actionable-targets'
 import { buildNegotiationLadder, findComparablePackages, findTradeFrontier, resolveTeamStrategy } from '../strategy'
 import type { AssetReturnHealthBundle } from '../asset-returns'
 import { currentSeasonLineup } from '../team-power'
@@ -42,6 +44,12 @@ function emptyEdgeState(): EdgeStateBundle {
       notes: ['The audit starts automatically after this league seeds its private market tape.'],
     },
   }
+}
+
+function actionableBookLabel(book: ActionableTargetBook): string {
+  if (book === 'long-term-compounder') return 'Compounder'
+  if (book === 'catalyst-flip') return 'Catalyst flip'
+  return 'Liquidity conversion'
 }
 
 export function EdgeView({
@@ -147,6 +155,35 @@ export function EdgeView({
     () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy, assetReturnHealth, numQbs: leagueContext.marketFormat.numQbs }, 16),
     [teams, myRosterId, rosterPositions, teamStrategy, assetReturnHealth, leagueContext.marketFormat.numQbs],
   )
+  const actionableTradeBook = useMemo(
+    () => buildActionableTradeBook({
+      teams,
+      myRosterId,
+      strategy: teamStrategy,
+      assetReturnHealth,
+      numQbs: leagueContext.marketFormat.numQbs,
+      candidates: allTradeFrontier,
+      limit: 8,
+    }),
+    [teams, myRosterId, rosterPositions, teamStrategy, assetReturnHealth, leagueContext.marketFormat.numQbs, allTradeFrontier],
+  )
+  const actionableTargets = privateStrategy?.kind === 'power-climb'
+    ? currentPowerReady
+      ? actionableTradeBook.candidates.filter((candidate) => evaluateLeagueTradePolicy(privateStrategy, {
+        marketNetToMe: candidate.marketNetToMe,
+        currentSeasonPowerDelta: candidate.currentSeasonPowerDeltaMe,
+        outgoing: candidate.send,
+        incoming: candidate.receive,
+      }).status === 'pass').slice(0, 5)
+      : []
+    : privateStrategy?.kind === 'value-build'
+      ? actionableTradeBook.candidates.filter((candidate) => evaluateLeagueTradePolicy(privateStrategy, {
+        marketNetToMe: candidate.marketNetToMe,
+        currentSeasonPowerDelta: candidate.currentSeasonPowerDeltaMe,
+        outgoing: candidate.send,
+        incoming: candidate.receive,
+      }).status !== 'block').slice(0, 5)
+      : actionableTradeBook.candidates.slice(0, 5)
   const tradeFrontier = privateStrategy?.kind === 'power-climb'
     ? currentPowerReady
       ? allTradeFrontier.filter((candidate) => evaluateLeagueTradePolicy(privateStrategy, {
@@ -374,6 +411,62 @@ export function EdgeView({
       {edgeError && <div className="intel-error">Private research warning: {edgeError}</div>}
 
       <DislocationBoard candidates={dislocations} onInspect={inspectDislocation} />
+
+      <section className="actionable-trade-book panel">
+        <div className="panel-heading">
+          <div><span className="eyebrow">V7.8 actionable trade book</span><h2>Only trades with a named edge and exit</h2></div>
+          <span className="method-note">Top {actionableTargets.length} · no target score</span>
+        </div>
+        <div className="package-evidence-banner"><Info size={16} /><span>{actionableTradeBook.method} The objective is to capture acquisition discount, supported repricing, or liquidity—not to celebrate a calculator grade after the fact.</span></div>
+        {actionableTargets.length ? <div className="actionable-target-list">
+          {actionableTargets.map((candidate) => (
+            <article key={`actionable-${candidate.key}`}>
+              <header>
+                <span className={`actionable-book actionable-${candidate.book}`}>{actionableBookLabel(candidate.book)}</span>
+                <small>{candidate.qualifyingBooks.length > 1 ? `${candidate.qualifyingBooks.length} supported theses` : '1 supported thesis'}</small>
+              </header>
+              <div className="actionable-target-name">
+                <span><AssetBadge position={candidate.targetAsset.position} /><small>From {candidate.counterpartName}</small></span>
+                <strong>{candidate.targetAsset.name}</strong>
+                <em>{formatValue(candidate.targetAsset.value)} current composite</em>
+              </div>
+              <div className="actionable-package">
+                <small>Opening structure to inspect</small>
+                <strong>{candidate.send.map((asset) => asset.name).join(' + ')}</strong>
+                <span>{formatValue(candidate.sendValue)} sent · <b className={candidate.marketNetToMe >= 0 ? 'positive' : 'negative'}>{candidate.marketNetToMe >= 0 ? '+' : ''}{formatValue(candidate.marketNetToMe)} current-market net</b></span>
+              </div>
+              <div className="actionable-edge-thesis">
+                <span><small>Why the edge can exist</small><strong>{candidate.edgeMechanism}</strong></span>
+                <span><small>Hold plan</small><strong>{candidate.holdPeriod}</strong></span>
+                <span><small>Exit / failure rule</small><strong>{candidate.exitCondition}</strong></span>
+              </div>
+              <div className="actionable-facts">
+                <span><small>30-day package P&amp;L</small><b>{candidate.portfolio?.expectedPnl30 === null || candidate.portfolio?.expectedPnl30 === undefined ? 'Unavailable' : `${candidate.portfolio.expectedPnl30 >= 0 ? '+' : ''}${candidate.portfolio.expectedPnl30.toFixed(0)} FC`}</b></span>
+                <span><small>Tracked downside</small><b>{candidate.portfolio?.trackedAssetLowerPnl30 === null || candidate.portfolio?.trackedAssetLowerPnl30 === undefined ? 'Unavailable' : `${candidate.portfolio.trackedAssetLowerPnl30 >= 0 ? '+' : ''}${candidate.portfolio.trackedAssetLowerPnl30.toFixed(0)} FC`}</b></span>
+                <span><small>180-day drawdown</small><b>{candidate.evidence.targetDrawdown180 === null ? 'Unavailable' : `${(candidate.evidence.targetDrawdown180 * 100).toFixed(1)}%`}</b></span>
+                <span><small>Age at horizon</small><b>{candidate.evidence.targetAgeAtHorizon === null ? candidate.targetAsset.kind === 'pick' ? 'Draft capital' : 'Unavailable' : candidate.evidence.targetAgeAtHorizon.toFixed(1)}</b></span>
+              </div>
+              <details>
+                <summary>Why it qualified</summary>
+                <div>{candidate.gates.map((gate) => <span key={gate.id}><Check size={12} /><strong>{gate.label}</strong><small>{gate.observed} · {gate.requirement}</small></span>)}</div>
+              </details>
+              <button type="button" onClick={() => onOpenTrade({
+                teamAId: myRosterId,
+                teamBId: candidate.counterpartRosterId,
+                selectedA: candidate.send.map((asset) => asset.id),
+                selectedB: candidate.receive.map((asset) => asset.id),
+              })}>Stress-test package <ChevronRight size={14} /></button>
+            </article>
+          ))}
+        </div> : <div className="intel-empty"><Target size={22} /><strong>No target clears an actionable thesis today.</strong><span>{actionableTradeBook.evaluatedTargets ? `${actionableTradeBook.evaluatedTargets} Pareto targets were checked; ${actionableTradeBook.qualifyingTargets} cleared a raw thesis before private league policy.` : 'The promoted return tape or a complete package population is unavailable.'} Holding is better than manufacturing a small-value trade.</span></div>}
+        <div className="actionability-thresholds">
+          <span><small>Material starter value</small><b>{formatValue(actionableTradeBook.thresholds.starterValueFloor)}</b></span>
+          <span><small>Median covered liquidity</small><b>{actionableTradeBook.thresholds.liquidityFloor === null ? 'Unavailable' : actionableTradeBook.thresholds.liquidityFloor.toFixed(4)}</b></span>
+          <span><small>Median tracked drawdown</small><b>{actionableTradeBook.thresholds.drawdownFloor === null ? 'Unavailable' : `${(actionableTradeBook.thresholds.drawdownFloor * 100).toFixed(1)}%`}</b></span>
+          <span><small>Material positive P&amp;L</small><b>{actionableTradeBook.thresholds.catalystPnlFloor === null ? 'Unavailable' : `${actionableTradeBook.thresholds.catalystPnlFloor.toFixed(0)} FC`}</b></span>
+        </div>
+        <div className="model-caveat"><Info size={17} /><span>These gates improve selection discipline; they do not prove the seller will accept or that a target will appreciate. Negotiation utility and realized outcomes remain separate future edges.</span></div>
+      </section>
 
       <section className="trade-frontier-board panel">
         <div className="panel-heading">
