@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   assetReturnEvidence,
   buildAssetReturnIndex,
+  evaluateForwardPortfolioTrade,
   evaluateRebuildPortfolioTrade,
   summarizePortfolio,
   type AssetReturnAsset,
@@ -91,5 +92,21 @@ describe('rebuild portfolio evidence', () => {
     expect(result.returnCoverage).toBeCloseTo(0.5)
     expect(result).not.toHaveProperty('score')
     expect(result.notes.join(' ')).toContain('not complete')
+  })
+
+  it('uses only the exact selected forward horizon and exposes blocked coverage', () => {
+    const exact = evaluateForwardPortfolioTrade({
+      team: team(), outgoing: [player('b', 100)], incoming: [], bundle: bundle(), numQbs: 2, horizonDays: 30,
+    })
+    expect(exact.enabled).toBe(true)
+    expect(exact.expectedPnl).not.toBeNull()
+    const long = evaluateForwardPortfolioTrade({
+      team: team(), outgoing: [player('b', 100)], incoming: [], bundle: bundle(), numQbs: 2, horizonDays: 365,
+    })
+    expect(long.enabled).toBe(false)
+    expect(long.expectedPnl).toBeNull()
+    expect(long.coverage).toBe(0)
+    expect(long.boundary).toContain('unavailable at 365 days')
+    expect(long).not.toHaveProperty('score')
   })
 })

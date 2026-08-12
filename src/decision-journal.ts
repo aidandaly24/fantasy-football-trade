@@ -14,6 +14,11 @@ export type TradeDecisionSnapshot = {
   expectedPnl30: number | null
   trackedAssetLowerPnl30: number | null
   returnCoverage: number | null
+  holdingPeriodDays?: 30 | 90 | 180 | 365
+  forwardExpectedPnl?: number | null
+  forwardTrackedLowerPnl?: number | null
+  forwardCoverage?: number | null
+  forwardStatus?: 'needs-data' | 'shadow' | 'validated' | 'unavailable'
   strategy: { mode: string; horizonYears: number }
   evidenceVersions: {
     market: string

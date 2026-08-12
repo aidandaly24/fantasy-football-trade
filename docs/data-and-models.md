@@ -431,6 +431,31 @@ composite is the fair target, and the nearest dearer package is the comparison
 ceiling. They are not acceptance probabilities. There is still no blended
 rebuild score, letter grade, or guaranteed P&L.
 
+### V8.3 exact holding period and asset-potential audit
+
+Trade Lab now requires an explicit 30, 90, 180, or 365-day holding period for
+forward market evidence. Rebuild defaults to 365 days, retool defaults to 180,
+and other strategies default to 30; the user may change the selection. The
+portfolio comparison reads only that exact same-source FantasyCalc horizon.
+An unpromoted horizon has null expected P&L, null tracked downside, and zero
+coverage. It never borrows the promoted 30-day forecast.
+
+`ml/asset_potential.py` is a bounded offline 180/365-day challenger experiment.
+It reuses existing FantasyCalc return labels and identity contracts, adds only
+point-in-time lifecycle, draft-capital, season-phase, and season-complete
+nflverse production features, and selects baselines/challengers on a
+pre-holdout window. The August 12, 2026 run remains `needs-data`: the source has
+no versioned complete historical catalog, the 180-day embargo leaves no valid
+selection window, the 365-day embargo leaves no training rows, and the reusable
+log-return label contract excludes terminal zero outcomes. The pipeline writes
+only `ml/reports/asset-potential-*`; it never writes a browser artifact or
+changes recommendations.
+
+Trade decisions save the declared horizon, exact-horizon expected and lower
+P&L when available, evidence coverage, and model status. This makes the later
+outcome audit reproducible without pretending that a blocked forecast existed
+when the offer was evaluated.
+
 ## Trade journal and outcomes
 
 The durable journal follows linked Sleeper league seasons, ingests completed

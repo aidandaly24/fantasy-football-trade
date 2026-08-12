@@ -1,0 +1,376 @@
+{
+  "decision": {
+    "anyEnabled": false,
+    "browserArtifactWritten": false,
+    "reason": "No long-horizon estimate may influence the application. The site must display unavailable evidence at unpromoted horizons."
+  },
+  "experiments": [
+    {
+      "anchorDates": 29,
+      "assets": 458,
+      "baselineMetrics": null,
+      "challengerMetrics": null,
+      "crossSectionRankCorrelation": 0.0,
+      "enabled": false,
+      "featureAvailability": {
+        "fundamentalsCoverage": 0.5472525719754366
+      },
+      "format": "1qb",
+      "gates": [
+        {
+          "actual": 0,
+          "id": "population",
+          "passed": false,
+          "requirement": "versioned complete historical catalog"
+        },
+        {
+          "actual": 12539,
+          "id": "rows",
+          "passed": true,
+          "requirement": ">= 2,000"
+        },
+        {
+          "actual": 458,
+          "id": "assets",
+          "passed": true,
+          "requirement": ">= 200"
+        },
+        {
+          "actual": 1330,
+          "id": "holdout",
+          "passed": true,
+          "requirement": ">= 300"
+        },
+        {
+          "actual": 0,
+          "id": "trainSpan",
+          "passed": false,
+          "requirement": ">= 180 days"
+        },
+        {
+          "actual": 0,
+          "id": "selectionWindow",
+          "passed": false,
+          "requirement": ">= 100 pre-holdout rows with label embargo"
+        }
+      ],
+      "horizonDays": 180,
+      "interval": {
+        "heldoutCoverage": 0.0,
+        "meanWidth": 0.0,
+        "targetCoverage": 0.8
+      },
+      "maeImprovement": 0.0,
+      "rows": 12539,
+      "selectedBaseline": null,
+      "selectedChallenger": null,
+      "selection": [],
+      "selectionStart": null,
+      "sliceAudit": {
+        "slices": [],
+        "worstRegression": 0.0
+      },
+      "split": {
+        "embargoDays": 180,
+        "testStart": "2026-01-29"
+      },
+      "stability": {
+        "periods": [],
+        "positivePeriodRate": 0.0
+      },
+      "status": "needs-data",
+      "target": "same-source FantasyCalc log market return",
+      "testRows": 1330,
+      "trainSpanDays": 0,
+      "trainingRows": 414
+    },
+    {
+      "anchorDates": 2,
+      "assets": 422,
+      "baselineMetrics": null,
+      "challengerMetrics": null,
+      "crossSectionRankCorrelation": 0.0,
+      "enabled": false,
+      "featureAvailability": {
+        "fundamentalsCoverage": 0.5393794749403341
+      },
+      "format": "1qb",
+      "gates": [
+        {
+          "actual": 0,
+          "id": "population",
+          "passed": false,
+          "requirement": "versioned complete historical catalog"
+        },
+        {
+          "actual": 838,
+          "id": "rows",
+          "passed": false,
+          "requirement": ">= 2,000"
+        },
+        {
+          "actual": 422,
+          "id": "assets",
+          "passed": true,
+          "requirement": ">= 200"
+        },
+        {
+          "actual": 421,
+          "id": "holdout",
+          "passed": true,
+          "requirement": ">= 300"
+        },
+        {
+          "actual": 0,
+          "id": "trainSpan",
+          "passed": false,
+          "requirement": ">= 365 days"
+        },
+        {
+          "actual": 0,
+          "id": "selectionWindow",
+          "passed": false,
+          "requirement": ">= 100 pre-holdout rows with label embargo"
+        }
+      ],
+      "horizonDays": 365,
+      "interval": {
+        "heldoutCoverage": 0.0,
+        "meanWidth": 0.0,
+        "targetCoverage": 0.8
+      },
+      "maeImprovement": 0.0,
+      "rows": 838,
+      "selectedBaseline": null,
+      "selectedChallenger": null,
+      "selection": [],
+      "selectionStart": null,
+      "sliceAudit": {
+        "slices": [],
+        "worstRegression": 0.0
+      },
+      "split": {
+        "embargoDays": 365,
+        "testStart": "2025-08-07"
+      },
+      "stability": {
+        "periods": [],
+        "positivePeriodRate": 0.0
+      },
+      "status": "needs-data",
+      "target": "same-source FantasyCalc log market return",
+      "testRows": 421,
+      "trainSpanDays": 0,
+      "trainingRows": 0
+    },
+    {
+      "anchorDates": 29,
+      "assets": 458,
+      "baselineMetrics": null,
+      "challengerMetrics": null,
+      "crossSectionRankCorrelation": 0.0,
+      "enabled": false,
+      "featureAvailability": {
+        "fundamentalsCoverage": 0.5470583539554562
+      },
+      "format": "2qb",
+      "gates": [
+        {
+          "actual": 0,
+          "id": "population",
+          "passed": false,
+          "requirement": "versioned complete historical catalog"
+        },
+        {
+          "actual": 12527,
+          "id": "rows",
+          "passed": true,
+          "requirement": ">= 2,000"
+        },
+        {
+          "actual": 458,
+          "id": "assets",
+          "passed": true,
+          "requirement": ">= 200"
+        },
+        {
+          "actual": 1330,
+          "id": "holdout",
+          "passed": true,
+          "requirement": ">= 300"
+        },
+        {
+          "actual": 0,
+          "id": "trainSpan",
+          "passed": false,
+          "requirement": ">= 180 days"
+        },
+        {
+          "actual": 0,
+          "id": "selectionWindow",
+          "passed": false,
+          "requirement": ">= 100 pre-holdout rows with label embargo"
+        }
+      ],
+      "horizonDays": 180,
+      "interval": {
+        "heldoutCoverage": 0.0,
+        "meanWidth": 0.0,
+        "targetCoverage": 0.8
+      },
+      "maeImprovement": 0.0,
+      "rows": 12527,
+      "selectedBaseline": null,
+      "selectedChallenger": null,
+      "selection": [],
+      "selectionStart": null,
+      "sliceAudit": {
+        "slices": [],
+        "worstRegression": 0.0
+      },
+      "split": {
+        "embargoDays": 180,
+        "testStart": "2026-01-29"
+      },
+      "stability": {
+        "periods": [],
+        "positivePeriodRate": 0.0
+      },
+      "status": "needs-data",
+      "target": "same-source FantasyCalc log market return",
+      "testRows": 1330,
+      "trainSpanDays": 0,
+      "trainingRows": 413
+    },
+    {
+      "anchorDates": 2,
+      "assets": 422,
+      "baselineMetrics": null,
+      "challengerMetrics": null,
+      "crossSectionRankCorrelation": 0.0,
+      "enabled": false,
+      "featureAvailability": {
+        "fundamentalsCoverage": 0.5393794749403341
+      },
+      "format": "2qb",
+      "gates": [
+        {
+          "actual": 0,
+          "id": "population",
+          "passed": false,
+          "requirement": "versioned complete historical catalog"
+        },
+        {
+          "actual": 838,
+          "id": "rows",
+          "passed": false,
+          "requirement": ">= 2,000"
+        },
+        {
+          "actual": 422,
+          "id": "assets",
+          "passed": true,
+          "requirement": ">= 200"
+        },
+        {
+          "actual": 421,
+          "id": "holdout",
+          "passed": true,
+          "requirement": ">= 300"
+        },
+        {
+          "actual": 0,
+          "id": "trainSpan",
+          "passed": false,
+          "requirement": ">= 365 days"
+        },
+        {
+          "actual": 0,
+          "id": "selectionWindow",
+          "passed": false,
+          "requirement": ">= 100 pre-holdout rows with label embargo"
+        }
+      ],
+      "horizonDays": 365,
+      "interval": {
+        "heldoutCoverage": 0.0,
+        "meanWidth": 0.0,
+        "targetCoverage": 0.8
+      },
+      "maeImprovement": 0.0,
+      "rows": 838,
+      "selectedBaseline": null,
+      "selectedChallenger": null,
+      "selection": [],
+      "selectionStart": null,
+      "sliceAudit": {
+        "slices": [],
+        "worstRegression": 0.0
+      },
+      "split": {
+        "embargoDays": 365,
+        "testStart": "2025-08-07"
+      },
+      "stability": {
+        "periods": [],
+        "positivePeriodRate": 0.0
+      },
+      "status": "needs-data",
+      "target": "same-source FantasyCalc log market return",
+      "testRows": 421,
+      "trainSpanDays": 0,
+      "trainingRows": 0
+    }
+  ],
+  "footballAudit": {
+    "availabilityBoundary": "Only season-complete production is eligible; season Y becomes available to anchors on March 1 of Y+1.",
+    "productionRows": 35907,
+    "provider": "nflverse",
+    "rosterRows": 132590,
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024
+    ],
+    "sleeperToGsisPlayers": 3285
+  },
+  "generatedAt": "2026-08-12T20:26:39.275623Z",
+  "populationAudit": {
+    "blockReason": "No versioned full historical catalog exists, and the reusable log-return label contract excludes terminal zero outcomes. Historical failures and delistings therefore cannot be represented completely.",
+    "currentCatalogAssets": 475,
+    "disappearanceMeaning": "A zero after a positive provider value is observable, but the source does not document it as retirement, delisting, or career failure.",
+    "formats": [
+      {
+        "format": "1qb",
+        "outsideCatalogSeriesWithZeroAfterPositiveValue": 10,
+        "outsideCurrentCatalogSeries": 10,
+        "positiveHistorySeries": 485,
+        "seriesWithZeroAfterPositiveValue": 10
+      },
+      {
+        "format": "2qb",
+        "outsideCatalogSeriesWithZeroAfterPositiveValue": 10,
+        "outsideCurrentCatalogSeries": 10,
+        "positiveHistorySeries": 485,
+        "seriesWithZeroAfterPositiveValue": 10
+      }
+    ],
+    "metadataPopulationAssets": 528,
+    "observedTerminalZerosEligibleAsLabels": false,
+    "populationBoundary": "Current FantasyCalc catalog plus assets recovered from the locally cached completed-trade tape.",
+    "promotionBlocked": true,
+    "versionedHistoricalCatalogAvailable": false
+  },
+  "schemaVersion": 1,
+  "source": {
+    "football": "nflverse season-complete player stats",
+    "market": "FantasyCalc daily dynasty value history",
+    "methodology": "https://fantasycalc.com/frequently-asked-questions",
+    "target": "same-source log market return",
+    "terms": "https://fantasycalc.com/terms-of-usage"
+  }
+}

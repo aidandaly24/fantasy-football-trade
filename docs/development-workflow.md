@@ -104,6 +104,7 @@ same time.
 | `npm run ml:trade-models` | Refreshes completed-trade tape and the exchange-premium/outcome model audit |
 | `npm run ml:trade-models:offline` | Reproduces the trade-model audit from cached source data |
 | `npm run ml:audit-sources` | Refreshes the historical return-source audit |
+| `npm run ml:asset-potential:offline` | Reproduces the blocked 180/365-day asset-potential audit from local caches without publishing a browser artifact |
 
 Run focused tests during development, then the full relevant suite before the
 PR. Record exact results in the PR description.

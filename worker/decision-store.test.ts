@@ -11,6 +11,8 @@ function draft() {
       capturedAt: '2026-08-12T00:00:00Z', marketNetToMe: 100, currentSeasonPowerDelta: null,
       lineupPpgDelta: 1.5, providerNetToMe: { ktc: 80, fantasycalc: 120 }, pickValueNetToMe: 0,
       expectedPnl30: null, trackedAssetLowerPnl30: null, returnCoverage: null,
+      holdingPeriodDays: 365, forwardExpectedPnl: null, forwardTrackedLowerPnl: null,
+      forwardCoverage: 0, forwardStatus: 'needs-data',
       strategy: { mode: 'rebuilding', horizonYears: 3 },
       evidenceVersions: { market: 'today', assetReturn: null, eventModel: null },
     },
@@ -22,7 +24,15 @@ describe('decision store', () => {
   it('normalizes an exact private evaluation and rejects cross-league input', () => {
     const normalized = normalizeDecisionDraft(draft(), '1336087922847289344')
     expect(normalized.snapshot.marketNetToMe).toBe(100)
+    expect(normalized.snapshot.holdingPeriodDays).toBe(365)
+    expect(normalized.snapshot.forwardStatus).toBe('needs-data')
     expect(() => normalizeDecisionDraft(draft(), '1312112570039037952')).toThrow('Decision league does not match')
+  })
+
+  it('rejects an unsupported forward holding period', () => {
+    const input = draft()
+    input.snapshot.holdingPeriodDays = 120
+    expect(() => normalizeDecisionDraft(input, input.leagueId)).toThrow('Invalid holding period days')
   })
 
   it('creates the table and actual query index together', async () => {

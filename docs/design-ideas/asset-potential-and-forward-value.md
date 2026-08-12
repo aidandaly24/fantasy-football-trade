@@ -1,8 +1,11 @@
 # Asset potential and forward market value
 
-**Status:** Design proposal. No future-value estimate described here may alter
-market value, trade recommendations, packages, or target ordering until its
-exact horizon passes the declared promotion gates.
+**Status:** Decision contract and bounded experiment implemented on August 12,
+2026. The runtime now supports an exact 30/90/180/365-day holding-period
+selection and refuses to substitute a shorter forecast. The new 180/365-day
+offline experiment remains `needs-data`; it writes audit reports only and no
+browser artifact. No unpromoted estimate may alter market value, trade
+recommendations, packages, or target ordering.
 
 ## Executive judgment
 
@@ -233,14 +236,14 @@ Candidate numeric thresholds should be frozen only after the source audit
 reveals the honest sample size, then evaluated once on the final holdout. The
 experiment should not tune gates until an exciting player passes.
 
-## Proposed artifact and application contract
+## Implemented artifact and application contract
 
-The simplest first implementation is a shadow report produced by a new bounded
-offline experiment, for example `ml/asset_potential.py`. It may reuse the
-existing cached FantasyCalc histories but should not force a shared abstraction
-before the experiment proves useful.
+The bounded shadow report is produced by `ml/asset_potential.py`. It reuses the
+existing asset-return label, identity, and split contracts instead of creating
+a second permanent data system. It remains an offline experiment and does not
+force a runtime abstraction before the evidence proves useful.
 
-Proposed outputs:
+Outputs:
 
 ```text
 ml/reports/asset-potential-health.json
@@ -248,14 +251,18 @@ ml/reports/asset-potential-health.md
 ml/reports/asset-potential-complexity-ledger.md
 ```
 
-Only after a horizon passes should the reviewed pipeline generate a small
+Only after a horizon passes may a reviewed follow-up generate a small
 browser-safe artifact such as:
 
 ```text
 public/data/asset-potential-health.json
 ```
 
-A typed client module should expose explicit units and status:
+The typed client continues to consume the existing per-horizon asset-return
+artifact with explicit units and status. The experiment does not publish a
+second client contract while every new horizon is blocked.
+
+The intended shape remains:
 
 ```ts
 type ForwardValueHorizon = {
@@ -297,7 +304,7 @@ and long-term market-return outlook unavailable.
 
 ### Trade analysis
 
-The trade view should compare both sides at the same declared horizon:
+The trade view now compares both sides at the same declared horizon:
 
 1. current Tradyr market difference;
 2. current-season lineup-power change;
@@ -307,7 +314,11 @@ The trade view should compare both sides at the same declared horizon:
 6. age, liquidity, concentration, and draft-capital change; and
 7. opening, target, and walk-away price.
 
-An expected arithmetic-return head may support portfolio P&L only if it is
+The current implementation supports portfolio P&L only from the exact promoted
+horizon's existing expected arithmetic-return head. If that horizon is shadow
+or unavailable, P&L is null and coverage is zero; it never falls back to the
+promoted 30-day head. More generally, an expected arithmetic-return head may
+support portfolio P&L only if it is
 separately calibrated, because expectation is additive. Median returns and
 individual uncertainty intervals must not be summed and presented as a
 calibrated package outlook without a validated dependence model.
@@ -346,9 +357,31 @@ frontier remains a valid instruction to hold.
 | Complete delisting/failure labels | Data | Source availability not yet proven | Unknown | An arbitrary zero or silent omission biases the target | Run the population audit first; block rather than impute if unresolved |
 | Multi-year dynasty value forecast | Product and model | No current validated history | Unknown | Long extrapolation can dominate trade advice with false precision | Not until a separate multi-year dataset and holdout pass |
 
+## Implementation outcome
+
+The August 12, 2026 offline run found:
+
+- 485 positive FantasyCalc history series in each format, including 10 assets
+  outside the current catalog whose cached series later reaches zero;
+- no versioned full historical catalog, so those observed zeros cannot prove
+  complete retirement, delisting, or career-failure coverage, and the reusable
+  log-return label contract currently excludes terminal zero outcomes;
+- 12,539 1QB and 12,527 superflex 180-day labeled rows, but only 414 and 413
+  eligible training rows before the later holdout and no valid pre-holdout
+  selection window after the 180-day embargo;
+- 838 labeled 365-day rows in each format, 421 in the later holdout, and zero
+  eligible training rows after the 365-day embargo; and
+- season-complete football fundamentals on roughly 54% of the labeled rows.
+
+All four format/horizon experiments therefore remain `needs-data`. No model was
+selected, no performance claim was made, and no browser artifact was written.
+The application change is the honest decision contract: the user can declare
+the holding period, see its exact evidence state, and save that state in the
+private decision journal.
+
 ## Scope ladder
 
-### Now — correct the decision contract
+### Completed — correct the decision contract
 
 - Require trade analysis to state the declared holding period.
 - Show current price, production potential, and forward market evidence as
@@ -357,10 +390,11 @@ frontier remains a valid instruction to hold.
 - Use the Tyson case as a regression example: high production potential is not
   automatically market underpricing.
 
-**Advancement gate:** trade write-ups no longer use current lineup help or a
-rookie talent projection as a substitute for future market value.
+The Trade Lab, player research card, and saved decision snapshot now retain the
+exact selected horizon and show unavailable evidence instead of stretching the
+30-day result.
 
-### Next — bounded shadow experiment
+### Completed, blocked — bounded shadow experiment
 
 - Audit the historical asset population and disappearance boundary.
 - Build the point-in-time anchor tape.
@@ -369,16 +403,16 @@ rookie talent projection as a substitute for future market value.
 - Generate out-of-fold rookie-production features only if the base lifecycle
   challenger establishes a credible evaluation path.
 
-**Advancement gate:** a reproducible later holdout exists with honest failure
-coverage; the challenger beats the strongest frozen baseline and passes every
-slice and interval gate.
+The reproducible audit exists, but the historical population and eligible
+pre-holdout training window fail the advancement gate. The experiment stays
+offline and blocked until both inputs materially improve.
 
-### Later — application integration
+### Later — promoted-horizon integration
 
 - Export only promoted horizon rows.
-- Add the Outlook section to player research.
-- Add same-horizon forward facts and coverage to Trade Lab and target Pareto
-  discovery.
+- Publish the reviewed horizon artifact to the existing player research and
+  Trade Lab surfaces only after promotion.
+- Add promoted same-horizon forward facts to target Pareto discovery.
 - Record the original outlook in the decision journal and score it at the exact
   checkpoint.
 
