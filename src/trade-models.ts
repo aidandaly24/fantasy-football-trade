@@ -32,6 +32,13 @@ export type TradeTrainingManifest = {
   latestTradeAt: string | null
   pointInTimeValuedTrades: number
   historyAssetCount: number
+  datasetIds?: string[]
+  importedTrades?: number
+  localCacheTrades?: number
+  pointInTimeCoverage?: number
+  importedPointInTimeValuedTrades?: number
+  importedPointInTimeCoverage?: number
+  historySeriesCount?: number
 }
 
 export type TradeEvidenceStage = {
@@ -204,7 +211,7 @@ export function buildHistoricalTradeEvidenceStages(
       label: 'Historically valued',
       status: manifest?.pointInTimeValuedTrades ? 'ready' : 'blocked',
       detail: manifest
-        ? `${manifest.pointInTimeValuedTrades}/${manifest.totalTrades} imported trades have point-in-time price coverage.`
+        ? `${manifest.pointInTimeValuedTrades}/${manifest.totalTrades} training trades valued${manifest.importedTrades ? `; ${manifest.importedPointInTimeValuedTrades ?? 0}/${manifest.importedTrades} from the hosted export` : ''} · dataset ${manifest.datasetId.slice(0, 20)}…`
         : 'The shipped artifact does not identify a hosted-tape dataset or point-in-time join.',
     },
     {

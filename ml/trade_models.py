@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import bisect
+import hashlib
 import json
 import math
 import statistics
@@ -44,6 +45,7 @@ RAW = ROOT / "data" / "raw" / "trade_models" / "fantasycalc"
 CURRENT = RAW / "current"
 TRADES = RAW / "trades"
 HISTORIES = RAW / "histories"
+IMPORTS = RAW / "imports"
 PROCESSED = ROOT / "data" / "processed" / "trade_models"
 REPORT_JSON = ROOT / "ml" / "reports" / "trade-model-health.json"
 REPORT_MD = ROOT / "ml" / "reports" / "trade-model-health.md"
@@ -93,7 +95,7 @@ def utc_now() -> str:
 
 
 def ensure_dirs() -> None:
-    for path in (CURRENT, TRADES, HISTORIES, PROCESSED, REPORT_JSON.parent, PUBLIC_JSON.parent):
+    for path in (CURRENT, TRADES, HISTORIES, IMPORTS, PROCESSED, REPORT_JSON.parent, PUBLIC_JSON.parent):
         path.mkdir(parents=True, exist_ok=True)
 
 
@@ -101,6 +103,14 @@ def _write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".part")
     temporary.write_text(json.dumps(payload, indent=2, sort_keys=True))
+    temporary.replace(path)
+
+
+def _write_training_tape(path: Path, payload: dict[str, Any]) -> None:
+    """Preserve provider-export key order because schema v1 hashes JSON.stringify rows."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".part")
+    temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
     temporary.replace(path)
 
 
@@ -188,15 +198,6 @@ def select_anchors(catalog: Iterable[dict[str, Any]], count: int) -> list[dict[s
     return sorted(selected, key=lambda item: int(item["player"]["id"]))
 
 
-def _cached_today(meta_path: Path) -> bool:
-    if not meta_path.exists():
-        return False
-    try:
-        return str(json.loads(meta_path.read_text()).get("retrievedAt") or "")[:10] == datetime.now(timezone.utc).date().isoformat()
-    except (json.JSONDecodeError, OSError):
-        return False
-
-
 def collect_anchor_trades(anchor: dict[str, Any], offline: bool, refresh: bool) -> tuple[int, int]:
     player = anchor["player"]
     anchor_id = int(player["id"])
@@ -230,7 +231,7 @@ def _history_paths(asset_id: int, num_qbs: int) -> tuple[Path, Path]:
 
 def collect_history(asset_id: int, num_qbs: int, offline: bool, refresh: bool) -> tuple[int, int, int]:
     path, meta_path = _history_paths(asset_id, num_qbs)
-    if refresh or not path.exists() or (not offline and not _cached_today(meta_path)):
+    if refresh or not path.exists():
         if offline:
             raise FileNotFoundError(path)
         payload = fetch_json(_url(f"/trades/historical/{asset_id}", {"isDynasty": "true", "numQbs": num_qbs}))
@@ -240,6 +241,67 @@ def collect_history(asset_id: int, num_qbs: int, offline: bool, refresh: bool) -
         _write_json(meta_path, {"retrievedAt": utc_now(), "endpoint": f"/trades/historical/{asset_id}", "numQbs": num_qbs})
     payload = json.loads(path.read_text())
     return asset_id, num_qbs, len(payload)
+
+
+def validate_training_tape(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, dict) or payload.get("schemaVersion") != 1:
+        raise ValueError("Training tape must use schemaVersion 1")
+    trades = payload.get("trades")
+    dataset_id = str(payload.get("datasetId") or "")
+    if not isinstance(trades, list) or not dataset_id.startswith("sha256:"):
+        raise ValueError("Training tape is missing trades or datasetId")
+    canonical = json.dumps(trades, ensure_ascii=False, separators=(",", ":"))
+    expected = f"sha256:{hashlib.sha256(canonical.encode('utf-8')).hexdigest()}"
+    if dataset_id != expected:
+        raise ValueError("Training tape datasetId does not match its canonical trades")
+    if int(payload.get("totalTrades") or -1) != len(trades):
+        raise ValueError("Training tape totalTrades does not match its rows")
+    for trade in trades:
+        if not isinstance(trade, dict) or not trade.get("id") or not trade.get("date"):
+            raise ValueError("Training tape contains a malformed trade")
+        for side in (trade.get("side1"), trade.get("side2")):
+            if not isinstance(side, list) or not side:
+                raise ValueError("Training tape contains an empty trade side")
+    return payload
+
+
+def import_training_tape(source: Path) -> dict[str, Any]:
+    ensure_dirs()
+    try:
+        payload = validate_training_tape(json.loads(source.read_text()))
+    except (json.JSONDecodeError, OSError) as error:
+        raise ValueError(f"Unable to read training tape: {error}") from error
+    exported = str(payload.get("exportedAt") or "unknown")[:10]
+    short_id = str(payload["datasetId"]).split(":", 1)[1][:12]
+    target = IMPORTS / f"{exported}-{short_id}.json"
+    _write_training_tape(target, payload)
+    try:
+        target_label = str(target.relative_to(ROOT))
+    except ValueError:
+        target_label = str(target)
+    return {
+        "datasetId": payload["datasetId"],
+        "totalTrades": len(payload["trades"]),
+        "uniqueLeagues": int(payload.get("uniqueLeagues") or 0),
+        "target": target_label,
+    }
+
+
+def load_imported_tapes() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    deduped: dict[str, dict[str, Any]] = {}
+    manifests: dict[str, dict[str, Any]] = {}
+    for path in sorted(IMPORTS.glob("*.json")):
+        try:
+            payload = validate_training_tape(json.loads(path.read_text()))
+        except (json.JSONDecodeError, OSError, ValueError):
+            continue
+        manifests[str(payload["datasetId"])] = payload
+        for trade in payload["trades"]:
+            deduped[str(trade["id"])] = trade
+    return (
+        sorted(deduped.values(), key=lambda trade: (str(trade.get("date") or ""), str(trade["id"]))),
+        sorted(manifests.values(), key=lambda item: (str(item.get("exportedAt") or ""), str(item["datasetId"]))),
+    )
 
 
 def load_all_trades() -> list[dict[str, Any]]:
@@ -252,6 +314,9 @@ def load_all_trades() -> list[dict[str, Any]]:
         for trade in payload if isinstance(payload, list) else []:
             if isinstance(trade, dict) and trade.get("id"):
                 deduped[str(trade["id"])] = trade
+    imported, _ = load_imported_tapes()
+    for trade in imported:
+        deduped[str(trade["id"])] = trade
     return sorted(deduped.values(), key=lambda trade: (str(trade.get("date") or ""), str(trade["id"])))
 
 
@@ -515,6 +580,65 @@ def add_outcome_labels(examples: list[dict[str, Any]], histories_by_qb: dict[int
             row[f"outcome_{horizon}d"] = target
 
 
+def has_point_in_time_values(trade: dict[str, Any], histories_by_qb: dict[int, dict[int, History]]) -> bool:
+    observed = _parse_date(trade.get("date"))
+    num_qbs = int(_number(trade.get("numQbs")))
+    assets = [
+        asset
+        for side in (trade.get("side1") or [], trade.get("side2") or [])
+        for asset in side
+        if isinstance(asset, dict)
+    ]
+    if not observed or num_qbs not in histories_by_qb or not assets:
+        return False
+    for asset in assets:
+        try:
+            asset_id = int(asset["id"])
+        except (KeyError, TypeError, ValueError):
+            return False
+        history = histories_by_qb[num_qbs].get(asset_id)
+        if history is None or history.at(observed) is None:
+            return False
+    return True
+
+
+def build_training_manifest(
+    trades: list[dict[str, Any]], histories_by_qb: dict[int, dict[int, History]]
+) -> dict[str, Any]:
+    imported, imports = load_imported_tapes()
+    imported_ids = {str(trade["id"]) for trade in imported}
+    observed_dates = sorted(observed for trade in trades if (observed := _parse_date(trade.get("date"))))
+    latest_import = imports[-1] if imports else None
+    point_in_time = sum(has_point_in_time_values(trade, histories_by_qb) for trade in trades)
+    imported_point_in_time = sum(has_point_in_time_values(trade, histories_by_qb) for trade in imported)
+    dataset_ids = [str(item["datasetId"]) for item in imports]
+    if dataset_ids:
+        joined_id = "\n".join(dataset_ids).encode("utf-8")
+        dataset_id = dataset_ids[0] if len(dataset_ids) == 1 else f"sha256:{hashlib.sha256(joined_id).hexdigest()}"
+    else:
+        canonical_ids = json.dumps([str(trade["id"]) for trade in trades], separators=(",", ":"))
+        dataset_id = f"local-cache:{hashlib.sha256(canonical_ids.encode('utf-8')).hexdigest()}"
+    return {
+        "schemaVersion": 1,
+        "datasetId": dataset_id,
+        "datasetIds": dataset_ids,
+        "source": "FantasyCalc hosted D1 export and local collector cache" if imports else "FantasyCalc local collector cache",
+        "exportedAt": str(latest_import.get("exportedAt") or "") if latest_import else utc_now(),
+        "totalTrades": len(trades),
+        "importedTrades": len(imported_ids),
+        "localCacheTrades": len({str(trade["id"]) for trade in trades} - imported_ids),
+        "uniqueLeagues": len({str(trade.get("leagueId") or "") for trade in trades if trade.get("leagueId")}),
+        "firstTradeAt": observed_dates[0].isoformat() if observed_dates else None,
+        "latestTradeAt": observed_dates[-1].isoformat() if observed_dates else None,
+        "pointInTimeValuedTrades": point_in_time,
+        "pointInTimeCoverage": point_in_time / len(trades) if trades else 0,
+        "importedPointInTimeValuedTrades": imported_point_in_time,
+        "importedPointInTimeCoverage": imported_point_in_time / len(imported) if imported else 0,
+        "historyAssetCount": len(set(histories_by_qb[1]) | set(histories_by_qb[2])),
+        "historySeriesCount": sum(len(histories) for histories in histories_by_qb.values()),
+    }
+
+
 def _gate(identifier: str, label: str, passed: bool, actual: float, requirement: str) -> dict[str, Any]:
     return {"id": identifier, "label": label, "passed": bool(passed), "actual": actual, "requirement": requirement}
 
@@ -682,10 +806,14 @@ def train_outcome(frame: pd.DataFrame, horizon: int) -> dict[str, Any]:
 
 def report_markdown(report: dict[str, Any]) -> str:
     exchange = report["exchange"]
+    manifest = report["trainingManifest"]
     lines = [
         "# Trade model health",
         "",
         f"Generated: `{report['generatedAt']}`",
+        "",
+        f"Training dataset: `{manifest['datasetId']}`",
+        f"Point-in-time coverage: **{manifest['pointInTimeValuedTrades']}/{manifest['totalTrades']} trades**",
         "",
         "The raw provider total remains unchanged. These models are separate evidence layers.",
         "",
@@ -738,6 +866,7 @@ def train() -> dict[str, Any]:
             "warning": "Accepted trades cannot identify rejected-offer acceptance probability.",
             "historicalFormatWarning": "The historical endpoint matches 1QB versus superflex but does not expose point-in-time PPR, TE-premium, or team-count variants.",
         },
+        "trainingManifest": build_training_manifest(trades, histories_by_qb),
         "rawTradeCount": len(trades),
         "historyAssetCount": len(set(histories_by_qb[1]) | set(histories_by_qb[2])),
         "historySeriesCount": sum(len(histories) for histories in histories_by_qb.values()),
@@ -759,7 +888,8 @@ def train() -> dict[str, Any]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("collect", "train", "refresh"))
+    parser.add_argument("command", choices=("collect", "train", "refresh", "import-tape"))
+    parser.add_argument("--tape", type=Path)
     parser.add_argument("--anchors", type=int, default=80)
     parser.add_argument("--history-scope", choices=("trades", "universe"), default="universe")
     parser.add_argument("--offline", action="store_true")
@@ -769,6 +899,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.command == "import-tape":
+        if args.tape is None:
+            raise SystemExit("--tape is required for import-tape")
+        print(json.dumps(import_training_tape(args.tape), indent=2))
+        return
     if args.command in {"collect", "refresh"}:
         result = collect(args.anchors, args.offline, args.refresh, args.history_scope)
         print(json.dumps(result, indent=2))

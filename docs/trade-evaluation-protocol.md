@@ -60,18 +60,27 @@ time to usable value still matter.
    FantasyCalc completed-trade scan and deduplicates sanitized rows into D1.
 2. **Download training tape** exports the full sanitized tape with a stable
    SHA-256 dataset ID. It does not train or promote a model.
-3. The offline trainer imports the export, hydrates point-in-time player and
-   pick values through the existing cached history collector, and records the
-   exact dataset IDs and coverage in the generated artifact.
+3. Import the downloaded export, hydrate its asset histories, and retrain:
+
+   ```sh
+   npm run ml:trade-models:import -- /absolute/path/to/rosterlab-trade-tape.json
+   npm run ml:trade-models:hydrate
+   ```
+
+   The importer rejects altered content and deduplicates provider trade IDs
+   against the local cache. Hydration fetches only missing asset histories,
+   reuses cached series even when they were retrieved on an earlier day, trains
+   the chronological challengers, and records exact dataset IDs and
+   point-in-time coverage in the generated artifact. Use
+   `npm run ml:trade-models` only for the wider 80-anchor/universe collection.
 4. Training uses chronological holdouts. Raw price, exchange premium,
    structure-only future outcome, premium-aware future outcome, and lineup
    outcome remain separate comparisons.
 5. The browser enables a historical signal only when its existing gates pass.
    No manual weight or UI control may bypass `enabled: false`.
 
-The first two steps exist in the hosted product. The import/manifest bridge is
-the next offline training change; until that lands, the UI must say that the
-hosted tape is not connected to the shipped artifact.
+The hosted refresh/export and offline import/manifest bridge are all explicit.
+The site still withholds any historical signal whose existing gates fail.
 
 ## Claims the data cannot support
 

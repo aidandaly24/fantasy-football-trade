@@ -1,28 +1,28 @@
 {
   "exchange": {
     "baseline": {
-      "mae": 0.2420570165758294,
-      "rmse": 0.315644024435653
+      "mae": 0.21907273670231475,
+      "rmse": 0.28780499987567015
     },
     "dateSpanDays": 28,
     "enabled": false,
     "gates": [
       {
-        "actual": 267.0,
+        "actual": 436.0,
         "id": "rows",
         "label": "Eligible accepted trades",
-        "passed": false,
+        "passed": true,
         "requirement": ">= 400 deduplicated elite 1-for-2/3 trades"
       },
       {
-        "actual": 54.0,
+        "actual": 88.0,
         "id": "heldout",
         "label": "Chronological held-out rows",
-        "passed": false,
+        "passed": true,
         "requirement": ">= 80 later trades"
       },
       {
-        "actual": 263.0,
+        "actual": 427.0,
         "id": "leagues",
         "label": "Independent leagues",
         "passed": true,
@@ -36,7 +36,7 @@
         "requirement": ">= 90 days"
       },
       {
-        "actual": 0.9962546816479401,
+        "actual": 0.9977064220183486,
         "id": "format",
         "label": "League-format coverage",
         "passed": true,
@@ -50,39 +50,39 @@
         "requirement": ">= 95% exact QB/PPR/TEP/team-count history"
       },
       {
-        "actual": 0.8164794007490637,
+        "actual": 0.8142201834862385,
         "id": "age",
         "label": "Age coverage",
         "passed": true,
         "requirement": ">= 75%"
       },
       {
-        "actual": 0.24652879008793183,
+        "actual": 0.19655478685816943,
         "id": "mae",
         "label": "Held-out MAE beats median",
         "passed": true,
         "requirement": ">= 0% regression"
       }
     ],
-    "maeImprovement": 0.24652879008793183,
-    "medianPremium": 0.16115470852017943,
+    "maeImprovement": 0.19655478685816943,
+    "medianPremium": 0.16465041832319582,
     "model": {
       "coefficients": [
-        -0.1408154352429282,
-        0.12095402188199302,
-        -0.016894621565176036,
-        0.014195056096209066,
-        0.03874779686980124,
-        0.014195056096209059,
-        -0.017142793572291093,
-        -0.04248673196540951,
-        -0.022986238472619467,
-        -0.03898942798882402,
-        0.01960367771325058,
-        -0.023834665840155603,
-        -0.004622885081850347,
-        0.00967147825897798,
-        0.03855553952601194
+        -0.13059366038341882,
+        0.11280104366331538,
+        -0.00024996823642644156,
+        0.02302443915737631,
+        0.049565087735492876,
+        0.023024439157376245,
+        -0.04873320992395664,
+        -0.08826647293800896,
+        -0.025145663101690148,
+        -0.025496322228517637,
+        0.03652549161273856,
+        -0.017877736155045825,
+        -0.022562921565259006,
+        -0.016091327657726806,
+        0.030686085990672792
       ],
       "features": [
         "elite_percentile",
@@ -101,155 +101,155 @@
         "starter_count",
         "depth_ratio"
       ],
-      "intercept": 0.18707118174390489,
+      "intercept": 0.20416605137534366,
       "kind": "standardized-ridge-v1",
       "means": [
-        0.8929541791421471,
-        2.403755868544601,
-        1.0234741784037558,
-        0.0892018779342723,
-        24.99200469483568,
-        0.0892018779342723,
-        24.411095461658842,
-        0.11267605633802817,
-        11.474178403755868,
-        1.6572769953051643,
-        0.8873239436619719,
-        0.28497652576562943,
-        24.469483568075116,
-        9.295774647887324,
-        2.6008451381690816
+        0.884473753669931,
+        2.413793103448276,
+        1.0517241379310345,
+        0.07758620689655173,
+        25.10708620689655,
+        0.07758620689655173,
+        24.502401340996165,
+        0.10919540229885058,
+        11.655172413793103,
+        1.6839080459770115,
+        0.8915229885057471,
+        0.2821839080117215,
+        24.482758620689655,
+        9.333333333333334,
+        2.612606478770272
       ],
       "scales": [
-        0.07811861832141573,
-        0.49064963788878513,
-        0.8636711389109313,
-        0.2850349152424515,
-        8.195059567765616,
-        0.2850349152424515,
-        9.110268440897995,
-        0.31619639888230494,
-        2.1980657109332635,
-        0.4746197917784079,
-        0.26019832313251623,
-        0.4120652488715545,
-        6.656935965360721,
-        1.3043196510186168,
-        0.6194846078427118
+        0.08244007928984036,
+        0.4925123054167483,
+        0.8323021761390907,
+        0.2675193215376362,
+        7.7428010118954855,
+        0.2675193215376362,
+        8.975743855075205,
+        0.31188421956816403,
+        2.4905688137954543,
+        0.46494927747542253,
+        0.24177559663187892,
+        0.38888855853530074,
+        6.097600939516958,
+        1.2564012342013526,
+        0.5991607933760779
       ]
     },
     "modelMetrics": {
-      "mae": 0.18238299314709572,
-      "rmse": 0.2350825171782424
+      "mae": 0.1760129416333554,
+      "rmse": 0.22069233610640043
     },
-    "rows": 267,
+    "rows": 436,
     "segments": [
       {
         "dimension": "elite_band",
         "label": "70\u201384th",
-        "medianPremium": 0.3425325983259998,
-        "p25Premium": 0.12813437277921086,
-        "p75Premium": 0.5622488019333445,
-        "rows": 76
+        "medianPremium": 0.3276966141422821,
+        "p25Premium": 0.12155084232801922,
+        "p75Premium": 0.54238024367839,
+        "rows": 138
       },
       {
         "dimension": "elite_band",
         "label": "85\u201394th",
-        "medianPremium": 0.1585691262627601,
-        "p25Premium": 0.00866266627346668,
-        "p75Premium": 0.31754975294887705,
-        "rows": 112
+        "medianPremium": 0.17355598138516282,
+        "p25Premium": 0.008565409196262586,
+        "p75Premium": 0.3266754259803454,
+        "rows": 175
       },
       {
         "dimension": "elite_band",
         "label": "95th+",
-        "medianPremium": 0.0177289377289378,
-        "p25Premium": -0.08752432980014524,
-        "p75Premium": 0.18265361168999528,
-        "rows": 79
+        "medianPremium": 0.0902456140350878,
+        "p25Premium": -0.06847721128619755,
+        "p75Premium": 0.18506920320436526,
+        "rows": 123
       },
       {
         "dimension": "package_size",
         "label": "2.0",
-        "medianPremium": 0.12482202183198865,
-        "p25Premium": -0.047372919171235484,
-        "p75Premium": 0.282318652393201,
-        "rows": 159
+        "medianPremium": 0.1263025888443583,
+        "p25Premium": -0.02848478120953904,
+        "p75Premium": 0.27917164661687766,
+        "rows": 260
       },
       {
         "dimension": "package_size",
         "label": "3.0",
-        "medianPremium": 0.22564535562779642,
-        "p25Premium": 0.03297380944323319,
-        "p75Premium": 0.5315716124809272,
-        "rows": 108
+        "medianPremium": 0.2519154443898638,
+        "p25Premium": 0.09370565481836746,
+        "p75Premium": 0.5656324453298376,
+        "rows": 176
       },
       {
         "dimension": "format",
         "label": "1QB",
-        "medianPremium": 0.20861812750384812,
-        "p25Premium": 0.047583248245406384,
-        "p75Premium": 0.4256001176356072,
-        "rows": 84
+        "medianPremium": 0.21089630931458703,
+        "p25Premium": 0.044836457184858514,
+        "p75Premium": 0.495919881305638,
+        "rows": 133
       },
       {
         "dimension": "format",
         "label": "Superflex",
-        "medianPremium": 0.13246187363834427,
-        "p25Premium": -0.04481080652313779,
-        "p75Premium": 0.3043466754587446,
-        "rows": 183
+        "medianPremium": 0.15036691127418278,
+        "p25Premium": -0.005607381004234191,
+        "p75Premium": 0.30986688324654055,
+        "rows": 303
       },
       {
         "dimension": "picks",
         "label": "Includes picks",
-        "medianPremium": 0.16791744840525324,
-        "p25Premium": -0.03498671390611163,
-        "p75Premium": 0.3636708380735685,
-        "rows": 189
+        "medianPremium": 0.1708412741628096,
+        "p25Premium": 0.009088155104513884,
+        "p75Premium": 0.36973180076628354,
+        "rows": 313
       },
       {
         "dimension": "picks",
         "label": "Players only",
-        "medianPremium": 0.14863068049565442,
-        "p25Premium": 0.006392871700268532,
-        "p75Premium": 0.3005689315121395,
-        "rows": 78
+        "medianPremium": 0.15993301235084778,
+        "p25Premium": 0.006394110628892613,
+        "p75Premium": 0.31606751609335426,
+        "rows": 123
       },
       {
         "dimension": "age",
         "label": "25+",
-        "medianPremium": 0.15163630639129388,
-        "p25Premium": -0.03517049410639625,
-        "p75Premium": 0.33998695472576074,
-        "rows": 196
+        "medianPremium": 0.15259809812355918,
+        "p25Premium": -0.005790544748844939,
+        "p75Premium": 0.3422861996605124,
+        "rows": 316
       },
       {
         "dimension": "age",
         "label": "Pick/no age",
-        "medianPremium": 0.1880952380952381,
-        "p25Premium": 0.07209668433802696,
-        "p75Premium": 0.4193560904435658,
-        "rows": 23
+        "medianPremium": 0.22543950361944165,
+        "p25Premium": 0.07929944338253292,
+        "p75Premium": 0.4609134842269119,
+        "rows": 35
       },
       {
         "dimension": "age",
         "label": "Under 25",
-        "medianPremium": 0.18265361168999528,
-        "p25Premium": 0.0034902787005988145,
-        "p75Premium": 0.3521126447389346,
-        "rows": 48
+        "medianPremium": 0.1891639420831388,
+        "p25Premium": 0.026712887438825383,
+        "p75Premium": 0.36475725661443614,
+        "rows": 85
       }
     ],
     "status": "needs-data",
     "target": "accepted package value / elite value - 1 at trade date",
-    "testRows": 54,
-    "trainingRows": 213,
-    "uniqueLeagues": 263
+    "testRows": 88,
+    "trainingRows": 348,
+    "uniqueLeagues": 427
   },
-  "generatedAt": "2026-08-12T03:11:33.309465Z",
-  "historyAssetCount": 493,
-  "historySeriesCount": 986,
+  "generatedAt": "2026-08-12T04:16:18.582481Z",
+  "historyAssetCount": 528,
+  "historySeriesCount": 1056,
   "lineupOutcome": {
     "enabled": false,
     "reason": "External completed trades do not expose point-in-time full rosters or legal lineups. League-local snapshots are required.",
@@ -457,7 +457,7 @@
       "trainingRows": 0
     }
   ],
-  "rawTradeCount": 889,
+  "rawTradeCount": 1674,
   "source": {
     "acceptedTradesOnly": true,
     "historicalFormatWarning": "The historical endpoint matches 1QB versus superflex but does not expose point-in-time PPR, TE-premium, or team-count variants.",
@@ -465,5 +465,26 @@
     "name": "FantasyCalc public completed-trade and player-history APIs",
     "terms": "https://fantasycalc.com/terms-of-usage",
     "warning": "Accepted trades cannot identify rejected-offer acceptance probability."
+  },
+  "trainingManifest": {
+    "datasetId": "sha256:49ee4d82f6ec22936aba2bdebbfaaf1705c5a020e8f2aa9cf03e9352a3a54368",
+    "datasetIds": [
+      "sha256:49ee4d82f6ec22936aba2bdebbfaaf1705c5a020e8f2aa9cf03e9352a3a54368"
+    ],
+    "exportedAt": "2026-08-12T03:59:36.802Z",
+    "firstTradeAt": "2026-07-12",
+    "historyAssetCount": 528,
+    "historySeriesCount": 1056,
+    "importedPointInTimeCoverage": 0.9253012048192771,
+    "importedPointInTimeValuedTrades": 768,
+    "importedTrades": 830,
+    "latestTradeAt": "2026-08-11",
+    "localCacheTrades": 844,
+    "pointInTimeCoverage": 0.9456391875746715,
+    "pointInTimeValuedTrades": 1583,
+    "schemaVersion": 1,
+    "source": "FantasyCalc hosted D1 export and local collector cache",
+    "totalTrades": 1674,
+    "uniqueLeagues": 1561
   }
 }
