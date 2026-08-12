@@ -43,8 +43,10 @@ Offline training does not run in the request path.
 | `src/styles/` | View-owned journal and evidence styles; `src/styles.css` retains shared and older view rules |
 | `src/api.ts` | Browser-side adapters for Sleeper, Tradyr, static artifacts, and private Worker routes |
 | `src/types.ts` | Shared browser/domain data contracts |
-| `src/rankings.ts` | Team construction, direct rankings, lineup optimization, and source-separated trade scenarios |
+| `src/rankings.ts` | Team construction, direct rankings, and source-separated trade scenarios |
+| `src/team-power.ts` | Reusable legal-lineup optimizer, redraft power table, coverage, and trade deltas |
 | `src/strategy.ts` | Declared roster strategy, bounded package enumeration, and deterministic Pareto discovery |
+| `src/leagues/` | Fixed-league private decision policies; currently the Emperor Phil top-six power plan |
 | `src/trade-models.ts` | Portable exchange/outcome model contracts, consolidation features, and user-authored weighting arithmetic |
 | `src/edge.ts` | Evidence-board opportunity construction and market-tape preparation |
 | `src/dislocations.ts` | Current source disagreement, position-relative production divergence, owner-pressure facts, and their evidence-only Pareto frontier |
@@ -72,7 +74,9 @@ held behind data or code owned by another view:
 1. `fetchLeagueBundle` reads the league, rosters, managers, traded picks, and
    current draft from Sleeper. After the first visit, the device-local last
    league selection lets this read overlap the authenticated preference read.
-2. `fetchValues` reads attributed player and pick composites from Tradyr.
+2. `fetchValues` reads attributed dynasty player and pick composites from
+   Tradyr, while `fetchCurrentSeasonValues` separately reads the same-format
+   redraft player bucket.
 3. `fetchProjections` loads the browser-safe production artifact. Those three
    inputs are sufficient to build teams, lineups, and league-relative rankings,
    so React renders the first useful screen immediately after they resolve.

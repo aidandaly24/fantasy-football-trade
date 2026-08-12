@@ -206,6 +206,24 @@ describe('trade evaluation', () => {
     expect(result.marketNetA).toBe(0)
   })
 
+  it('keeps current-season power separate from modeled PPG and dynasty value', () => {
+    const starter = asset('starter', 'RB', 900)
+    starter.currentSeasonValue = 200
+    starter.projectedPpg = 12
+    const upgrade = asset('upgrade', 'RB', 500)
+    upgrade.currentSeasonValue = 450
+    upgrade.projectedPpg = 14
+    const result = evaluateTrade([], [upgrade], {
+      teamA: team(1, [starter]),
+      teamB: team(2, [upgrade]),
+      rosterPositions: ['RB'],
+    })
+
+    expect(result.currentSeasonImpactA).toBe(250)
+    expect(result.lineupImpactA).toBe(2)
+    expect(result.marketNetA).toBe(500)
+  })
+
   it('guards every production scenario when the likely lineup is not fully covered', () => {
     const uncoveredStarter = asset('uncovered-starter', 'QB', 700)
     const coveredIncoming = asset('covered-incoming', 'QB', 800)

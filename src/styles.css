@@ -3387,6 +3387,51 @@ footer a {
   .trade-model-audit-grid article { border-right: 0; border-bottom: 1px solid var(--line); }
 }
 
+/* Private Emperor Phil policy; the shared power engine has no league copy. */
+.phil-power-plan { padding: 0; overflow: hidden; margin-bottom: 22px; }
+.phil-power-plan > header { display: flex; justify-content: space-between; gap: 24px; padding: 24px 26px; border-bottom: 1px solid var(--line); background: linear-gradient(120deg, rgba(216, 255, 104, .2), transparent 58%); }
+.phil-power-plan h2 { margin: 5px 0 6px; font-size: clamp(1.35rem, 2vw, 1.8rem); }
+.phil-power-plan header p { max-width: 760px; margin: 0; color: var(--ink-soft); line-height: 1.55; }
+.power-policy { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; padding: 8px 11px; border-radius: 999px; color: var(--green); background: rgba(35, 116, 90, .08); border: 1px solid rgba(35, 116, 90, .2); font-size: .78rem; font-weight: 750; }
+.power-plan-scorecard { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+.power-plan-scorecard article { padding: 20px 22px; border-right: 1px solid var(--line); }
+.power-plan-scorecard article:last-child { border-right: 0; }
+.power-plan-scorecard small, .power-plan-scorecard em { display: block; color: var(--ink-soft); font-style: normal; }
+.power-plan-scorecard strong { display: block; margin: 7px 0 4px; font-size: 1.8rem; letter-spacing: -.04em; }
+.power-plan-scorecard strong span { font-size: .9rem; color: var(--ink-soft); letter-spacing: 0; }
+.power-plan-scorecard em { font-size: .72rem; line-height: 1.35; }
+.power-plan-scorecard .power-gap strong { color: var(--orange); }
+.power-plan-scorecard .power-cleared strong { color: var(--green); }
+.power-position-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 16px 20px; gap: 10px; background: rgba(243, 241, 233, .55); border-bottom: 1px solid var(--line); }
+.power-position-grid article { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: baseline; padding: 11px 12px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); }
+.power-position-grid span { font-size: .72rem; color: var(--ink-soft); font-weight: 800; }
+.power-position-grid strong { justify-self: end; }
+.power-position-grid small { grid-column: 1 / -1; font-size: .7rem; }
+.power-plan-rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.power-plan-rules > div { display: flex; gap: 11px; padding: 19px 21px; border-right: 1px solid var(--line); }
+.power-plan-rules > div:last-child { border-right: 0; }
+.power-plan-rules svg { flex: 0 0 auto; margin-top: 2px; color: var(--green); }
+.power-plan-rules strong, .power-plan-rules small { display: block; }
+.power-plan-rules strong { margin-bottom: 4px; font-size: .83rem; }
+.power-plan-rules small { color: var(--ink-soft); line-height: 1.45; }
+
+@media (max-width: 900px) {
+  .power-plan-scorecard, .power-position-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .power-plan-scorecard article:nth-child(2) { border-right: 0; }
+  .power-plan-scorecard article:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+  .power-plan-rules { grid-template-columns: 1fr; }
+  .power-plan-rules > div { border-right: 0; border-bottom: 1px solid var(--line); }
+  .power-plan-rules > div:last-child { border-bottom: 0; }
+}
+
+@media (max-width: 620px) {
+  .phil-power-plan > header { display: block; }
+  .power-policy { margin-top: 16px; }
+  .power-plan-scorecard, .power-position-grid { grid-template-columns: 1fr; }
+  .power-plan-scorecard article { border-right: 0; border-bottom: 1px solid var(--line); }
+  .power-plan-scorecard article:last-child { border-bottom: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

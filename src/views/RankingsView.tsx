@@ -1,6 +1,8 @@
 import { ChevronRight, Sparkles, Target, TrendingUp, Trophy } from 'lucide-react'
 import { useMemo } from 'react'
 import type { LeagueContext } from '../league-context'
+import { strategyProfileForLeague } from '../leagues'
+import { EmperorPhilTeamPowerPlan } from '../leagues/emperor-phil/TeamPowerPlan'
 import { rosterProfile } from '../rankings'
 import type { RankingMode, Team } from '../types'
 import { AssetBadge, Avatar, formatValue, MetricBar } from '../components/domain-ui'
@@ -11,8 +13,8 @@ const modeCopy: Record<RankingMode, { label: string; description: string }> = {
     description: 'The direct sum of current player and pick composite values. No package compression or roster-fit adjustment.',
   },
   contender: {
-    label: 'Covered lineup',
-    description: 'League-adjusted points per team week for the best legal lineup among players covered by the validated production model.',
+    label: 'Current-season power',
+    description: 'The direct sum of same-format redraft consensus values in each team’s best legal lineup. It is a relative power index, not a points forecast.',
   },
   future: {
     label: 'Draft capital',
@@ -58,8 +60,8 @@ function RankingBoard({
               </span>
               <span className="rank-score-block">
                 <span className="rank-score-line">
-                  <b>{mode === 'contender' ? score.toFixed(1) : formatValue(score)}</b>
-                  <small>{mode === 'contender' ? 'covered PPG' : 'current value'}</small>
+                  <b>{formatValue(score)}</b>
+                  <small>{mode === 'contender' ? 'lineup power' : 'current value'}</small>
                 </span>
               </span>
               <ChevronRight size={18} aria-hidden="true" />
@@ -96,13 +98,14 @@ function TeamScout({ team, teams }: { team: Team; teams: Team[] }) {
       </div>
 
       <div className="scout-section metrics-grid">
-        <MetricBar label="Covered lineup PPG" value={team.metrics.lineup.toFixed(1)} />
+        <MetricBar label="Current-season lineup power" value={formatValue(team.metrics.contender)} />
+        <MetricBar label="Covered model PPG" value={team.metrics.lineup.toFixed(1)} />
         <MetricBar label="Player market value" value={formatValue(team.metrics.core)} />
         <MetricBar label="Bench market value" value={formatValue(team.metrics.depth)} />
         <MetricBar label="Draft-capital value" value={formatValue(team.metrics.picks)} />
       </div>
       <div className="scout-model-note">
-        These are direct quantities, not 0–100 ratings. Missing production projections contribute no points and remain visibly uncovered.
+        Current-season power uses the redraft market separately from dynasty value. Covered PPG remains an audited model output and does not control the power rank.
       </div>
 
       <div className="scout-section">
@@ -144,6 +147,8 @@ export function RankingsView({
   selectedId,
   setSelectedId,
   leagueContext,
+  myRosterId,
+  rosterPositions,
 }: {
   teams: Team[]
   mode: RankingMode
@@ -151,15 +156,18 @@ export function RankingsView({
   selectedId: number
   setSelectedId: (id: number) => void
   leagueContext: LeagueContext
+  myRosterId: number
+  rosterPositions: string[]
 }) {
   const sorted = useMemo(
     () => [...teams].sort((a, b) => b.metrics[mode] - a.metrics[mode]),
     [mode, teams],
   )
   const selectedTeam = teams.find((team) => team.rosterId === selectedId) ?? sorted[0]
-  const lineupLeader = [...teams].sort((a, b) => b.metrics.lineup - a.metrics.lineup)[0]
+  const lineupLeader = [...teams].sort((a, b) => b.metrics.contender - a.metrics.contender)[0]
   const coreLeader = [...teams].sort((a, b) => b.metrics.core - a.metrics.core)[0]
   const pickLeader = [...teams].sort((a, b) => b.metrics.picks - a.metrics.picks)[0]
+  const strategyProfile = strategyProfileForLeague(leagueContext.id, myRosterId)
 
   return (
     <main className="page-shell">
@@ -184,11 +192,12 @@ export function RankingsView({
       </section>
 
       <div className="league-context-note panel"><span><strong>{leagueContext.label}</strong> · {leagueContext.labels.format}</span><small>{leagueContext.labels.roster}</small></div>
+      {strategyProfile && <EmperorPhilTeamPowerPlan teams={teams} rosterPositions={rosterPositions} profile={strategyProfile} />}
       <section className="leader-strip" aria-label="League leaders">
         <div className="leader-card">
           <span className="leader-icon"><Trophy size={19} /></span>
-          <span><small>Highest covered lineup</small><strong>{lineupLeader.teamName}</strong></span>
-          <b>{lineupLeader.metrics.lineup.toFixed(1)}</b>
+          <span><small>Highest current-season power</small><strong>{lineupLeader.teamName}</strong></span>
+          <b>{formatValue(lineupLeader.metrics.contender)}</b>
         </div>
         <div className="leader-card">
           <span className="leader-icon"><TrendingUp size={19} /></span>

@@ -156,6 +156,15 @@ export type Asset = {
     ktc: number | null
     fantasycalc: number | null
   }
+  /** Same-format redraft market index. This is a current-season consensus
+   * proxy, not a points projection or a dynasty valuation. */
+  currentSeasonValue?: number
+  currentSeasonRank?: number | null
+  currentSeasonPosRank?: number | null
+  currentSeasonSources?: {
+    ktc: number | null
+    fantasycalc: number | null
+  }
   originalRosterId?: number
   ownerRosterId?: number
   year?: string
@@ -222,6 +231,11 @@ export type LeagueBundle = {
 export type ValueBundle = {
   players: TradyrPlayer[]
   picks: PickValue[]
+  meta: ApiMeta
+}
+
+export type CurrentSeasonValueBundle = {
+  players: TradyrPlayer[]
   meta: ApiMeta
 }
 

@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchEdgeState, fetchIntel, fetchResearchState, saveMarketTape } from '../api'
 import { marketTapeLeagueContext } from '../league-context'
 import type { LeagueContext } from '../league-context'
+import { strategyProfileForLeague } from '../leagues'
+import { EmperorPhilTeamPowerPlan } from '../leagues/emperor-phil/TeamPowerPlan'
 import { buildEdgeBoard, marketTapeAssets } from '../edge'
 import type { EdgeCategory, TeamDirection, TeamDirectionOverride } from '../edge'
 import { buildMarketDislocations } from '../dislocations'
@@ -13,6 +15,7 @@ import { journalTradeSides, tradePartyNames } from '../journal'
 import type { ManagerProfile } from '../negotiation'
 import type { ResearchPipelineBundle } from '../research'
 import { findComparablePackages, findTradeFrontier, resolveTeamStrategy } from '../strategy'
+import { currentSeasonLineup } from '../team-power'
 import type { EdgeStateBundle, IntelFeed, JournalBundle, LeaguePreferences, Team, ValueBundle } from '../types'
 import { AssetBadge, formatResearchGate, formatValue, signedPercent } from '../components/domain-ui'
 import { DislocationBoard } from './DislocationBoard'
@@ -83,6 +86,8 @@ export function EdgeView({
     () => resolveTeamStrategy(myTeam, preferences.settings.teamStrategy),
     [myTeam, preferences.settings.teamStrategy],
   )
+  const privateStrategy = strategyProfileForLeague(leagueContext.id, myRosterId)
+  const currentPowerReady = currentSeasonLineup(myTeam.players, rosterPositions).complete
 
   useEffect(() => {
     let active = true
@@ -123,10 +128,16 @@ export function EdgeView({
     }) : [],
     [teams, myRosterId, rosterPositions, selected, teamStrategy],
   )
-  const tradeFrontier = useMemo(
-    () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy }, 8),
+  const allTradeFrontier = useMemo(
+    () => findTradeFrontier(teams, { myRosterId, rosterPositions, strategy: teamStrategy }, 16),
     [teams, myRosterId, rosterPositions, teamStrategy],
   )
+  const tradeFrontier = privateStrategy && currentPowerReady
+    ? allTradeFrontier.filter((candidate) => (
+      candidate.currentSeasonPowerDeltaMe !== null
+      && candidate.currentSeasonPowerDeltaMe >= privateStrategy.minimumMeaningfulPowerGain
+    )).slice(0, 8)
+    : privateStrategy ? [] : allTradeFrontier.slice(0, 8)
   const dislocations = useMemo(
     () => buildMarketDislocations(teams, { myRosterId, rosterPositions, directions, strategy: teamStrategy }),
     [teams, myRosterId, rosterPositions, directions, teamStrategy],
@@ -204,6 +215,7 @@ export function EdgeView({
       </section>
 
       <div className="league-context-note panel"><span><strong>{leagueContext.label} evidence book</strong> · {leagueContext.labels.format}</span><small>Snapshots and outcomes stay isolated under this league and context fingerprint. Prices use the broad {leagueContext.labels.market}; exact TEP affects covered lineup evidence, not provider prices.</small></div>
+      {privateStrategy && <EmperorPhilTeamPowerPlan teams={teams} rosterPositions={rosterPositions} profile={privateStrategy} />}
 
       <section className="edge-stats" aria-label="Edge desk status">
         <article className="panel"><small>Rostered assets</small><strong>{allOpportunities.length}</strong><span>{opportunities.filter((item) => item.intel).length} linked news watches</span></article>
@@ -339,10 +351,10 @@ export function EdgeView({
 
       <section className="trade-frontier-board panel">
         <div className="panel-heading">
-          <div><span className="eyebrow">League-wide Pareto discovery</span><h2>{teamStrategy.mode === 'rebuilding' ? 'Rebuild trade frontier' : 'Trade frontier'}</h2></div>
+          <div><span className="eyebrow">League-wide Pareto discovery</span><h2>{privateStrategy ? 'Lineup-power trade frontier' : teamStrategy.mode === 'rebuilding' ? 'Rebuild trade frontier' : 'Trade frontier'}</h2></div>
           <span className="method-note">No weighted score</span>
         </div>
-        <div className="package-evidence-banner"><Info size={16} /><span>Each priced league target is paired with the closest one-to-three-asset package from up to your 50 highest-priced assets. These options are not clearly beaten across the visible market, lineup-coverage, and declared-window facts; display order is only a tie-break.</span></div>
+        <div className="package-evidence-banner"><Info size={16} /><span>{privateStrategy ? currentPowerReady ? `Only Pareto options adding at least ${privateStrategy.minimumMeaningfulPowerGain} current-season lineup power are shown here. The ideal Phil-league move adds ${privateStrategy.idealPowerGain}; an empty result means patience, not a reason to lower the bar.` : 'The current redraft feed does not cover every legal lineup slot, so the private power frontier is guarded instead of falling back to dynasty value.' : 'Each priced league target is paired with the closest one-to-three-asset package from up to your 50 highest-priced assets. These options are not clearly beaten across the visible market, lineup-coverage, and declared-window facts; display order is only a tie-break.'}</span></div>
         <div className="trade-frontier-list">
           {tradeFrontier.length ? tradeFrontier.map((candidate) => (
             <article key={`frontier-${candidate.key}`}>
@@ -356,7 +368,7 @@ export function EdgeView({
               <div className="frontier-facts">
                 <span><small>Market net</small><b className={candidate.marketNetToMe >= 0 ? 'positive' : 'negative'}>{candidate.marketNetToMe >= 0 ? '+' : ''}{formatValue(candidate.marketNetToMe)}</b></span>
                 <span><small>Market distance</small><b>{(candidate.marketDistancePercent * 100).toFixed(1)}%</b></span>
-                <span><small>Lineup</small><b>{candidate.lineupDeltaMe === null ? `Guarded · ${candidate.lineupCoveragePercent}%` : `${candidate.lineupDeltaMe >= 0 ? '+' : ''}${candidate.lineupDeltaMe.toFixed(1)} PPG`}</b></span>
+                <span><small>Current power</small><b>{candidate.currentSeasonPowerDeltaMe === null ? `Guarded · ${candidate.currentSeasonCoveragePercent}%` : `${candidate.currentSeasonPowerDeltaMe >= 0 ? '+' : ''}${candidate.currentSeasonPowerDeltaMe}`}</b></span>
                 <span><small>Pick-value net</small><b>{candidate.draftCapitalNetToMe >= 0 ? '+' : ''}{formatValue(candidate.draftCapitalNetToMe)}</b></span>
               </div>
               <button type="button" onClick={() => onOpenTrade({
@@ -366,7 +378,7 @@ export function EdgeView({
                 selectedB: candidate.receive.map((asset) => asset.id),
               })}>Open scenarios <ChevronRight size={14} /></button>
             </article>
-          )) : <div className="intel-empty"><Target size={22} /><strong>No complete frontier is available.</strong><span>Priced assets or outgoing package evidence is missing.</span></div>}
+          )) : <div className="intel-empty"><Target size={22} /><strong>{privateStrategy ? currentPowerReady ? 'No current package clears your power gate.' : 'The power frontier is guarded.' : 'No complete frontier is available.'}</strong><span>{privateStrategy ? currentPowerReady ? `None of the visible Pareto packages adds at least ${privateStrategy.minimumMeaningfulPowerGain} lineup-power points. Hold rather than manufacture a depth trade.` : 'Wait for complete current-season coverage; no substitute score is being manufactured.' : 'Priced assets or outgoing package evidence is missing.'}</span></div>}
         </div>
         <div className="model-caveat"><Info size={17} /><span>“Pareto” means no shown option is better on every displayed objective. It does not mean the other manager will accept, and it does not predict resale profit.</span></div>
       </section>
@@ -382,7 +394,7 @@ export function EdgeView({
                 <span className="edge-categories">{opportunity.categories.map((category) => <i key={category}>{category}</i>)}</span>
                 <span><small>Current market</small><strong>{formatValue(opportunity.asset.value)}</strong></span>
                 <span><small>Age now</small><strong>{opportunity.asset.age ?? '—'}</strong></span>
-                <span className="edge-score"><strong>{opportunity.asset.projectedPpg === undefined ? '—' : opportunity.asset.projectedPpg.toFixed(1)}</strong><small>modeled PPG</small></span>
+                <span className="edge-score"><strong>{opportunity.asset.currentSeasonValue === undefined ? '—' : formatValue(opportunity.asset.currentSeasonValue)}</strong><small>lineup power</small></span>
                 <ChevronRight size={16} />
               </button>
             )) : <div className="intel-empty"><Radar size={22} /><strong>No asset has this evidence type.</strong><span>An empty list is more honest than a manufactured edge.</span></div>}
@@ -394,6 +406,7 @@ export function EdgeView({
           <div className="edge-price-grid">
             <div><small>KTC</small><strong>{selectedValue?.sources.ktc ? formatValue(selectedValue.sources.ktc) : 'Unavailable'}</strong></div>
             <div><small>FantasyCalc</small><strong>{selectedValue?.sources.fantasycalc ? formatValue(selectedValue.sources.fantasycalc) : 'Unavailable'}</strong></div>
+            <div><small>Current-season power</small><strong>{selected.asset.currentSeasonValue === undefined ? 'Unavailable' : formatValue(selected.asset.currentSeasonValue)}</strong></div>
             <div><small>Age now</small><strong>{selected.asset.age ?? 'Unavailable'}</strong></div>
             <div><small>Age in {teamStrategy.horizonYears} years</small><strong>{selected.asset.age === null || selected.asset.age === undefined ? 'Unavailable' : selected.asset.age + teamStrategy.horizonYears}</strong></div>
           </div>
@@ -424,8 +437,8 @@ export function EdgeView({
               <div><small>You receive · {formatValue(candidate.receiveValue)}</small><strong>{candidate.receive.map((asset) => asset.name).join(' + ')}</strong></div>
               <div className="package-scores">
                 <span>Market net to you<b className={candidate.marketNetToMe >= 0 ? 'positive' : 'negative'}>{candidate.marketNetToMe >= 0 ? '+' : ''}{formatValue(candidate.marketNetToMe)}</b></span>
-                <span>Your lineup<b>{candidate.lineupDeltaMe === null ? 'Not covered' : `${candidate.lineupDeltaMe >= 0 ? '+' : ''}${candidate.lineupDeltaMe.toFixed(1)} PPG`}</b></span>
-                <span>Their lineup<b>{candidate.lineupDeltaThem === null ? 'Not covered' : `${candidate.lineupDeltaThem >= 0 ? '+' : ''}${candidate.lineupDeltaThem.toFixed(1)} PPG`}</b></span>
+                <span>Your current power<b>{candidate.currentSeasonPowerDeltaMe === null ? 'Not covered' : `${candidate.currentSeasonPowerDeltaMe >= 0 ? '+' : ''}${candidate.currentSeasonPowerDeltaMe}`}</b></span>
+                <span>Your modeled PPG<b>{candidate.lineupDeltaMe === null ? 'Not covered' : `${candidate.lineupDeltaMe >= 0 ? '+' : ''}${candidate.lineupDeltaMe.toFixed(1)}`}</b></span>
                 <span>Window fact<b>{target.kind === 'pick' ? 'Draft capital' : horizonAge === null ? 'Age unavailable' : `Age ${horizonAge.toFixed(1)}`}</b></span>
               </div>
               <div className="package-actions">
