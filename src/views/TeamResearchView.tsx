@@ -1,12 +1,18 @@
-import { ArrowLeft, CalendarClock, ChevronRight, Layers3, TrendingUp } from 'lucide-react'
+import { ArrowLeft, CalendarClock, ChevronRight, DatabaseZap, Layers3, RefreshCw, TrendingUp } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { fetchEdgeState } from '../api'
+import { backfillTeamHistory, fetchEdgeState } from '../api'
 import { AssetBadge, Avatar, formatValue } from '../components/domain-ui'
 import type { LeagueContext } from '../league-context'
 import { buildTeamRankComparisons } from '../rank-comparison'
 import { rosterProfile } from '../rankings'
 import { teamValueAllocation } from '../team-research'
-import type { Asset, Team, TeamMarketHistoryPoint } from '../types'
+import type {
+  Asset,
+  ReconstructedTeamMarketHistoryPoint,
+  Team,
+  TeamHistoryBackfill,
+  TeamMarketHistoryPoint,
+} from '../types'
 
 function dateLabel(value: string): string {
   const parsed = new Date(`${value}T12:00:00Z`)
@@ -88,6 +94,15 @@ function FullAssetRow({ asset, index, onOpenPlayer }: { asset: Asset; index: num
     : <div className="scout-asset">{content}</div>
 }
 
+function emptyBackfill(): TeamHistoryBackfill {
+  return {
+    provider: 'fantasycalc', status: 'not-started', formatKey: 'fantasycalc-dynasty-superflex-history-v1',
+    requestedAssets: 0, completedAssets: 0, missingAssets: 0, failedAssets: 0,
+    observationCount: 0, firstObservedAt: null, lastObservedAt: null, updatedAt: null,
+    notes: ['Run the backfill to reconstruct player value from exact Sleeper weekly rosters.'],
+  }
+}
+
 export function TeamResearchView({ team, teams, leagueContext, onBack, onOpenPlayer }: {
   team: Team
   teams: Team[]
@@ -96,8 +111,12 @@ export function TeamResearchView({ team, teams, leagueContext, onBack, onOpenPla
   onOpenPlayer: (playerId: string) => void
 }) {
   const [history, setHistory] = useState<TeamMarketHistoryPoint[]>([])
+  const [reconstructed, setReconstructed] = useState<ReconstructedTeamMarketHistoryPoint[]>([])
+  const [backfill, setBackfill] = useState<TeamHistoryBackfill>(emptyBackfill)
+  const [backfillRunning, setBackfillRunning] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(true)
   const [historyError, setHistoryError] = useState<string | null>(null)
+  const [backfillError, setBackfillError] = useState<string | null>(null)
   const comparison = useMemo(() => buildTeamRankComparisons(teams).get(team.rosterId), [team.rosterId, teams])
   const profile = useMemo(() => rosterProfile(team, teams), [team, teams])
   const allocation = useMemo(() => teamValueAllocation(team), [team])
@@ -110,14 +129,52 @@ export function TeamResearchView({ team, teams, leagueContext, onBack, onOpenPla
     setHistoryLoading(true)
     setHistoryError(null)
     void fetchEdgeState(leagueContext.id).then((state) => {
-      if (!cancelled) setHistory(state.teamMarketHistory.filter((point) => point.rosterId === team.rosterId))
+      if (cancelled) return
+      setHistory(state.teamMarketHistory.filter((point) => point.rosterId === team.rosterId))
+      setReconstructed(state.reconstructedTeamMarketHistory.filter((point) =>
+        team.ownerId ? point.ownerUserId === team.ownerId : point.rosterId === team.rosterId,
+      ))
+      setBackfill(state.teamHistoryBackfill)
     }).catch((loadError) => {
       if (!cancelled) setHistoryError(loadError instanceof Error ? loadError.message : 'Market history unavailable')
     }).finally(() => {
       if (!cancelled) setHistoryLoading(false)
     })
     return () => { cancelled = true }
-  }, [leagueContext.id, team.rosterId])
+  }, [leagueContext.id, team.ownerId, team.rosterId])
+
+  const visibleReconstruction = reconstructed.filter((point) => point.coverageRate >= 0.8)
+  const reconstructedChart = visibleReconstruction.map((point): TeamMarketHistoryPoint => ({
+    snapshotDate: point.observedAt,
+    rosterId: point.rosterId,
+    totalValue: point.playerValue,
+    playerValue: point.playerValue,
+    pickValue: 0,
+    assetCount: point.coveredPlayers,
+  }))
+  const progressCount = backfill.completedAssets + backfill.missingAssets + backfill.failedAssets
+  const averageCoverage = visibleReconstruction.length
+    ? visibleReconstruction.reduce((sum, point) => sum + point.coverageRate, 0) / visibleReconstruction.length
+    : 0
+
+  async function runBackfill(): Promise<void> {
+    setBackfillRunning(true)
+    setBackfillError(null)
+    try {
+      for (let batch = 0; batch < 30; batch += 1) {
+        const state = await backfillTeamHistory(leagueContext.id)
+        setBackfill(state.teamHistoryBackfill)
+        setReconstructed(state.reconstructedTeamMarketHistory.filter((point) =>
+          team.ownerId ? point.ownerUserId === team.ownerId : point.rosterId === team.rosterId,
+        ))
+        if (['complete', 'partial', 'failed'].includes(state.teamHistoryBackfill.status)) break
+      }
+    } catch (error) {
+      setBackfillError(error instanceof Error ? error.message : 'Historical player-value backfill failed')
+    } finally {
+      setBackfillRunning(false)
+    }
+  }
 
   return <main className="page-shell team-research-page">
     <section className="team-research-hero panel">
@@ -137,9 +194,27 @@ export function TeamResearchView({ team, teams, leagueContext, onBack, onOpenPla
     </section>
 
     <section className="team-research-section panel">
+      <div className="panel-heading team-history-heading"><div><span className="eyebrow">Reconstructed player tape</span><h2>Historical player market value</h2></div><span className="method-note">Exact Sleeper weekly rosters · FantasyCalc generic superflex · picks excluded</span></div>
+      {backfill.status === 'not-started' ? <div className="team-backfill-callout">
+        <DatabaseZap size={22} />
+        <div><b>Older player history is available.</b><p>This reads the league’s stored weekly rosters, then attaches point-in-time FantasyCalc player values. It does not apply today’s roster backward.</p></div>
+        <button type="button" className="primary-button" onClick={() => void runBackfill()} disabled={backfillRunning}>{backfillRunning ? 'Starting…' : 'Build historical tape'}</button>
+      </div> : <>
+        <div className="team-backfill-status">
+          <span><b>{progressCount}/{backfill.requestedAssets}</b><small>players resolved</small></span>
+          <span><b>{backfill.observationCount.toLocaleString()}</b><small>weekly values stored</small></span>
+          <span><b>{averageCoverage ? `${Math.round(averageCoverage * 100)}%` : '—'}</b><small>plotted coverage</small></span>
+          <button type="button" onClick={() => void runBackfill()} disabled={backfillRunning}><RefreshCw size={14} className={backfillRunning ? 'spin' : ''} /> {backfillRunning ? 'Backfilling…' : backfill.status === 'running' || backfill.status === 'queued' ? 'Continue backfill' : 'Refresh tape'}</button>
+        </div>
+        <MarketHistoryChart points={reconstructedChart} loading={false} error={backfillError} />
+      </>}
+      <p className="team-chart-boundary">Only dates with at least 80% player coverage are plotted. Missing and delisted players are not estimated. This is a source-relative player-value trend—not an exact historical trade grade, and not comparable point-for-point with the Tradyr composite below.</p>
+    </section>
+
+    <section className="team-research-section panel">
       <div className="panel-heading"><div><span className="eyebrow">Observed portfolio tape</span><h2>Team market value over time</h2></div><span className="method-note">Recorded ownership and composite value on each snapshot date</span></div>
       <MarketHistoryChart points={history} loading={historyLoading} error={historyError} />
-      <p className="team-chart-boundary">This is observed RosterLab history only. It does not reconstruct dates from before the private market tape began, and it never applies today’s roster backward in time.</p>
+      <p className="team-chart-boundary">This remains the exact observed RosterLab portfolio tape: current Tradyr composite players plus picks. It starts when the private market tape began and stays separate from reconstructed FantasyCalc history.</p>
     </section>
 
     <section className="team-research-section panel">

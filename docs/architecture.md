@@ -120,7 +120,7 @@ instead of reimplementing ranking or valuation rules in JSX.
 | `/api/preferences` | `GET`, `PUT` | D1 | Requires hosted identity; localhost uses the explicit development identity |
 | `/api/journal` | `GET`, `POST` | D1 | Requires identity; POST is same-origin and syncs completed Sleeper trades |
 | `/api/alerts` | `GET`, `POST` | D1 | Requires identity; materializes private watchlist alerts |
-| `/api/edge` | `GET`, `POST` | D1 | Requires identity; stores and reads private market tape and learning state |
+| `/api/edge` | `GET`, `POST` | D1 | Requires identity; stores private market tape and advances the resumable team-history backfill |
 | `/api/research` | `GET`, `POST` | D1 | Requires identity; syncs and reads historical evidence |
 | `/api/trade-tape` | `GET`, `POST` | D1 | Requires identity; POST refreshes the bounded FantasyCalc tape; `GET ?format=training` downloads the sanitized content-addressed tape |
 | `/api/decisions` | `GET`, `POST`, `PATCH` | D1 | Requires identity; stores and updates the user's private pre-trade decision record and exact evidence snapshot |
@@ -147,7 +147,9 @@ D1 contains several bounded capability groups:
 - canonical intel events and per-user alert state;
 - dated market values, learning reports, and historical-source audits;
 - the deduplicated FantasyCalc completed-trade tape and observable refresh runs;
-- historical league/player/news research tape and its coverage runs.
+- historical league/player/news research tape and its coverage runs;
+- exact Sleeper weekly roster states joined to a bounded, weekly sampled
+  FantasyCalc player-value tape for reconstructed team research;
 - private proposed-trade decisions, immutable captured evidence JSON, written
   thesis/hold/exit conditions, and lifecycle status.
 
@@ -182,6 +184,9 @@ user-triggered:
 - News refreshes only when its private inbox is due and requested.
 - The Evidence view writes the current league tape and advances one bounded
   historical-source batch when opened with fresh evidence.
+- A team page can explicitly start, resume, or refresh its historical player
+  tape. Each request advances at most twelve players and persists progress, so
+  no scheduler or always-on collector is required.
 - Research and the Sleeper journal have explicit same-origin sync actions.
 - Trade Lab's historical-tape button scans a fixed FantasyCalc anchor sample,
   deduplicates completed trades, and records success, partial failure, or error.

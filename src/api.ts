@@ -347,6 +347,19 @@ export async function saveMarketTape(
   return request
 }
 
+export async function backfillTeamHistory(leagueId: string): Promise<EdgeStateBundle> {
+  const request = fetchJson<EdgeStateBundle>(`/api/edge?leagueId=${encodeURIComponent(leagueId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'team-history' }),
+  }).catch((error) => {
+    edgeStateRequests.delete(leagueId)
+    throw error
+  })
+  edgeStateRequests.set(leagueId, request)
+  return request
+}
+
 export function sleeperAvatar(avatar: string | null | undefined): string | null {
   if (!avatar) return null
   if (avatar.startsWith('http')) return avatar

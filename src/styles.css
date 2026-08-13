@@ -2049,7 +2049,7 @@ a {
   .projection-range-chart figcaption { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
 
-/* Dedicated team pages: current roster detail plus observed, never reconstructed, market history. */
+/* Dedicated team pages: exact observed portfolio tape plus provenance-bounded reconstruction. */
 .team-research-page { display: grid; gap: 18px; }
 .team-research-hero,
 .team-research-section { overflow: hidden; }
@@ -2075,6 +2075,17 @@ a {
 .team-chart-point { fill: var(--acid); stroke: var(--ink); stroke-width: 2; }
 .team-chart-boundary { margin: 0; padding: 12px 20px; color: var(--ink-soft); background: #efede6; border-top: 1px solid var(--line); font-size: 8px; line-height: 1.55; }
 .team-chart-empty { min-height: 120px; padding: 24px; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--ink-soft); text-align: center; font-size: 9px; }
+.team-history-heading { gap: 18px; }
+.team-backfill-callout { min-height: 142px; padding: 24px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 16px; background: linear-gradient(135deg, #f0f6dd, #fff); }
+.team-backfill-callout > svg { color: #668005; }
+.team-backfill-callout b { font-family: 'Newsreader', Georgia, serif; font-size: 18px; }
+.team-backfill-callout p { max-width: 650px; margin: 5px 0 0; color: var(--ink-soft); font-size: 8px; line-height: 1.55; }
+.team-backfill-callout .primary-button { white-space: nowrap; }
+.team-backfill-status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; border-bottom: 1px solid var(--line); }
+.team-backfill-status > span { min-height: 68px; padding: 12px 18px; display: grid; align-content: center; gap: 3px; border-right: 1px solid var(--line); }
+.team-backfill-status b { font-family: 'DM Mono', monospace; font-size: 11px; }
+.team-backfill-status small { color: var(--ink-soft); font-size: 7px; text-transform: uppercase; letter-spacing: .05em; }
+.team-backfill-status button { margin: 12px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: 8px; font-weight: 900; }
 .team-allocation-chart { padding: 18px 22px 22px; display: grid; gap: 13px; }
 .team-allocation-row { display: grid; grid-template-columns: 82px minmax(120px, 1fr) 72px; align-items: center; gap: 14px; }
 .team-allocation-row > span:first-child { display: grid; gap: 2px; }
@@ -2091,6 +2102,10 @@ a {
   .team-fact-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .team-fact-strip > span:nth-child(2n) { border-right: 0; }
   .team-fact-strip > span:last-child { grid-column: 1 / -1; border-top: 1px solid var(--line); }
+  .team-backfill-callout { grid-template-columns: auto minmax(0, 1fr); }
+  .team-backfill-callout .primary-button { grid-column: 1 / -1; width: 100%; }
+  .team-backfill-status { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .team-backfill-status button { grid-column: 1 / -1; min-height: 42px; }
 }
 
 @media (max-width: 480px) {
@@ -2102,6 +2117,9 @@ a {
   .team-chart-summary > span { min-height: 58px; border-right: 0; border-bottom: 1px solid var(--line); }
   .team-history-chart { padding-right: 12px; padding-left: 12px; }
   .team-history-chart svg { min-width: 520px; }
+  .team-backfill-callout { padding: 18px 14px; }
+  .team-backfill-status { grid-template-columns: 1fr; }
+  .team-backfill-status > span { min-height: 54px; border-right: 0; border-bottom: 1px solid var(--line); }
   .team-allocation-chart { padding: 16px 14px 19px; }
   .team-allocation-row { grid-template-columns: 54px minmax(80px, 1fr) 58px; gap: 9px; }
   .team-full-roster { padding-right: 14px; padding-left: 14px; }

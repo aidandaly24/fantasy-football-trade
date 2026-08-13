@@ -717,6 +717,8 @@ export type HistoricalTapeAudit = {
 export type EdgeStateBundle = {
   marketTape: MarketTapeSummary
   teamMarketHistory: TeamMarketHistoryPoint[]
+  reconstructedTeamMarketHistory: ReconstructedTeamMarketHistoryPoint[]
+  teamHistoryBackfill: TeamHistoryBackfill
   calibration: EdgeCalibrationGroup[]
   shadowModel: EdgeShadowModelHealth
   shadowPredictions: EdgeShadowPrediction[]
@@ -730,4 +732,33 @@ export type TeamMarketHistoryPoint = {
   playerValue: number
   pickValue: number
   assetCount: number
+}
+
+export type ReconstructedTeamMarketHistoryPoint = {
+  observedAt: string
+  season: string
+  week: number | null
+  label: string
+  rosterId: number
+  ownerUserId: string | null
+  playerValue: number
+  coveredPlayers: number
+  rosterPlayers: number
+  coverageRate: number
+  source: 'fantasycalc'
+}
+
+export type TeamHistoryBackfill = {
+  provider: 'fantasycalc'
+  status: 'not-started' | 'queued' | 'running' | 'complete' | 'partial' | 'failed'
+  formatKey: string
+  requestedAssets: number
+  completedAssets: number
+  missingAssets: number
+  failedAssets: number
+  observationCount: number
+  firstObservedAt: string | null
+  lastObservedAt: string | null
+  updatedAt: string | null
+  notes: string[]
 }
