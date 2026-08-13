@@ -383,6 +383,26 @@ exported interval a tracked-asset interval, not a complete downside
 probability. The model never overwrites the current market composite and never
 predicts manager acceptance.
 
+### Reconstructed team player-value history
+
+Team pages can run a private, click-driven backfill that joins two existing
+research sources: Sleeper's season-specific weekly matchup rosters and
+FantasyCalc's public player history. Sleeper week numbers are anchored to the
+settled Tuesday of each NFL regular-season week. FantasyCalc observations are
+stored at a bounded weekly cadence with the first and latest provider dates
+retained.
+
+Each reconstructed point reports covered players, roster players, and coverage.
+The chart plots only points at or above 80% coverage and sums only observed
+values; it never extrapolates a missing player. Delisted players remain missing.
+The series excludes draft picks because no trustworthy point-in-time pick
+history is available, and the generic FantasyCalc superflex history does not
+claim exact historical PPR, TEP, or team-count compatibility.
+
+This player-only source-relative line remains separate from the exact observed
+RosterLab portfolio tape, which uses current Tradyr composite values and
+includes picks. Neither line trains or promotes a model in the request path.
+
 ### V7.5 rebuild portfolio objective
 
 `src/asset-returns.ts` joins players by Sleeper ID and draft picks to the exact

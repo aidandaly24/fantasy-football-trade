@@ -365,16 +365,19 @@ WHERE root_league_id=? ORDER BY started_at DESC LIMIT 1`).bind(leagueId).first<R
 FROM historical_market_observations h JOIN historical_tape_assets a
   ON a.provider=h.provider AND a.asset_id=h.asset_id
 WHERE a.user_id=? AND a.league_id=? AND a.status='complete'
+  AND a.provider='tradyr' AND h.format_key='tradyr-default-history'
 ORDER BY h.asset_id, h.observed_at LIMIT 20000`).bind(userId, leagueId).all<HistoricalRow>(),
     db.prepare(`SELECT o.asset_id, o.observed_at, o.team, o.active, o.status,
 o.injury_status, o.depth_chart_order FROM objective_player_observations o
 JOIN historical_tape_assets a ON a.asset_id=o.asset_id
 WHERE a.user_id=? AND a.league_id=? AND a.status='complete'
+  AND a.provider='tradyr'
 ORDER BY o.asset_id, o.observed_at LIMIT 20000`).bind(userId, leagueId).all<ObjectiveRow>(),
     db.prepare(`SELECT DISTINCT e.player_id, e.published_at, e.event_type, e.direction,
 e.impact_weight, e.sources_json FROM intel_events e
 JOIN historical_tape_assets a ON a.asset_id=e.player_id
 WHERE a.user_id=? AND a.league_id=? AND a.status='complete'
+  AND a.provider='tradyr'
 ORDER BY e.published_at LIMIT 10000`).bind(userId, leagueId).all<NewsRow>(),
     db.prepare(`SELECT COUNT(*) AS observations, COUNT(DISTINCT asset_id) AS players,
 MAX(observed_at) AS last_observed_at FROM objective_player_observations`).first<ObjectiveSummaryRow>(),
