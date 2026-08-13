@@ -19,6 +19,7 @@ import type {
   SleeperRoster,
   TradyrPlayer,
   TradedPick,
+  TeamHistoryBundle,
   UserState,
   ValueBundle,
 } from './types'
@@ -42,6 +43,7 @@ let intelRequest: Promise<IntelFeed> | null = null
 let intelCachedAt = 0
 const journalRequests = new Map<string, Promise<JournalBundle>>()
 const edgeStateRequests = new Map<string, Promise<EdgeStateBundle>>()
+const teamHistoryRequests = new Map<string, Promise<TeamHistoryBundle>>()
 const researchStateRequests = new Map<string, Promise<ResearchPipelineBundle>>()
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -347,16 +349,25 @@ export async function saveMarketTape(
   return request
 }
 
-export async function backfillTeamHistory(leagueId: string): Promise<EdgeStateBundle> {
-  const request = fetchJson<EdgeStateBundle>(`/api/edge?leagueId=${encodeURIComponent(leagueId)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'team-history' }),
-  }).catch((error) => {
-    edgeStateRequests.delete(leagueId)
+export async function fetchTeamHistory(leagueId: string): Promise<TeamHistoryBundle> {
+  const existing = teamHistoryRequests.get(leagueId)
+  if (existing) return existing
+  const request = fetchJson<TeamHistoryBundle>(`/api/team-history?leagueId=${encodeURIComponent(leagueId)}`).catch((error) => {
+    teamHistoryRequests.delete(leagueId)
     throw error
   })
-  edgeStateRequests.set(leagueId, request)
+  teamHistoryRequests.set(leagueId, request)
+  return request
+}
+
+export async function backfillTeamHistory(leagueId: string): Promise<TeamHistoryBundle> {
+  const request = fetchJson<TeamHistoryBundle>(`/api/team-history?leagueId=${encodeURIComponent(leagueId)}`, {
+    method: 'POST',
+  }).catch((error) => {
+    teamHistoryRequests.delete(leagueId)
+    throw error
+  })
+  teamHistoryRequests.set(leagueId, request)
   return request
 }
 

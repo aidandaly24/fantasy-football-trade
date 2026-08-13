@@ -34,13 +34,6 @@ function emptyEdgeState(): EdgeStateBundle {
       automaticRefreshError: null,
     },
     teamMarketHistory: [],
-    reconstructedTeamMarketHistory: [],
-    teamHistoryBackfill: {
-      provider: 'fantasycalc', status: 'not-started', formatKey: 'fantasycalc-dynasty-superflex-history-v1',
-      requestedAssets: 0, completedAssets: 0, missingAssets: 0, failedAssets: 0,
-      observationCount: 0, firstObservedAt: null, lastObservedAt: null, updatedAt: null,
-      notes: ['Run the backfill from a team page.'],
-    },
     calibration: [],
     shadowModel: emptyShadowHealth(),
     shadowPredictions: [],

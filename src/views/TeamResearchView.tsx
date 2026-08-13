@@ -1,6 +1,6 @@
 import { ArrowLeft, CalendarClock, ChevronRight, DatabaseZap, Layers3, RefreshCw, TrendingUp } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { backfillTeamHistory, fetchEdgeState } from '../api'
+import { backfillTeamHistory, fetchEdgeState, fetchTeamHistory } from '../api'
 import { AssetBadge, Avatar, formatValue } from '../components/domain-ui'
 import type { LeagueContext } from '../league-context'
 import { buildTeamRankComparisons } from '../rank-comparison'
@@ -128,13 +128,13 @@ export function TeamResearchView({ team, teams, leagueContext, onBack, onOpenPla
     let cancelled = false
     setHistoryLoading(true)
     setHistoryError(null)
-    void fetchEdgeState(leagueContext.id).then((state) => {
+    void Promise.all([fetchEdgeState(leagueContext.id), fetchTeamHistory(leagueContext.id)]).then(([edgeState, teamHistory]) => {
       if (cancelled) return
-      setHistory(state.teamMarketHistory.filter((point) => point.rosterId === team.rosterId))
-      setReconstructed(state.reconstructedTeamMarketHistory.filter((point) =>
+      setHistory(edgeState.teamMarketHistory.filter((point) => point.rosterId === team.rosterId))
+      setReconstructed(teamHistory.reconstructedTeamMarketHistory.filter((point) =>
         team.ownerId ? point.ownerUserId === team.ownerId : point.rosterId === team.rosterId,
       ))
-      setBackfill(state.teamHistoryBackfill)
+      setBackfill(teamHistory.backfill)
     }).catch((loadError) => {
       if (!cancelled) setHistoryError(loadError instanceof Error ? loadError.message : 'Market history unavailable')
     }).finally(() => {
@@ -163,11 +163,11 @@ export function TeamResearchView({ team, teams, leagueContext, onBack, onOpenPla
     try {
       for (let batch = 0; batch < 30; batch += 1) {
         const state = await backfillTeamHistory(leagueContext.id)
-        setBackfill(state.teamHistoryBackfill)
+        setBackfill(state.backfill)
         setReconstructed(state.reconstructedTeamMarketHistory.filter((point) =>
           team.ownerId ? point.ownerUserId === team.ownerId : point.rosterId === team.rosterId,
         ))
-        if (['complete', 'partial', 'failed'].includes(state.teamHistoryBackfill.status)) break
+        if (['complete', 'partial', 'failed'].includes(state.backfill.status)) break
       }
     } catch (error) {
       setBackfillError(error instanceof Error ? error.message : 'Historical player-value backfill failed')

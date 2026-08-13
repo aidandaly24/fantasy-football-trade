@@ -717,8 +717,6 @@ export type HistoricalTapeAudit = {
 export type EdgeStateBundle = {
   marketTape: MarketTapeSummary
   teamMarketHistory: TeamMarketHistoryPoint[]
-  reconstructedTeamMarketHistory: ReconstructedTeamMarketHistoryPoint[]
-  teamHistoryBackfill: TeamHistoryBackfill
   calibration: EdgeCalibrationGroup[]
   shadowModel: EdgeShadowModelHealth
   shadowPredictions: EdgeShadowPrediction[]
@@ -761,4 +759,9 @@ export type TeamHistoryBackfill = {
   lastObservedAt: string | null
   updatedAt: string | null
   notes: string[]
+}
+
+export type TeamHistoryBundle = {
+  reconstructedTeamMarketHistory: ReconstructedTeamMarketHistoryPoint[]
+  backfill: TeamHistoryBackfill
 }
