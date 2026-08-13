@@ -110,7 +110,7 @@ function TeamScout({ team, teams, onOpenPlayer }: { team: Team; teams: Team[]; o
   }
 
   return (
-    <aside className="team-scout panel">
+    <aside className="team-scout panel" id="team-player-roster">
       <div className="scout-hero">
         <div className="scout-topline">
           <span className="window-pill"><Sparkles size={14} /> {profile.label}</span>
@@ -212,9 +212,10 @@ export function RankingsView({
     <main className="page-shell">
       <section className="page-intro">
         <div>
-          <span className="eyebrow accent-eyebrow">League intelligence</span>
+          <span className="eyebrow accent-eyebrow">Home · league overview</span>
           <h1>Compare the league.<br />Without a mystery score.</h1>
           <p>{mode === 'contender' ? `${modeCopy[mode].description} ${leagueContext.labels.projection}.` : modeCopy[mode].description}</p>
+          <a className="browse-players-cta" href="#team-player-roster">Browse my players <ChevronRight size={15} /></a>
         </div>
         <div className="mode-switch" role="group" aria-label="Ranking model">
           {(Object.keys(modeCopy) as RankingMode[]).map((item) => (

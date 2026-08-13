@@ -184,25 +184,25 @@ function AppHeader({
         </button>
         <nav aria-label="Primary navigation">
           <button type="button" className={view === 'rankings' ? 'active' : ''} onClick={() => setView('rankings')}>
-            <BarChart3 size={17} /> League facts
+            <BarChart3 size={17} /> <span>Home</span>
           </button>
           <button type="button" className={view === 'trade' ? 'active' : ''} onClick={() => setView('trade')}>
-            <ArrowLeftRight size={17} /> Trade lab
+            <ArrowLeftRight size={17} /> <span>Trade</span>
           </button>
           <button type="button" className={view === 'journal' ? 'active' : ''} onClick={() => setView('journal')}>
-            <BookOpen size={17} /> Journal
+            <BookOpen size={17} /> <span>Journal</span>
           </button>
           <button type="button" className={view === 'intel' ? 'active' : ''} onClick={() => setView('intel')}>
-            <Radar size={17} /> News
+            <Radar size={17} /> <span>News</span>
           </button>
           <button type="button" className={view === 'strategy' ? 'active' : ''} onClick={() => setView('strategy')}>
-            <Target size={17} /> Evidence
+            <Target size={17} /> <span>Evidence</span>
           </button>
           <button type="button" className={view === 'rookies' ? 'active' : ''} onClick={() => setView('rookies')}>
-            <GraduationCap size={17} /> Rookie board
+            <GraduationCap size={17} /> <span>Rookies</span>
           </button>
           <button type="button" className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}>
-            <CircleGauge size={17} /> Model
+            <CircleGauge size={17} /> <span>Model</span>
           </button>
         </nav>
         <span className="private-app-scope">Two private leagues</span>
@@ -386,7 +386,7 @@ function App() {
     })
     setMode(cached.preferences.settings.rankingMode ?? 'overall')
     setLeagueId(context.id)
-    setSelectedId(teams[0]?.rosterId ?? 1)
+    setSelectedId(cached.preferences.myRosterId ?? teams[0]?.rosterId ?? 1)
     setTradeDraft(null)
   }
 
@@ -468,7 +468,7 @@ function App() {
       setMode(basePreference.settings.rankingMode ?? 'overall')
       setLeagueId(id)
       try { window.localStorage.setItem(LAST_LEAGUE_KEY, id) } catch { /* Device storage is an optional acceleration only. */ }
-      setSelectedId(teams[0]?.rosterId ?? 1)
+      setSelectedId(initialTeam?.rosterId ?? teams[0]?.rosterId ?? 1)
       setTradeDraft(null)
       writeCachedLeagueCore(id, { leagueBundle, valueBundle, currentSeasonValueBundle, projectionBundle, preferences: basePreference })
 
@@ -801,7 +801,7 @@ function App() {
                   projection: data.playerProjections.get(selectedPlayerId),
                   marketAsOf: data.valueBundle.meta.generatedAt,
                 }) : null
-                if (!profile) return <main className="page-shell"><section className="error-card panel"><span className="eyebrow">Player unavailable</span><h1>This player is not rostered in {data.leagueContext.label}.</h1><p>The copied address may be stale, or the player may be rostered only in the other league.</p><button type="button" onClick={closePlayer}>Back to league facts</button></section></main>
+                if (!profile) return <main className="page-shell"><section className="error-card panel"><span className="eyebrow">Player unavailable</span><h1>This player is not rostered in {data.leagueContext.label}.</h1><p>The copied address may be stale, or the player may be rostered only in the other league.</p><button type="button" onClick={closePlayer}>Back to Home</button></section></main>
                 const strategy = resolveTeamStrategy(profile.myTeam, data.preferences.settings.teamStrategy)
                 return <PlayerResearchView
                   key={`${data.leagueContext.id}:${profile.asset.id}`}
