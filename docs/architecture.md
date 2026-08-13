@@ -47,6 +47,7 @@ Offline training does not run in the request path.
 | `src/team-power.ts` | Reusable legal-lineup optimizer, redraft power table, coverage, and trade deltas |
 | `src/strategy.ts` | Declared roster strategy, bounded package enumeration, and deterministic Pareto discovery |
 | `src/counterparty-utility.ts` | League-relative seller roster facts and bounded three-way bridge candidates, kept separate from price and acceptance |
+| `src/player-research.ts` | Pure league-scoped player dossier and restorable league/player address contract; no fetching or valuation rules |
 | `src/catalyst-timing.ts` | Current report-to-player joins and descriptive event cohorts with a hard model-promotion gate |
 | `src/pick-opportunity.ts` | Pick price-range and pipeline-derived rookie opportunity read without converting prospect production to value |
 | `src/decision-journal.ts` | Portable private proposal, evidence-snapshot, thesis, hold, exit, and status contracts |
@@ -108,8 +109,8 @@ trade veto. Neither policy changes provider prices, projection outputs, or the
 meaning of Pareto support. A new policy kind must earn a concrete decision rule
 rather than expanding into a general strategy language.
 
-The primary views are league facts, Trade Lab, Journal, News, Evidence, Rookie
-board, and Model. View-local presentation should consume typed domain results
+The primary views are league facts, player research, Trade Lab, Journal, News,
+Evidence, Rookie board, and Model. View-local presentation should consume typed domain results
 instead of reimplementing ranking or valuation rules in JSX.
 
 ## Worker API boundaries
