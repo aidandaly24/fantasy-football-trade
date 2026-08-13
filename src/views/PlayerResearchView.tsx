@@ -41,7 +41,7 @@ export function PlayerResearchView({
   return (
     <main className="page-shell player-research-page">
       <section className="player-research-hero panel">
-        <div className="player-research-breadcrumb"><button type="button" onClick={onBack}><ArrowLeft size={16} /> Back to league</button><span>{leagueContext.label} · {leagueContext.labels.format}</span></div>
+        <div className="player-research-breadcrumb"><button type="button" onClick={onBack}><ArrowLeft size={16} /> Back to Home</button><span>{leagueContext.label} · {leagueContext.labels.format}</span></div>
         <div className="player-research-identity">
           <AssetBadge position={asset.position} />
           <div><span className="eyebrow">Player research</span><h1>{asset.name}</h1><p>{asset.team ?? 'NFL team unavailable'} · {asset.position} · {asset.age === null ? 'Age unavailable' : `Age ${asset.age.toFixed(1)}`}</p></div>
