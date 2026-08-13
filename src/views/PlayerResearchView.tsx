@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { AssetReturnHealthBundle, ForwardHorizonDays } from '../asset-returns'
 import { AssetResearchPanel } from '../components/AssetResearchPanel'
 import { AssetBadge, formatValue } from '../components/domain-ui'
+import { ProjectionRangeChart } from '../components/ProjectionRangeChart'
 import type { LeagueContext } from '../league-context'
 import type { PlayerResearchProfile } from '../player-research'
 
@@ -65,7 +66,7 @@ export function PlayerResearchView({
 
       <section className="player-research-section panel">
         <div className="panel-heading"><div><span className="eyebrow">Covered production</span><h2>Football outlook is not market profit</h2></div><span className="method-note">{projection ? `${projection.productionModel ?? 'Production model'} · ${projection.gamesObserved} games` : 'Unavailable'}</span></div>
-        {projection ? <><div className="player-production-grid"><article><small>Expected PPG</small><strong>{projection.expectedPpg.toFixed(1)}</strong></article><article><small>Floor</small><strong>{projection.floorPpg.toFixed(1)}</strong></article><article><small>Ceiling</small><strong>{projection.ceilingPpg.toFixed(1)}</strong></article><article><small>Source season</small><strong>{projection.sourceSeason}</strong></article></div><ul className="player-driver-list">{projection.drivers?.map((driver) => <li key={driver}>{driver}</li>)}</ul></> : <div className="player-evidence-empty"><Info size={18} /><span>No covered production projection is available. Missing production is not treated as zero.</span></div>}
+        {projection ? <><ProjectionRangeChart projection={projection} /><div className="player-production-grid"><article><small>Expected PPG</small><strong>{projection.expectedPpg.toFixed(1)}</strong></article><article><small>Floor</small><strong>{projection.floorPpg.toFixed(1)}</strong></article><article><small>Ceiling</small><strong>{projection.ceilingPpg.toFixed(1)}</strong></article><article><small>Source season</small><strong>{projection.sourceSeason}</strong></article></div><ul className="player-driver-list">{projection.drivers?.map((driver) => <li key={driver}>{driver}</li>)}</ul></> : <div className="player-evidence-empty"><Info size={18} /><span>No covered production projection is available. Missing production is not treated as zero.</span></div>}
       </section>
 
       <section className="player-research-section panel">

@@ -2,6 +2,7 @@ import { ArrowLeftRight, BarChart3, BookOpen, CircleGauge, GraduationCap, Radar,
 import { useEffect, useRef, useState } from 'react'
 import { fetchAssetReturnHealth, fetchCurrentSeasonValues, fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchResearchState, fetchRookieBoard, fetchTradeModelHealth, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
 import type { AssetReturnHealthBundle } from './asset-returns'
+import { PlayerSearch } from './components/PlayerSearch'
 import { buildTeamDirections } from './edge'
 import type { TeamDirection } from './edge'
 import { journalTransactionsForCurrentManagers } from './journal'
@@ -211,40 +212,44 @@ function AppHeader({
   )
 }
 
-function LeagueRibbon({ data, loading, onSelectLeague }: {
+function LeagueRibbon({ data, loading, onSelectLeague, onOpenPlayer }: {
   data: AppData
   loading: boolean
   onSelectLeague: (leagueId: SupportedLeagueId) => void
+  onOpenPlayer: (playerId: string) => void
 }) {
   const { league } = data.leagueBundle
   const context = data.leagueContext
   return (
-    <div className="league-ribbon">
-      <div className="ribbon-inner">
-        <span className="ribbon-title"><span className="status-dot" /> {league.name}</span>
-        <div className="league-quick-switch" role="group" aria-label="Quick league switcher">
-          {SUPPORTED_LEAGUES.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              className={league.league_id === preset.id ? 'active' : ''}
-              aria-pressed={league.league_id === preset.id}
-              title={league.league_id === preset.id ? `Refresh ${preset.label}` : `Switch to ${preset.label}`}
-              disabled={loading}
-              onClick={() => onSelectLeague(preset.id)}
-            >
-              {preset.label}
-            </button>
-          ))}
+    <>
+      <div className="league-ribbon">
+        <div className="ribbon-inner">
+          <span className="ribbon-title"><span className="status-dot" /> {league.name}</span>
+          <div className="league-quick-switch" role="group" aria-label="Quick league switcher">
+            {SUPPORTED_LEAGUES.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className={league.league_id === preset.id ? 'active' : ''}
+                aria-pressed={league.league_id === preset.id}
+                title={league.league_id === preset.id ? `Refresh ${preset.label}` : `Switch to ${preset.label}`}
+                disabled={loading}
+                onClick={() => onSelectLeague(preset.id)}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <span>{league.season} Dynasty</span>
+          <span>{context.marketFormat.numQbs === 2 ? 'Superflex' : '1QB'}</span>
+          <span>{league.total_rosters} teams</span>
+          <span>{context.scoring.receptionPpr}-PPR + {context.scoring.tePremiumPerReception} TEP</span>
+          <span>{context.roster.skillStartingSlots} skill starters · {context.roster.benchSlots} bench</span>
+          <span className="ribbon-source">Powered by <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a></span>
         </div>
-        <span>{league.season} Dynasty</span>
-        <span>{context.marketFormat.numQbs === 2 ? 'Superflex' : '1QB'}</span>
-        <span>{league.total_rosters} teams</span>
-        <span>{context.scoring.receptionPpr}-PPR + {context.scoring.tePremiumPerReception} TEP</span>
-        <span>{context.roster.skillStartingSlots} skill starters · {context.roster.benchSlots} bench</span>
-        <span className="ribbon-source">Powered by <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a></span>
       </div>
-    </div>
+      <PlayerSearch key={context.id} teams={data.teams} leagueLabel={context.label} onOpenPlayer={onOpenPlayer} />
+    </>
   )
 }
 
@@ -767,7 +772,7 @@ function App() {
         view={view}
         setView={navigateWorkspace}
       />
-      {data && <LeagueRibbon data={data} loading={loading} onSelectLeague={selectLeague} />}
+      {data && <LeagueRibbon data={data} loading={loading} onSelectLeague={selectLeague} onOpenPlayer={openPlayer} />}
       {loading && !data ? (
         <LoadingState view={view} />
       ) : error && !data ? (
