@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { MarketSnapshotRecord } from '../src/edge-learning'
-import { normalizeMarketTapeInput, resolveCatalogValue } from './edge-learning-store'
+import { normalizeMarketTapeInput, readTeamMarketHistory, resolveCatalogValue } from './edge-learning-store'
+import type { D1Database, D1PreparedStatement } from './user-store'
 
 const rawAsset = {
   assetId: '11625',
@@ -100,5 +101,27 @@ describe('market tape storage boundary', () => {
     }
     expect(resolveCatalogValue(player, catalog)).toBe(540)
     expect(resolveCatalogValue(pick, catalog)).toBe(500)
+  })
+
+  it('returns team market history as dated player and pick totals', async () => {
+    let sql = ''
+    const statement: D1PreparedStatement = {
+      bind: () => statement,
+      first: async () => null,
+      all: async <T>() => ({ results: [{
+        snapshot_date: '2026-08-13', owner_roster_id: 3, total_value: 1200,
+        player_value: 800, pick_value: 400, asset_count: 9,
+      }] as T[] }),
+      run: async () => undefined,
+    }
+    const db: D1Database = {
+      prepare: (query) => { sql = query; return statement },
+      batch: async () => [],
+    }
+    await expect(readTeamMarketHistory(db, 'user', leagueContext.leagueId)).resolves.toEqual([{
+      snapshotDate: '2026-08-13', rosterId: 3, totalValue: 1200,
+      playerValue: 800, pickValue: 400, assetCount: 9,
+    }])
+    expect(sql).toContain('GROUP BY snapshot_date, owner_roster_id')
   })
 })

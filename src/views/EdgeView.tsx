@@ -33,6 +33,7 @@ function emptyEdgeState(): EdgeStateBundle {
       spanDays: 0, labeledExamples: 0, lastAutomaticRefreshAt: null,
       automaticRefreshError: null,
     },
+    teamMarketHistory: [],
     calibration: [],
     shadowModel: emptyShadowHealth(),
     shadowPredictions: [],
