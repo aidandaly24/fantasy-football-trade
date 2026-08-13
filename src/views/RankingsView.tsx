@@ -28,14 +28,14 @@ function RankingBoard({
   teams,
   mode,
   comparisons,
-  selectedId,
-  onSelect,
+  myRosterId,
+  onOpenTeam,
 }: {
   teams: Team[]
   mode: RankingMode
   comparisons: Map<number, TeamRankComparison>
-  selectedId: number
-  onSelect: (id: number) => void
+  myRosterId: number
+  onOpenTeam: (id: number) => void
 }) {
   return (
     <div className="ranking-board panel">
@@ -62,9 +62,10 @@ function RankingBoard({
           return (
             <button
               type="button"
-              className={`ranking-row ${team.rosterId === selectedId ? 'selected' : ''}`}
+              className={`ranking-row ${team.rosterId === myRosterId ? 'selected' : ''}`}
               key={team.rosterId}
-              onClick={() => onSelect(team.rosterId)}
+              onClick={() => onOpenTeam(team.rosterId)}
+              aria-label={`Open ${team.teamName} team page`}
             >
               <span className={`rank-number rank-${activeRank}`}>{activeRank}</span>
               <Avatar team={team} size="sm" />
@@ -100,9 +101,10 @@ function RankingBoard({
   )
 }
 
-function TeamScout({ team, teams, onOpenPlayer }: { team: Team; teams: Team[]; onOpenPlayer: (playerId: string) => void }) {
+function TeamPreview({ team, teams, onOpenPlayer, onOpenTeam }: { team: Team; teams: Team[]; onOpenPlayer: (playerId: string) => void; onOpenTeam: (rosterId: number) => void }) {
   const profile = rosterProfile(team, teams)
-  const rosterAssets = [...team.players, ...team.picks].sort((a, b) => b.value - a.value)
+  const topPlayers = [...team.players].sort((a, b) => b.value - a.value).slice(0, 5)
+  const topPicks = [...team.picks].sort((a, b) => b.value - a.value).slice(0, 3)
   const comparison = buildTeamRankComparisons(teams).get(team.rosterId) ?? {
     marketRank: teams.length,
     powerRank: teams.length,
@@ -110,7 +112,7 @@ function TeamScout({ team, teams, onOpenPlayer }: { team: Team; teams: Team[]; o
   }
 
   return (
-    <aside className="team-scout panel" id="team-player-roster">
+    <aside className="team-scout panel" id="my-team-preview">
       <div className="scout-hero">
         <div className="scout-topline">
           <span className="window-pill"><Sparkles size={14} /> {profile.label}</span>
@@ -143,34 +145,39 @@ function TeamScout({ team, teams, onOpenPlayer }: { team: Team; teams: Team[]; o
       <div className="scout-section">
         <div className="section-title-row">
           <div>
-            <span className="eyebrow">Asset board</span>
-            <h3>Full roster · tap a player</h3>
+            <span className="eyebrow">Team preview</span>
+            <h3>Top players</h3>
           </div>
-          <span className="asset-count">{team.players.length + team.picks.length} assets</span>
+          <span className="asset-count">{Math.min(5, team.players.length)} of {team.players.length}</span>
         </div>
         <div className="asset-stack">
-          {rosterAssets.map((asset, index) => {
+          {topPlayers.map((asset, index) => {
             const content = <>
               <span className="asset-index">{index + 1}</span>
               <AssetBadge position={asset.position} />
               <span className="asset-main">
                 <strong>{asset.name}</strong>
                 <small>
-                  {asset.kind === 'player'
-                    ? [asset.team, asset.age ? `Age ${asset.age.toFixed(1)}` : null].filter(Boolean).join(' · ')
-                    : asset.slot
-                      ? 'Exact draft slot'
-                      : `Unresolved midpoint · ${formatValue(asset.valueLow ?? asset.value)}–${formatValue(asset.valueHigh ?? asset.value)} provider range`}
+                  {[asset.team, asset.age ? `Age ${asset.age.toFixed(1)}` : null].filter(Boolean).join(' · ')}
                 </small>
               </span>
               <b className="asset-value">{formatValue(asset.value)}</b>
               {asset.kind === 'player' && <ChevronRight size={16} aria-hidden="true" />}
             </>
-            return asset.kind === 'player'
-              ? <button type="button" className="scout-asset scout-player-link" key={asset.id} onClick={() => onOpenPlayer(asset.id)} aria-label={`Research ${asset.name}`}>{content}</button>
-              : <div className="scout-asset" key={asset.id}>{content}</div>
+            return <button type="button" className="scout-asset scout-player-link" key={asset.id} onClick={() => onOpenPlayer(asset.id)} aria-label={`Research ${asset.name}`}>{content}</button>
           })}
         </div>
+        {topPicks.length > 0 && <>
+          <div className="section-title-row scout-pick-heading"><div><h3>Top picks</h3></div><span className="asset-count">{Math.min(3, team.picks.length)} of {team.picks.length}</span></div>
+          <div className="asset-stack">
+            {topPicks.map((asset, index) => <div className="scout-asset" key={asset.id}>
+              <span className="asset-index">{index + 1}</span><AssetBadge position={asset.position} />
+              <span className="asset-main"><strong>{asset.name}</strong><small>{asset.slot ? 'Exact draft slot' : `Unresolved midpoint · ${formatValue(asset.valueLow ?? asset.value)}–${formatValue(asset.valueHigh ?? asset.value)} provider range`}</small></span>
+              <b className="asset-value">{formatValue(asset.value)}</b>
+            </div>)}
+          </div>
+        </>}
+        <button type="button" className="open-team-button" onClick={() => onOpenTeam(team.rosterId)}>Open full team page <ChevronRight size={16} /></button>
       </div>
     </aside>
   )
@@ -180,29 +187,27 @@ export function RankingsView({
   teams,
   mode,
   setMode,
-  selectedId,
-  setSelectedId,
   leagueContext,
   myRosterId,
   rosterPositions,
   onOpenPlayer,
+  onOpenTeam,
 }: {
   teams: Team[]
   mode: RankingMode
   setMode: (mode: RankingMode) => void
-  selectedId: number
-  setSelectedId: (id: number) => void
   leagueContext: LeagueContext
   myRosterId: number
   rosterPositions: string[]
   onOpenPlayer: (playerId: string) => void
+  onOpenTeam: (rosterId: number) => void
 }) {
   const sorted = useMemo(
     () => [...teams].sort((a, b) => b.metrics[mode] - a.metrics[mode]),
     [mode, teams],
   )
   const comparisons = useMemo(() => buildTeamRankComparisons(teams), [teams])
-  const selectedTeam = teams.find((team) => team.rosterId === selectedId) ?? sorted[0]
+  const myTeam = teams.find((team) => team.rosterId === myRosterId) ?? sorted[0]
   const lineupLeader = [...teams].sort((a, b) => b.metrics.contender - a.metrics.contender)[0]
   const coreLeader = [...teams].sort((a, b) => b.metrics.core - a.metrics.core)[0]
   const pickLeader = [...teams].sort((a, b) => b.metrics.picks - a.metrics.picks)[0]
@@ -215,7 +220,7 @@ export function RankingsView({
           <span className="eyebrow accent-eyebrow">Home · league overview</span>
           <h1>Compare the league.<br />Without a mystery score.</h1>
           <p>{mode === 'contender' ? `${modeCopy[mode].description} ${leagueContext.labels.projection}.` : modeCopy[mode].description}</p>
-          <a className="browse-players-cta" href="#team-player-roster">Browse my players <ChevronRight size={15} /></a>
+          <button type="button" className="browse-players-cta" onClick={() => onOpenTeam(myTeam.rosterId)}>Open my team <ChevronRight size={15} /></button>
         </div>
         <div className="mode-switch" role="group" aria-label="Ranking model">
           {(Object.keys(modeCopy) as RankingMode[]).map((item) => (
@@ -256,10 +261,10 @@ export function RankingsView({
           teams={sorted}
           mode={mode}
           comparisons={comparisons}
-          selectedId={selectedTeam.rosterId}
-          onSelect={setSelectedId}
+          myRosterId={myTeam.rosterId}
+          onOpenTeam={onOpenTeam}
         />
-        <TeamScout team={selectedTeam} teams={teams} onOpenPlayer={onOpenPlayer} />
+        <TeamPreview team={myTeam} teams={teams} onOpenPlayer={onOpenPlayer} onOpenTeam={onOpenTeam} />
       </section>
     </main>
   )

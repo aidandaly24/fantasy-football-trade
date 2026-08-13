@@ -14,6 +14,7 @@ import type {
   MarketTapeAssetInput,
   MarketTapeRequest,
   MarketTapeSummary,
+  TeamMarketHistoryPoint,
 } from '../src/types'
 import type { D1Database, D1PreparedStatement } from './user-store'
 
@@ -331,13 +332,46 @@ type ConfigRow = {
   last_auto_refresh_at: string | null; last_auto_refresh_error: string | null
 }
 type ReportRow = { report_json: string }
+type TeamMarketHistoryRow = {
+  snapshot_date: string
+  owner_roster_id: number
+  total_value: number
+  player_value: number
+  pick_value: number
+  asset_count: number
+}
+
+export async function readTeamMarketHistory(
+  db: D1Database,
+  userId: string,
+  leagueId: string,
+): Promise<TeamMarketHistoryPoint[]> {
+  const rows = await db.prepare(`SELECT snapshot_date, owner_roster_id,
+SUM(current_value) AS total_value,
+SUM(CASE WHEN kind='player' THEN current_value ELSE 0 END) AS player_value,
+SUM(CASE WHEN kind='pick' THEN current_value ELSE 0 END) AS pick_value,
+COUNT(*) AS asset_count
+FROM market_value_snapshots
+WHERE user_id=? AND league_id=?
+GROUP BY snapshot_date, owner_roster_id
+ORDER BY snapshot_date ASC, owner_roster_id ASC
+LIMIT 10000`).bind(userId, leagueId).all<TeamMarketHistoryRow>()
+  return rows.results.map((row) => ({
+    snapshotDate: row.snapshot_date,
+    rosterId: Number(row.owner_roster_id),
+    totalValue: Number(row.total_value),
+    playerValue: Number(row.player_value),
+    pickValue: Number(row.pick_value),
+    assetCount: Number(row.asset_count),
+  }))
+}
 
 export async function readEdgeLearningState(
   db: D1Database,
   userId: string,
   leagueId: string,
-): Promise<Pick<EdgeStateBundle, 'marketTape' | 'calibration' | 'shadowModel' | 'shadowPredictions'>> {
-  const [summary, config, reportRow, snapshots] = await Promise.all([
+): Promise<Pick<EdgeStateBundle, 'marketTape' | 'teamMarketHistory' | 'calibration' | 'shadowModel' | 'shadowPredictions'>> {
+  const [summary, config, reportRow, snapshots, teamMarketHistory] = await Promise.all([
     db.prepare(`SELECT COUNT(*) AS snapshot_count, COUNT(DISTINCT asset_id) AS asset_count,
 MIN(captured_at) AS first_at, MAX(captured_at) AS last_at
 FROM market_value_snapshots WHERE user_id=? AND league_id=?`).bind(userId, leagueId).first<SummaryRow>(),
@@ -346,6 +380,7 @@ WHERE user_id=? AND league_id=?`).bind(userId, leagueId).first<ConfigRow>(),
     db.prepare(`SELECT report_json FROM edge_model_runs WHERE user_id=? AND league_id=?
 ORDER BY trained_at DESC LIMIT 1`).bind(userId, leagueId).first<ReportRow>(),
     readLatestSnapshots(db, userId, leagueId),
+    readTeamMarketHistory(db, userId, leagueId),
   ])
   const stored = reportRow
     ? parseJson<StoredReport>(reportRow.report_json, { health: emptyShadowHealth(), calibration: [], artifact: null })
@@ -364,6 +399,7 @@ ORDER BY trained_at DESC LIMIT 1`).bind(userId, leagueId).first<ReportRow>(),
   }
   return {
     marketTape,
+    teamMarketHistory,
     calibration: stored.calibration,
     shadowModel: stored.health,
     shadowPredictions: shadowPredictions(stored.artifact, stored.health, snapshots),
@@ -478,13 +514,14 @@ WHERE user_id=? AND league_id=?`).bind(
   }
 }
 
-export function emptyLearningState(): Pick<EdgeStateBundle, 'marketTape' | 'calibration' | 'shadowModel' | 'shadowPredictions'> {
+export function emptyLearningState(): Pick<EdgeStateBundle, 'marketTape' | 'teamMarketHistory' | 'calibration' | 'shadowModel' | 'shadowPredictions'> {
   return {
     marketTape: {
       snapshotCount: 0, assetsTracked: 0, firstSnapshotAt: null, lastSnapshotAt: null,
       spanDays: 0, labeledExamples: 0, lastAutomaticRefreshAt: null,
       automaticRefreshError: null,
     },
+    teamMarketHistory: [],
     calibration: [] as EdgeCalibrationGroup[],
     shadowModel: emptyShadowHealth(),
     shadowPredictions: [] as EdgeShadowPrediction[],

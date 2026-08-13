@@ -29,7 +29,10 @@ export function parsePlayerAddress(search: string): PlayerAddress | null {
 export function playerAddress(search: string, leagueId: string, playerId: string | null): string {
   const query = new URLSearchParams(search)
   query.set('league', leagueId)
-  if (playerId) query.set('player', playerId)
+  if (playerId) {
+    query.set('player', playerId)
+    query.delete('team')
+  }
   else query.delete('player')
   const encoded = query.toString()
   return encoded ? `?${encoded}` : ''

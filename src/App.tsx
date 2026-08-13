@@ -13,6 +13,7 @@ import type { ManagerProfile } from './negotiation'
 import { buildPlayerResearchProfile, parsePlayerAddress, playerAddress } from './player-research'
 import { buildTeams } from './rankings'
 import { resolveTeamStrategy } from './strategy'
+import { parseTeamAddress, teamAddress } from './team-research'
 import type { RookieBoardBundle } from './rookies'
 import type { TradeModelHealthBundle } from './trade-models'
 import type { CurrentSeasonValueBundle, EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, PlayerProjection, ProjectionBundle, RankingMode, Team, UserState, ValueBundle } from './types'
@@ -24,6 +25,7 @@ import { RankingsView } from './views/RankingsView'
 import { RookieBoardView } from './views/RookieBoardView'
 import { TradeJournalView } from './views/TradeJournalView'
 import { TradeView } from './views/TradeView'
+import { TeamResearchView } from './views/TeamResearchView'
 import type { TradeDraft } from './views/types'
 
 const DEFAULT_LEAGUE_ID: SupportedLeagueId = SUPPORTED_LEAGUES[0].id
@@ -68,7 +70,7 @@ type LeagueLoadPrefetch = {
   preferences?: LeaguePreferences
 }
 
-type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model' | 'player'
+type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model' | 'player' | 'team'
 
 const STARTUP_WORKSPACES: Record<View, { eyebrow: string; title: string; description: string; status: string }> = {
   rankings: {
@@ -118,6 +120,12 @@ const STARTUP_WORKSPACES: Record<View, { eyebrow: string; title: string; descrip
     title: 'One player. Every honest evidence lane.',
     description: 'The player dossier is open. Current ownership, market, production, and forward evidence are filling in now.',
     status: 'Refreshing player evidence…',
+  },
+  team: {
+    eyebrow: 'Team research',
+    title: 'One roster. Every market-value lane.',
+    description: 'The team page is open. Current assets and observed portfolio history are filling in now.',
+    status: 'Refreshing team evidence…',
   },
 }
 
@@ -184,7 +192,7 @@ function AppHeader({
           <span><strong>Roster</strong>Lab</span>
         </button>
         <nav aria-label="Primary navigation">
-          <button type="button" className={view === 'rankings' ? 'active' : ''} onClick={() => setView('rankings')}>
+          <button type="button" className={view === 'rankings' || view === 'team' ? 'active' : ''} onClick={() => setView('rankings')}>
             <BarChart3 size={17} /> <span>Home</span>
           </button>
           <button type="button" className={view === 'trade' ? 'active' : ''} onClick={() => setView('trade')}>
@@ -341,17 +349,19 @@ function ErrorState({ message, onRetry, loading }: {
 
 function App() {
   const initialPlayerAddress = typeof window === 'undefined' ? null : parsePlayerAddress(window.location.search)
-  const [view, setView] = useState<View>(initialPlayerAddress ? 'player' : 'rankings')
+  const initialTeamAddress = typeof window === 'undefined' ? null : parseTeamAddress(window.location.search)
+  const initialDetailAddress = initialPlayerAddress ?? initialTeamAddress
+  const [view, setView] = useState<View>(initialPlayerAddress ? 'player' : initialTeamAddress ? 'team' : 'rankings')
   const [mode, setMode] = useState<RankingMode>('overall')
-  const [leagueId, setLeagueId] = useState<SupportedLeagueId>((initialPlayerAddress?.leagueId as SupportedLeagueId | undefined) ?? DEFAULT_LEAGUE_ID)
+  const [leagueId, setLeagueId] = useState<SupportedLeagueId>((initialDetailAddress?.leagueId as SupportedLeagueId | undefined) ?? DEFAULT_LEAGUE_ID)
   const [data, setData] = useState<AppData | null>(null)
-  const [selectedId, setSelectedId] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [journalSyncing, setJournalSyncing] = useState(false)
   const [userState, setUserState] = useState<UserState | null>(null)
   const [tradeDraft, setTradeDraft] = useState<TradeDraft | null>(null)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(initialPlayerAddress?.playerId ?? null)
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(initialTeamAddress?.rosterId ?? null)
   const initialLoad = useRef(false)
   const secondaryLoads = useRef(new Set<string>())
   const playerOrigin = useRef<View>('rankings')
@@ -391,7 +401,6 @@ function App() {
     })
     setMode(cached.preferences.settings.rankingMode ?? 'overall')
     setLeagueId(context.id)
-    setSelectedId(cached.preferences.myRosterId ?? teams[0]?.rosterId ?? 1)
     setTradeDraft(null)
   }
 
@@ -473,7 +482,6 @@ function App() {
       setMode(basePreference.settings.rankingMode ?? 'overall')
       setLeagueId(id)
       try { window.localStorage.setItem(LAST_LEAGUE_KEY, id) } catch { /* Device storage is an optional acceleration only. */ }
-      setSelectedId(initialTeam?.rosterId ?? teams[0]?.rosterId ?? 1)
       setTradeDraft(null)
       writeCachedLeagueCore(id, { leagueBundle, valueBundle, currentSeasonValueBundle, projectionBundle, preferences: basePreference })
 
@@ -507,7 +515,7 @@ function App() {
       } catch {
         // Hosted preferences remain the source of truth when device storage is unavailable.
       }
-      const addressedLeague = parsePlayerAddress(window.location.search)?.leagueId
+      const addressedLeague = parsePlayerAddress(window.location.search)?.leagueId ?? parseTeamAddress(window.location.search)?.leagueId
       const initialLeague = (isSupportedLeagueId(addressedLeague) ? addressedLeague : null) ?? localLeague ?? DEFAULT_LEAGUE_ID
       const cached = readCachedLeagueCore(initialLeague)
       if (cached) showCachedLeague(cached)
@@ -520,7 +528,9 @@ function App() {
       const state = await statePromise
       setUserState(state)
       const savedLeagueId = state?.preferences.find((item) => isSupportedLeagueId(item.leagueId))?.leagueId
-      const savedLeague = localLeague ?? (isSupportedLeagueId(savedLeagueId) ? savedLeagueId : initialLeague)
+      const savedLeague = initialDetailAddress
+        ? initialLeague
+        : localLeague ?? (isSupportedLeagueId(savedLeagueId) ? savedLeagueId : initialLeague)
       await loadLeague(savedLeague, state, savedLeague === initialLeague
         ? { league: leaguePromise, values: valuePromise, currentSeasonValues: currentSeasonValuePromise, projections: projectionPromise, preferences: cached?.preferences }
         : {})
@@ -693,6 +703,8 @@ function App() {
   const selectLeague = (nextLeagueId: SupportedLeagueId) => {
     if (selectedPlayerId) {
       window.history.replaceState(null, '', playerAddress(window.location.search, nextLeagueId, selectedPlayerId))
+    } else if (selectedTeamId) {
+      window.history.replaceState(null, '', teamAddress(window.location.search, nextLeagueId, selectedTeamId))
     }
     const cached = readCachedLeagueCore(nextLeagueId)
     if (cached) showCachedLeague(cached)
@@ -700,18 +712,20 @@ function App() {
   }
 
   const openTradeDraft = (draft: Omit<TradeDraft, 'nonce'>) => {
-    if (selectedPlayerId) {
+    if (selectedPlayerId || selectedTeamId) {
       setSelectedPlayerId(null)
-      window.history.pushState(null, '', playerAddress(window.location.search, leagueId, null))
+      setSelectedTeamId(null)
+      window.history.pushState(null, '', teamAddress(window.location.search, leagueId, null))
     }
     setTradeDraft({ ...draft, nonce: Date.now() })
     setView('trade')
   }
 
   const navigateWorkspace = (nextView: View) => {
-    if (nextView !== 'player' && selectedPlayerId) {
+    if (nextView !== 'player' && nextView !== 'team' && (selectedPlayerId || selectedTeamId)) {
       setSelectedPlayerId(null)
-      window.history.pushState(null, '', playerAddress(window.location.search, leagueId, null))
+      setSelectedTeamId(null)
+      window.history.pushState(null, '', teamAddress(window.location.search, leagueId, null))
     }
     setView(nextView)
   }
@@ -725,23 +739,48 @@ function App() {
 
   const closePlayer = () => {
     setSelectedPlayerId(null)
-    setView(playerOrigin.current === 'player' ? 'rankings' : playerOrigin.current)
-    window.history.pushState(null, '', playerAddress(window.location.search, leagueId, null))
+    const destination = playerOrigin.current === 'player' ? 'rankings' : playerOrigin.current
+    setView(destination)
+    window.history.pushState(null, '', destination === 'team' && selectedTeamId
+      ? teamAddress(window.location.search, leagueId, selectedTeamId)
+      : teamAddress(window.location.search, leagueId, null))
+  }
+
+  const openTeam = (rosterId: number) => {
+    setSelectedPlayerId(null)
+    setSelectedTeamId(rosterId)
+    setView('team')
+    window.history.pushState(null, '', teamAddress(window.location.search, leagueId, rosterId))
+  }
+
+  const closeTeam = () => {
+    setSelectedTeamId(null)
+    setView('rankings')
+    window.history.pushState(null, '', teamAddress(window.location.search, leagueId, null))
   }
 
   useEffect(() => {
     const restoreAddress = () => {
-      const address = parsePlayerAddress(window.location.search)
-      if (!address) {
-        if (view === 'player') {
+      const playerRoute = parsePlayerAddress(window.location.search)
+      const teamRoute = parseTeamAddress(window.location.search)
+      if (!playerRoute && !teamRoute) {
+        if (view === 'player' || view === 'team') {
           setSelectedPlayerId(null)
-          setView(playerOrigin.current === 'player' ? 'rankings' : playerOrigin.current)
+          setSelectedTeamId(null)
+          setView('rankings')
         }
         return
       }
-      setSelectedPlayerId(address.playerId)
-      setView('player')
-      if (address.leagueId !== leagueId) void loadLeague(address.leagueId as SupportedLeagueId, userState)
+      if (playerRoute) {
+        setSelectedPlayerId(playerRoute.playerId)
+        setView('player')
+        if (playerRoute.leagueId !== leagueId) void loadLeague(playerRoute.leagueId as SupportedLeagueId, userState)
+        return
+      }
+      setSelectedPlayerId(null)
+      setSelectedTeamId(teamRoute!.rosterId)
+      setView('team')
+      if (teamRoute!.leagueId !== leagueId) void loadLeague(teamRoute!.leagueId as SupportedLeagueId, userState)
     }
     window.addEventListener('popstate', restoreAddress)
     return () => window.removeEventListener('popstate', restoreAddress)
@@ -788,16 +827,19 @@ function App() {
                 setMode(nextMode)
                 updatePreferences({ settings: { rankingMode: nextMode } })
               }}
-              selectedId={selectedId}
-              setSelectedId={setSelectedId}
               leagueContext={data.leagueContext}
               myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId}
               rosterPositions={data.leagueBundle.league.roster_positions}
               onOpenPlayer={openPlayer}
+              onOpenTeam={openTeam}
             />
           ) : (
             <>
-              {view === 'player' ? (() => {
+              {view === 'team' ? (() => {
+                const team = selectedTeamId ? data.teams.find((candidate) => candidate.rosterId === selectedTeamId) : null
+                if (!team) return <main className="page-shell"><section className="error-card panel"><span className="eyebrow">Team unavailable</span><h1>This roster is not present in {data.leagueContext.label}.</h1><p>The copied address may be stale, or the roster ID may belong only to the other league.</p><button type="button" onClick={closeTeam}>Back to Home</button></section></main>
+                return <TeamResearchView key={`${data.leagueContext.id}:${team.rosterId}`} team={team} teams={data.teams} leagueContext={data.leagueContext} onBack={closeTeam} onOpenPlayer={openPlayer} />
+              })() : view === 'player' ? (() => {
                 const myRosterId = data.preferences.myRosterId ?? data.teams[0].rosterId
                 const profile = selectedPlayerId ? buildPlayerResearchProfile({
                   playerId: selectedPlayerId,
@@ -816,6 +858,7 @@ function App() {
                   horizonYears={strategy.horizonYears}
                   watchlisted={data.preferences.watchlist.includes(profile.asset.id)}
                   onBack={closePlayer}
+                  backLabel={playerOrigin.current === 'team' ? `Back to ${profile.owner.teamName}` : 'Back to Home'}
                   onToggleWatchlist={() => updatePreferences({ watchlist: data.preferences.watchlist.includes(profile.asset.id) ? data.preferences.watchlist.filter((id) => id !== profile.asset.id) : [...data.preferences.watchlist, profile.asset.id] })}
                   onOpenTrade={() => {
                     const ownerIsMe = profile.owner.rosterId === profile.myTeam.rosterId

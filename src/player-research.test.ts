@@ -35,7 +35,8 @@ describe('player research profile', () => {
   })
 
   it('round-trips only supported league and player addresses', () => {
-    const search = playerAddress('', '1336087922847289344', '7')
+    const search = playerAddress('?team=2', '1336087922847289344', '7')
+    expect(search).toBe('?league=1336087922847289344&player=7')
     expect(parsePlayerAddress(search)).toEqual({ leagueId: '1336087922847289344', playerId: '7' })
     expect(parsePlayerAddress('?league=unsupported&player=7')).toBeNull()
     expect(parsePlayerAddress('?league=1336087922847289344')).toBeNull()

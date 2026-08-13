@@ -716,8 +716,18 @@ export type HistoricalTapeAudit = {
 
 export type EdgeStateBundle = {
   marketTape: MarketTapeSummary
+  teamMarketHistory: TeamMarketHistoryPoint[]
   calibration: EdgeCalibrationGroup[]
   shadowModel: EdgeShadowModelHealth
   shadowPredictions: EdgeShadowPrediction[]
   historicalTape: HistoricalTapeAudit
+}
+
+export type TeamMarketHistoryPoint = {
+  snapshotDate: string
+  rosterId: number
+  totalValue: number
+  playerValue: number
+  pickValue: number
+  assetCount: number
 }
