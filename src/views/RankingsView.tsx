@@ -100,9 +100,9 @@ function RankingBoard({
   )
 }
 
-function TeamScout({ team, teams }: { team: Team; teams: Team[] }) {
+function TeamScout({ team, teams, onOpenPlayer }: { team: Team; teams: Team[]; onOpenPlayer: (playerId: string) => void }) {
   const profile = rosterProfile(team, teams)
-  const topAssets = [...team.players, ...team.picks].sort((a, b) => b.value - a.value).slice(0, 6)
+  const rosterAssets = [...team.players, ...team.picks].sort((a, b) => b.value - a.value)
   const comparison = buildTeamRankComparisons(teams).get(team.rosterId) ?? {
     marketRank: teams.length,
     powerRank: teams.length,
@@ -144,13 +144,13 @@ function TeamScout({ team, teams }: { team: Team; teams: Team[] }) {
         <div className="section-title-row">
           <div>
             <span className="eyebrow">Asset board</span>
-            <h3>Most valuable pieces</h3>
+            <h3>Full roster · tap a player</h3>
           </div>
           <span className="asset-count">{team.players.length + team.picks.length} assets</span>
         </div>
         <div className="asset-stack">
-          {topAssets.map((asset, index) => (
-            <div className="scout-asset" key={asset.id}>
+          {rosterAssets.map((asset, index) => {
+            const content = <>
               <span className="asset-index">{index + 1}</span>
               <AssetBadge position={asset.position} />
               <span className="asset-main">
@@ -164,8 +164,12 @@ function TeamScout({ team, teams }: { team: Team; teams: Team[] }) {
                 </small>
               </span>
               <b className="asset-value">{formatValue(asset.value)}</b>
-            </div>
-          ))}
+              {asset.kind === 'player' && <ChevronRight size={16} aria-hidden="true" />}
+            </>
+            return asset.kind === 'player'
+              ? <button type="button" className="scout-asset scout-player-link" key={asset.id} onClick={() => onOpenPlayer(asset.id)} aria-label={`Research ${asset.name}`}>{content}</button>
+              : <div className="scout-asset" key={asset.id}>{content}</div>
+          })}
         </div>
       </div>
     </aside>
@@ -181,6 +185,7 @@ export function RankingsView({
   leagueContext,
   myRosterId,
   rosterPositions,
+  onOpenPlayer,
 }: {
   teams: Team[]
   mode: RankingMode
@@ -190,6 +195,7 @@ export function RankingsView({
   leagueContext: LeagueContext
   myRosterId: number
   rosterPositions: string[]
+  onOpenPlayer: (playerId: string) => void
 }) {
   const sorted = useMemo(
     () => [...teams].sort((a, b) => b.metrics[mode] - a.metrics[mode]),
@@ -252,7 +258,7 @@ export function RankingsView({
           selectedId={selectedTeam.rosterId}
           onSelect={setSelectedId}
         />
-        <TeamScout team={selectedTeam} teams={teams} />
+        <TeamScout team={selectedTeam} teams={teams} onOpenPlayer={onOpenPlayer} />
       </section>
     </main>
   )

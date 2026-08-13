@@ -9,6 +9,7 @@ import { isSupportedLeagueId, leagueContext, projectionForLeague, SUPPORTED_LEAG
 import type { LeagueContext, SupportedLeagueId } from './league-context'
 import { buildManagerProfiles } from './negotiation'
 import type { ManagerProfile } from './negotiation'
+import { buildPlayerResearchProfile, parsePlayerAddress, playerAddress } from './player-research'
 import { buildTeams } from './rankings'
 import { resolveTeamStrategy } from './strategy'
 import type { RookieBoardBundle } from './rookies'
@@ -17,6 +18,7 @@ import type { CurrentSeasonValueBundle, EventModelHealthBundle, JournalBundle, L
 import { EdgeView } from './views/EdgeView'
 import { IntelView } from './views/IntelView'
 import { ModelView } from './views/ModelView'
+import { PlayerResearchView } from './views/PlayerResearchView'
 import { RankingsView } from './views/RankingsView'
 import { RookieBoardView } from './views/RookieBoardView'
 import { TradeJournalView } from './views/TradeJournalView'
@@ -65,7 +67,7 @@ type LeagueLoadPrefetch = {
   preferences?: LeaguePreferences
 }
 
-type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model'
+type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model' | 'player'
 
 const STARTUP_WORKSPACES: Record<View, { eyebrow: string; title: string; description: string; status: string }> = {
   rankings: {
@@ -109,6 +111,12 @@ const STARTUP_WORKSPACES: Record<View, { eyebrow: string; title: string; descrip
     title: 'Trust is earned one gate at a time.',
     description: 'The model audit is open. Promotion and calibration results are filling in now.',
     status: 'Refreshing model health…',
+  },
+  player: {
+    eyebrow: 'Player research',
+    title: 'One player. Every honest evidence lane.',
+    description: 'The player dossier is open. Current ownership, market, production, and forward evidence are filling in now.',
+    status: 'Refreshing player evidence…',
   },
 }
 
@@ -327,9 +335,10 @@ function ErrorState({ message, onRetry, loading }: {
 }
 
 function App() {
-  const [view, setView] = useState<View>('rankings')
+  const initialPlayerAddress = typeof window === 'undefined' ? null : parsePlayerAddress(window.location.search)
+  const [view, setView] = useState<View>(initialPlayerAddress ? 'player' : 'rankings')
   const [mode, setMode] = useState<RankingMode>('overall')
-  const [leagueId, setLeagueId] = useState<SupportedLeagueId>(DEFAULT_LEAGUE_ID)
+  const [leagueId, setLeagueId] = useState<SupportedLeagueId>((initialPlayerAddress?.leagueId as SupportedLeagueId | undefined) ?? DEFAULT_LEAGUE_ID)
   const [data, setData] = useState<AppData | null>(null)
   const [selectedId, setSelectedId] = useState(1)
   const [loading, setLoading] = useState(true)
@@ -337,8 +346,10 @@ function App() {
   const [journalSyncing, setJournalSyncing] = useState(false)
   const [userState, setUserState] = useState<UserState | null>(null)
   const [tradeDraft, setTradeDraft] = useState<TradeDraft | null>(null)
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(initialPlayerAddress?.playerId ?? null)
   const initialLoad = useRef(false)
   const secondaryLoads = useRef(new Set<string>())
+  const playerOrigin = useRef<View>('rankings')
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' })
@@ -491,7 +502,8 @@ function App() {
       } catch {
         // Hosted preferences remain the source of truth when device storage is unavailable.
       }
-      const initialLeague = localLeague ?? DEFAULT_LEAGUE_ID
+      const addressedLeague = parsePlayerAddress(window.location.search)?.leagueId
+      const initialLeague = (isSupportedLeagueId(addressedLeague) ? addressedLeague : null) ?? localLeague ?? DEFAULT_LEAGUE_ID
       const cached = readCachedLeagueCore(initialLeague)
       if (cached) showCachedLeague(cached)
       const preset = SUPPORTED_LEAGUES.find((item) => item.id === initialLeague)!
@@ -593,7 +605,7 @@ function App() {
           : current)
       })
     }
-    if ((view === 'trade' || view === 'strategy' || view === 'model') && data.assetReturnHealth === undefined) {
+    if ((view === 'trade' || view === 'strategy' || view === 'model' || view === 'player') && data.assetReturnHealth === undefined) {
       startOnce('asset-returns', async () => {
         const assetReturnHealth = await fetchAssetReturnHealth()
         setData((current) => current?.leagueBundle.league.league_id === activeLeagueId
@@ -674,15 +686,61 @@ function App() {
   }
 
   const selectLeague = (nextLeagueId: SupportedLeagueId) => {
+    if (selectedPlayerId) {
+      window.history.replaceState(null, '', playerAddress(window.location.search, nextLeagueId, selectedPlayerId))
+    }
     const cached = readCachedLeagueCore(nextLeagueId)
     if (cached) showCachedLeague(cached)
     void loadLeague(nextLeagueId, userState, { preferences: cached?.preferences })
   }
 
   const openTradeDraft = (draft: Omit<TradeDraft, 'nonce'>) => {
+    if (selectedPlayerId) {
+      setSelectedPlayerId(null)
+      window.history.pushState(null, '', playerAddress(window.location.search, leagueId, null))
+    }
     setTradeDraft({ ...draft, nonce: Date.now() })
     setView('trade')
   }
+
+  const navigateWorkspace = (nextView: View) => {
+    if (nextView !== 'player' && selectedPlayerId) {
+      setSelectedPlayerId(null)
+      window.history.pushState(null, '', playerAddress(window.location.search, leagueId, null))
+    }
+    setView(nextView)
+  }
+
+  const openPlayer = (playerId: string) => {
+    if (view !== 'player') playerOrigin.current = view
+    setSelectedPlayerId(playerId)
+    setView('player')
+    window.history.pushState(null, '', playerAddress(window.location.search, leagueId, playerId))
+  }
+
+  const closePlayer = () => {
+    setSelectedPlayerId(null)
+    setView(playerOrigin.current === 'player' ? 'rankings' : playerOrigin.current)
+    window.history.pushState(null, '', playerAddress(window.location.search, leagueId, null))
+  }
+
+  useEffect(() => {
+    const restoreAddress = () => {
+      const address = parsePlayerAddress(window.location.search)
+      if (!address) {
+        if (view === 'player') {
+          setSelectedPlayerId(null)
+          setView(playerOrigin.current === 'player' ? 'rankings' : playerOrigin.current)
+        }
+        return
+      }
+      setSelectedPlayerId(address.playerId)
+      setView('player')
+      if (address.leagueId !== leagueId) void loadLeague(address.leagueId as SupportedLeagueId, userState)
+    }
+    window.addEventListener('popstate', restoreAddress)
+    return () => window.removeEventListener('popstate', restoreAddress)
+  }, [leagueId, userState, view])
 
   const refreshJournal = async () => {
     if (!data || journalSyncing) return
@@ -707,7 +765,7 @@ function App() {
     <div className="app">
       <AppHeader
         view={view}
-        setView={setView}
+        setView={navigateWorkspace}
       />
       {data && <LeagueRibbon data={data} loading={loading} onSelectLeague={selectLeague} />}
       {loading && !data ? (
@@ -730,10 +788,43 @@ function App() {
               leagueContext={data.leagueContext}
               myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId}
               rosterPositions={data.leagueBundle.league.roster_positions}
+              onOpenPlayer={openPlayer}
             />
           ) : (
             <>
-              {view === 'trade' ? (
+              {view === 'player' ? (() => {
+                const myRosterId = data.preferences.myRosterId ?? data.teams[0].rosterId
+                const profile = selectedPlayerId ? buildPlayerResearchProfile({
+                  playerId: selectedPlayerId,
+                  teams: data.teams,
+                  myRosterId,
+                  projection: data.playerProjections.get(selectedPlayerId),
+                  marketAsOf: data.valueBundle.meta.generatedAt,
+                }) : null
+                if (!profile) return <main className="page-shell"><section className="error-card panel"><span className="eyebrow">Player unavailable</span><h1>This player is not rostered in {data.leagueContext.label}.</h1><p>The copied address may be stale, or the player may be rostered only in the other league.</p><button type="button" onClick={closePlayer}>Back to league facts</button></section></main>
+                const strategy = resolveTeamStrategy(profile.myTeam, data.preferences.settings.teamStrategy)
+                return <PlayerResearchView
+                  key={`${data.leagueContext.id}:${profile.asset.id}`}
+                  profile={profile}
+                  leagueContext={data.leagueContext}
+                  assetReturnHealth={data.assetReturnHealth ?? null}
+                  horizonYears={strategy.horizonYears}
+                  watchlisted={data.preferences.watchlist.includes(profile.asset.id)}
+                  onBack={closePlayer}
+                  onToggleWatchlist={() => updatePreferences({ watchlist: data.preferences.watchlist.includes(profile.asset.id) ? data.preferences.watchlist.filter((id) => id !== profile.asset.id) : [...data.preferences.watchlist, profile.asset.id] })}
+                  onOpenTrade={() => {
+                    const ownerIsMe = profile.owner.rosterId === profile.myTeam.rosterId
+                    const counterpart = ownerIsMe ? data.teams.find((team) => team.rosterId !== profile.myTeam.rosterId) : profile.owner
+                    if (!counterpart) return
+                    openTradeDraft({
+                      teamAId: profile.myTeam.rosterId,
+                      teamBId: counterpart.rosterId,
+                      selectedA: ownerIsMe ? [profile.asset.id] : [],
+                      selectedB: ownerIsMe ? [] : [profile.asset.id],
+                    })
+                  }}
+                />
+              })() : view === 'trade' ? (
                 <TradeView
                   key={`trade-${data.leagueBundle.league.league_id}-${tradeDraft?.nonce ?? 'manual'}`}
                   teams={data.teams}

@@ -1,7 +1,12 @@
 # Player research screen
 
-**Status:** Design proposal. No player route or screen described here should be
-treated as implemented until its version-specific acceptance criteria pass.
+**Status:** Core dossier and navigation implemented on August 13, 2026. Every
+rostered player is reachable from the selected team’s full League Facts roster,
+and a restorable `league`/`player` query opens the league-scoped dossier. The
+screen currently contains ownership, current market, covered production,
+exact-horizon asset-return state, owner position depth, watchlist, and Trade Lab
+handoff. News, completed player trades, broad package-frontier composition, and
+the D1 observed tape remain later work and must not be described as present.
 
 ## Executive judgment
 
@@ -170,7 +175,7 @@ a parallel copy of league data.
 
 ## Delivery plan
 
-### V7.2 — current player dossier
+### V7.2a — core current player dossier (implemented)
 
 Build the navigable screen entirely from current loaded evidence.
 
@@ -191,6 +196,15 @@ Acceptance criteria:
 - No return, profit, acceptance, hold-period, decay, or certainty score appears.
 - A 375-pixel-wide viewport has no horizontal page overflow and all primary
   actions remain usable by touch.
+
+Implementation note: the first shipped slice satisfies roster reachability,
+league/player URL restoration, league-scoped current ownership, separately
+labeled market sources, production missingness, exact-horizon return
+missingness, watchlist mutation, Trade Lab prefill, and phone layout. Manager
+trade samples, linked news, completed player trades, and generated package
+frontiers were deliberately left for V7.2b because they require loading and
+joining additional view-owned evidence. Their absence is visible rather than
+filled with a synthetic summary.
 
 Verification: unit-test the pure profile builder, test URL parsing/restoration
 and cross-league not-found behavior, test explicit missing states, and run the
@@ -257,8 +271,9 @@ into a letter grade, “fleece” score, unvalidated profit, or acceptance odds.
 
 ### Now
 
-Ship V7.2 and answer the riskiest current product question: does consolidating
-real evidence make player and negotiation analysis materially faster?
+Use V7.2a for real evaluations and answer the riskiest current product question:
+does consolidating the already-loaded evidence make player and negotiation
+analysis materially faster?
 
 **Gate:** use the screen for at least five real player evaluations across both
 leagues and record which facts were still gathered outside RosterLab.
