@@ -12,6 +12,7 @@ const team = (rosterId: number): Team => ({
   metrics: {} as Team['metrics'],
 })
 const context = {
+  leagueType: 'dynasty',
   marketFormat: { numTeams: 12, numQbs: 2, tep: true },
   scoring: { receptionPpr: 1, tePremiumPerReception: 0.75 },
   roster: { skillStartingSlots: 10 },

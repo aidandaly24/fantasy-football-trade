@@ -15,6 +15,7 @@ import type {
   PickValue,
   ProjectionBundle,
   SleeperDraft,
+  SleeperDraftPick,
   SleeperPlayer,
   SleeperRoster,
   TradyrPlayer,
@@ -64,16 +65,19 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 export async function fetchLeagueBundle(leagueId: string): Promise<LeagueBundle> {
   const league = await fetchJson<League>(`${SLEEPER_BASE}/league/${leagueId}`)
 
-  const [rosters, users, tradedPicks, draft] = await Promise.all([
+  const [rosters, users, tradedPicks, draft, draftPicks] = await Promise.all([
     fetchJson<SleeperRoster[]>(`${SLEEPER_BASE}/league/${leagueId}/rosters`),
     fetchJson<LeagueUser[]>(`${SLEEPER_BASE}/league/${leagueId}/users`),
     fetchJson<TradedPick[]>(`${SLEEPER_BASE}/league/${leagueId}/traded_picks`),
     league.draft_id
       ? fetchJson<SleeperDraft>(`${SLEEPER_BASE}/draft/${league.draft_id}`).catch(() => null)
       : Promise.resolve(null),
+    league.draft_id
+      ? fetchJson<SleeperDraftPick[]>(`${SLEEPER_BASE}/draft/${league.draft_id}/picks`).catch(() => [])
+      : Promise.resolve([]),
   ])
 
-  return { league, rosters, users, tradedPicks, draft }
+  return { league, rosters, users, tradedPicks, draft, draftPicks }
 }
 
 type TradyrResponse<T> = { data: T; meta: ApiMeta }
@@ -130,6 +134,17 @@ export async function fetchCurrentSeasonValues(options: {
     })
   currentSeasonValueRequests.set(cacheKey, request)
   return request
+}
+
+/** Redraft workspaces use the current-season market lane as their primary
+ * value bundle. Dynasty players and rookie-pick values never enter this lane. */
+export async function fetchRedraftValues(options: {
+  numQbs: 1 | 2
+  tep: boolean
+  numTeams: number
+}): Promise<ValueBundle> {
+  const currentSeason = await fetchCurrentSeasonValues(options)
+  return { players: currentSeason.players, picks: [], meta: currentSeason.meta }
 }
 
 export async function fetchProjections(): Promise<ProjectionBundle | null> {
