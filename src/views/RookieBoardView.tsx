@@ -25,7 +25,7 @@ function optionalPercent(value: number | null): string {
 }
 
 export function RookieBoardView({ bundle, leagueContext }: { bundle: RookieBoardBundle | null; leagueContext: LeagueContext }) {
-  const [basketOnly, setBasketOnly] = useState(true)
+  const [basketOnly, setBasketOnly] = useState(false)
   const [position, setPosition] = useState<RookiePosition | 'ALL'>('ALL')
   const [sort, setSort] = useState<RookieBoardSort>('board')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
@@ -82,7 +82,7 @@ export function RookieBoardView({ bundle, leagueContext }: { bundle: RookieBoard
 
       <section className="rookie-controls panel" aria-label="Rookie board controls">
         <div className="rookie-scope-toggle">
-          <button type="button" className={basketOnly ? 'active' : ''} aria-pressed={basketOnly} onClick={() => setBasketOnly(true)}>Sleeper basket</button>
+          <button type="button" className={basketOnly ? 'active' : ''} aria-pressed={basketOnly} onClick={() => setBasketOnly(true)}>Validated sleeper basket</button>
           <button type="button" className={!basketOnly ? 'active' : ''} aria-pressed={!basketOnly} onClick={() => setBasketOnly(false)}>Full board</button>
         </div>
         <div className="rookie-position-filter" aria-label="Position filter">
