@@ -1,14 +1,16 @@
 import type { LeagueBundle, MarketTapeLeagueContext, PlayerProjection } from './types'
 
 export const SUPPORTED_LEAGUES = [
-  { id: '1336087922847289344', label: 'BC League', marketFormat: { numQbs: 2, tep: true, numTeams: 12 } },
-  { id: '1312112570039037952', label: 'Emperor Phil', marketFormat: { numQbs: 2, tep: true, numTeams: 12 } },
+  { id: '1336087922847289344', label: 'BC League', leagueType: 'dynasty', ownerHandle: 'aidandaly20', marketFormat: { numQbs: 2, tep: true, numTeams: 12 } },
+  { id: '1312112570039037952', label: 'Emperor Phil', leagueType: 'dynasty', ownerHandle: 'aidandaly20', marketFormat: { numQbs: 2, tep: true, numTeams: 12 } },
+  { id: '1384007008004362240', label: 'Freakbull', leagueType: 'keeper-redraft', ownerHandle: 'aidandaly20', marketFormat: { numQbs: 1, tep: false, numTeams: 10 } },
 ] as const
 
 export type SupportedLeagueId = typeof SUPPORTED_LEAGUES[number]['id']
 
 export type LeagueContext = {
   id: SupportedLeagueId
+  leagueType: 'dynasty' | 'keeper-redraft'
   label: string
   leagueName: string
   contextKey: string
@@ -52,7 +54,7 @@ export function isSupportedLeagueId(value: string | null | undefined): value is 
 export function leagueContext(bundle: LeagueBundle): LeagueContext {
   const { league } = bundle
   if (!isSupportedLeagueId(league.league_id)) {
-    throw new Error('RosterLab is configured for the two private leagues in the league switcher.')
+    throw new Error('RosterLab is configured only for the private leagues in the league switcher.')
   }
   const preset = SUPPORTED_LEAGUES.find((item) => item.id === league.league_id)!
   const superflex = league.roster_positions.includes('SUPER_FLEX')
@@ -67,7 +69,10 @@ export function leagueContext(bundle: LeagueBundle): LeagueContext {
   const benchSlots = league.roster_positions.filter((slot) => slot === 'BN').length
   const taxiSlots = Number(league.settings.taxi_slots ?? 0)
   const reserveSlots = Number(league.settings.reserve_slots ?? 0)
-  const rookieDraftRounds = Number(league.settings.draft_rounds ?? 0)
+  const rookieDraftRounds = preset.leagueType === 'dynasty' ? Number(league.settings.draft_rounds ?? 0) : 0
+  const redraftRounds = preset.leagueType === 'keeper-redraft'
+    ? Number(bundle.draft?.settings?.rounds ?? league.roster_positions.length)
+    : 0
   const contextKey = [
     league.league_id,
     `${numTeams}t`,
@@ -79,10 +84,12 @@ export function leagueContext(bundle: LeagueBundle): LeagueContext {
     `taxi${taxiSlots}`,
     `ir${reserveSlots}`,
     `draft${rookieDraftRounds}`,
+    `redraft${redraftRounds}`,
   ].join(':')
 
   return {
     id: league.league_id,
+    leagueType: preset.leagueType,
     label: preset.label,
     leagueName: league.name,
     contextKey,
@@ -91,8 +98,12 @@ export function leagueContext(bundle: LeagueBundle): LeagueContext {
     roster: { startingSlots, skillStartingSlots, benchSlots, taxiSlots, reserveSlots, rookieDraftRounds },
     labels: {
       format: `${numTeams}-team ${numQbs === 2 ? 'superflex' : '1QB'} · ${receptionPpr}-PPR · +${tePremiumPerReception} TE premium`,
-      roster: `${skillStartingSlots} modeled skill starters · ${benchSlots} bench · ${taxiSlots} taxi · ${rookieDraftRounds}-round rookie draft`,
-      market: `${numQbs === 2 ? 'Superflex' : '1QB'} ${tePremiumPerReception > 0 ? 'TEP+' : 'non-TEP'} provider bucket`,
+      roster: preset.leagueType === 'keeper-redraft'
+        ? `${skillStartingSlots} skill starters · ${benchSlots} bench · ${redraftRounds}-round seasonal draft`
+        : `${skillStartingSlots} modeled skill starters · ${benchSlots} bench · ${taxiSlots} taxi · ${rookieDraftRounds}-round rookie draft`,
+      market: preset.leagueType === 'keeper-redraft'
+        ? `${numQbs === 2 ? 'Superflex' : '1QB'} current-season redraft provider bucket`
+        : `${numQbs === 2 ? 'Superflex' : '1QB'} ${tePremiumPerReception > 0 ? 'TEP+' : 'non-TEP'} provider bucket`,
       projection: `Generic PPR forecast + ${tePremiumPerReception} points per observed TE reception/team week`,
     },
   }

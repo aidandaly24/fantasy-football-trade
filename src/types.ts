@@ -12,6 +12,12 @@ export type League = {
   settings: {
     num_teams: number
     draft_rounds: number
+    max_keepers?: number
+    divisions?: number
+    playoff_teams?: number
+    playoff_week_start?: number
+    trade_deadline?: number
+    waiver_budget?: number
     taxi_slots?: number
     reserve_slots?: number
     leg?: number
@@ -23,6 +29,7 @@ export type SleeperRoster = {
   owner_id: string | null
   players: string[] | null
   starters: string[] | null
+  keepers?: string[] | null
   reserve: string[] | null
   taxi: string[] | null
 }
@@ -51,6 +58,38 @@ export type SleeperDraft = {
   status: string
   draft_order: Record<string, number> | null
   slot_to_roster_id: Record<string, number> | null
+  start_time?: number
+  type?: string
+  metadata?: {
+    name?: string
+    scoring_type?: string
+  } | null
+  settings?: {
+    rounds?: number
+    teams?: number
+    slots_qb?: number
+    slots_rb?: number
+    slots_wr?: number
+    slots_te?: number
+    slots_flex?: number
+    slots_bn?: number
+    reversal_round?: number
+  } | null
+}
+
+export type SleeperDraftPick = {
+  player_id: string
+  picked_by: string
+  roster_id: number
+  pick_no: number
+  round: number
+  draft_slot: number
+  metadata?: {
+    first_name?: string
+    last_name?: string
+    position?: string
+    team?: string
+  } | null
 }
 
 export type SleeperTransactionPick = {
@@ -226,6 +265,7 @@ export type LeagueBundle = {
   users: LeagueUser[]
   tradedPicks: TradedPick[]
   draft: SleeperDraft | null
+  draftPicks: SleeperDraftPick[]
 }
 
 export type ValueBundle = {

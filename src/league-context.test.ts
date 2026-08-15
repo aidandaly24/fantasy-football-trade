@@ -10,24 +10,29 @@ function bundle(input: {
   draftRounds: number
   taxi: number
   reserve?: number
+  teams?: number
+  passingTd?: number
+  maxKeepers?: number
 }): LeagueBundle {
+  const teams = input.teams ?? 12
   return {
     league: {
       league_id: input.id,
       name: input.name,
       season: '2026',
       status: 'in_season',
-      total_rosters: 12,
+      total_rosters: teams,
       draft_id: null,
       avatar: null,
       roster_positions: input.positions,
-      scoring_settings: { rec: 1, bonus_rec_te: input.tep, pass_td: 4 },
-      settings: { num_teams: 12, draft_rounds: input.draftRounds, taxi_slots: input.taxi, reserve_slots: input.reserve },
+      scoring_settings: { rec: 1, bonus_rec_te: input.tep, pass_td: input.passingTd ?? 4 },
+      settings: { num_teams: teams, draft_rounds: input.draftRounds, max_keepers: input.maxKeepers, taxi_slots: input.taxi, reserve_slots: input.reserve },
     },
     rosters: [],
     users: [],
     tradedPicks: [],
     draft: null,
+    draftPicks: [],
   }
 }
 
@@ -50,20 +55,44 @@ const emperor = bundle({
   reserve: 2,
 })
 
+const freakbull = bundle({
+  id: '1384007008004362240',
+  name: 'National Freakbull League',
+  tep: 0,
+  positions: ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'FLEX', ...Array(5).fill('BN')],
+  draftRounds: 3,
+  taxi: 0,
+  teams: 10,
+  passingTd: 6,
+  maxKeepers: 3,
+})
+
 describe('fixed private league context', () => {
-  it('contains exactly the two selected leagues and rejects free-form IDs', () => {
+  it('contains the two dynasty leagues plus a separate keeper-redraft league', () => {
     expect(SUPPORTED_LEAGUES.map((league) => league.id)).toEqual([
       '1336087922847289344',
       '1312112570039037952',
+      '1384007008004362240',
     ])
-    expect(SUPPORTED_LEAGUES.every((league) => league.marketFormat.numQbs === 2
-      && league.marketFormat.tep
-      && league.marketFormat.numTeams === 12)).toBe(true)
+    expect(SUPPORTED_LEAGUES.map((league) => league.leagueType)).toEqual(['dynasty', 'dynasty', 'keeper-redraft'])
     expect(isSupportedLeagueId('1336087922847289344')).toBe(true)
+    expect(isSupportedLeagueId('1384007008004362240')).toBe(true)
     expect(isSupportedLeagueId('999999999999999999')).toBe(false)
     expect(() => leagueContext(bundle({
       id: '999999999999999999', name: 'Other', tep: 0, positions: ['QB'], draftRounds: 3, taxi: 0,
-    }))).toThrow('two private leagues')
+    }))).toThrow('private leagues')
+  })
+
+  it('keeps keeper-redraft scoring and market boundaries out of the dynasty lane', () => {
+    const context = leagueContext(freakbull)
+    expect(context).toMatchObject({
+      leagueType: 'keeper-redraft',
+      marketFormat: { numQbs: 1, tep: false, numTeams: 10 },
+      scoring: { receptionPpr: 1, tePremiumPerReception: 0, passingTd: 6 },
+      roster: { startingSlots: 8, skillStartingSlots: 8, benchSlots: 5, rookieDraftRounds: 0 },
+    })
+    expect(context.labels.market).toContain('current-season redraft')
+    expect(context.labels.roster).toContain('seasonal draft')
   })
 
   it('preserves exact scoring and roster economics even when the provider bucket is the same', () => {

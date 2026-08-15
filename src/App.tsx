@@ -1,6 +1,6 @@
-import { ArrowLeftRight, BarChart3, BookOpen, CircleGauge, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
+import { ArrowLeftRight, BarChart3, BookOpen, CircleGauge, ClipboardList, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { fetchAssetReturnHealth, fetchCurrentSeasonValues, fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchResearchState, fetchRookieBoard, fetchTradeModelHealth, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
+import { fetchAssetReturnHealth, fetchCurrentSeasonValues, fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchRedraftValues, fetchResearchState, fetchRookieBoard, fetchTradeModelHealth, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
 import type { AssetReturnHealthBundle } from './asset-returns'
 import { PlayerSearch } from './components/PlayerSearch'
 import { buildTeamDirections } from './edge'
@@ -22,6 +22,7 @@ import { IntelView } from './views/IntelView'
 import { ModelView } from './views/ModelView'
 import { PlayerResearchView } from './views/PlayerResearchView'
 import { RankingsView } from './views/RankingsView'
+import { RedraftDraftView } from './views/RedraftDraftView'
 import { RookieBoardView } from './views/RookieBoardView'
 import { TradeJournalView } from './views/TradeJournalView'
 import { TradeView } from './views/TradeView'
@@ -30,7 +31,7 @@ import type { TradeDraft } from './views/types'
 
 const DEFAULT_LEAGUE_ID: SupportedLeagueId = SUPPORTED_LEAGUES[0].id
 const LAST_LEAGUE_KEY = 'rosterlab:last-league'
-const CORE_CACHE_PREFIX = 'rosterlab:core:v2:'
+const CORE_CACHE_PREFIX = 'rosterlab:core:v3:'
 const CORE_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000
 
 type AppData = {
@@ -53,7 +54,7 @@ type AppData = {
 }
 
 type CachedLeagueCore = {
-  version: 2
+  version: 3
   cachedAt: string
   leagueBundle: LeagueBundle
   valueBundle: ValueBundle
@@ -70,7 +71,7 @@ type LeagueLoadPrefetch = {
   preferences?: LeaguePreferences
 }
 
-type View = 'rankings' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model' | 'player' | 'team'
+type View = 'rankings' | 'draft' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model' | 'player' | 'team'
 
 const STARTUP_WORKSPACES: Record<View, { eyebrow: string; title: string; description: string; status: string }> = {
   rankings: {
@@ -78,6 +79,12 @@ const STARTUP_WORKSPACES: Record<View, { eyebrow: string; title: string; descrip
     title: 'Compare the league. Without a mystery score.',
     description: 'The league desk is open. Fresh rosters, picks, projections, and market values are filling in now.',
     status: 'Refreshing league facts…',
+  },
+  draft: {
+    eyebrow: 'Keeper redraft · pre-draft',
+    title: 'Build the board before the clock starts.',
+    description: 'The draft room is open. Live settings, draft order, keeper state, and current-season market values are filling in now.',
+    status: 'Refreshing draft facts…',
   },
   trade: {
     eyebrow: 'Trade laboratory',
@@ -140,7 +147,7 @@ const EMPTY_JOURNAL: JournalBundle = {
 function readCachedLeagueCore(id: SupportedLeagueId): CachedLeagueCore | null {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(`${CORE_CACHE_PREFIX}${id}`) ?? 'null') as CachedLeagueCore | null
-    if (!parsed || parsed.version !== 2 || parsed.leagueBundle?.league?.league_id !== id) return null
+    if (!parsed || parsed.version !== 3 || parsed.leagueBundle?.league?.league_id !== id) return null
     if (!Number.isFinite(Date.parse(parsed.cachedAt)) || Date.now() - Date.parse(parsed.cachedAt) > CORE_CACHE_MAX_AGE_MS) return null
     if (!Array.isArray(parsed.valueBundle?.players) || !Array.isArray(parsed.valueBundle?.picks)) return null
     if (parsed.currentSeasonValueBundle && !Array.isArray(parsed.currentSeasonValueBundle.players)) return null
@@ -153,7 +160,7 @@ function readCachedLeagueCore(id: SupportedLeagueId): CachedLeagueCore | null {
 
 function writeCachedLeagueCore(id: SupportedLeagueId, value: Omit<CachedLeagueCore, 'version' | 'cachedAt'>): void {
   try {
-    window.localStorage.setItem(`${CORE_CACHE_PREFIX}${id}`, JSON.stringify({ version: 2, cachedAt: new Date().toISOString(), ...value }))
+    window.localStorage.setItem(`${CORE_CACHE_PREFIX}${id}`, JSON.stringify({ version: 3, cachedAt: new Date().toISOString(), ...value }))
   } catch {
     // The live refresh remains authoritative when device storage is unavailable or full.
   }
@@ -180,41 +187,52 @@ function observePromise<T>(promise: Promise<T>): Promise<T> {
 function AppHeader({
   view,
   setView,
+  leagueType,
 }: {
   view: View
   setView: (view: View) => void
+  leagueType: LeagueContext['leagueType']
 }) {
+  const isRedraft = leagueType === 'keeper-redraft'
   return (
     <>
       <header className="app-header">
-        <button className="brand" type="button" onClick={() => setView('rankings')} aria-label="RosterLab home">
+        <button className="brand" type="button" onClick={() => setView(isRedraft ? 'draft' : 'rankings')} aria-label="RosterLab home">
           <span className="brand-mark"><span>R</span></span>
           <span><strong>Roster</strong>Lab</span>
         </button>
         <nav aria-label="Primary navigation">
-          <button type="button" className={view === 'rankings' || view === 'team' ? 'active' : ''} onClick={() => setView('rankings')}>
-            <BarChart3 size={17} /> <span>Home</span>
-          </button>
-          <button type="button" className={view === 'trade' ? 'active' : ''} onClick={() => setView('trade')}>
-            <ArrowLeftRight size={17} /> <span>Trade</span>
-          </button>
-          <button type="button" className={view === 'journal' ? 'active' : ''} onClick={() => setView('journal')}>
-            <BookOpen size={17} /> <span>Journal</span>
-          </button>
-          <button type="button" className={view === 'intel' ? 'active' : ''} onClick={() => setView('intel')}>
-            <Radar size={17} /> <span>News</span>
-          </button>
-          <button type="button" className={view === 'strategy' ? 'active' : ''} onClick={() => setView('strategy')}>
-            <Target size={17} /> <span>Evidence</span>
-          </button>
-          <button type="button" className={view === 'rookies' ? 'active' : ''} onClick={() => setView('rookies')}>
-            <GraduationCap size={17} /> <span>Rookies</span>
-          </button>
-          <button type="button" className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}>
-            <CircleGauge size={17} /> <span>Model</span>
-          </button>
+          {isRedraft ? (
+            <button type="button" className="active" onClick={() => setView('draft')}>
+              <ClipboardList size={17} /> <span>Draft room</span>
+            </button>
+          ) : (
+            <>
+              <button type="button" className={view === 'rankings' || view === 'team' ? 'active' : ''} onClick={() => setView('rankings')}>
+                <BarChart3 size={17} /> <span>Home</span>
+              </button>
+              <button type="button" className={view === 'trade' ? 'active' : ''} onClick={() => setView('trade')}>
+                <ArrowLeftRight size={17} /> <span>Trade</span>
+              </button>
+              <button type="button" className={view === 'journal' ? 'active' : ''} onClick={() => setView('journal')}>
+                <BookOpen size={17} /> <span>Journal</span>
+              </button>
+              <button type="button" className={view === 'intel' ? 'active' : ''} onClick={() => setView('intel')}>
+                <Radar size={17} /> <span>News</span>
+              </button>
+              <button type="button" className={view === 'strategy' ? 'active' : ''} onClick={() => setView('strategy')}>
+                <Target size={17} /> <span>Evidence</span>
+              </button>
+              <button type="button" className={view === 'rookies' ? 'active' : ''} onClick={() => setView('rookies')}>
+                <GraduationCap size={17} /> <span>Rookies</span>
+              </button>
+              <button type="button" className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}>
+                <CircleGauge size={17} /> <span>Model</span>
+              </button>
+            </>
+          )}
         </nav>
-        <span className="private-app-scope">Two private leagues</span>
+        <span className="private-app-scope">{isRedraft ? 'Keeper redraft workspace' : 'Dynasty workspace'}</span>
       </header>
     </>
   )
@@ -248,15 +266,15 @@ function LeagueRibbon({ data, loading, onSelectLeague, onOpenPlayer }: {
               </button>
             ))}
           </div>
-          <span>{league.season} Dynasty</span>
+          <span>{league.season} {context.leagueType === 'keeper-redraft' ? 'Keeper redraft' : 'Dynasty'}</span>
           <span>{context.marketFormat.numQbs === 2 ? 'Superflex' : '1QB'}</span>
           <span>{league.total_rosters} teams</span>
-          <span>{context.scoring.receptionPpr}-PPR + {context.scoring.tePremiumPerReception} TEP</span>
+          <span>{context.scoring.receptionPpr}-PPR · {context.scoring.passingTd}-pt pass TD</span>
           <span>{context.roster.skillStartingSlots} skill starters · {context.roster.benchSlots} bench</span>
           <span className="ribbon-source">Powered by <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a></span>
         </div>
       </div>
-      <PlayerSearch key={context.id} teams={data.teams} leagueLabel={context.label} onOpenPlayer={onOpenPlayer} />
+      {context.leagueType === 'dynasty' && <PlayerSearch key={context.id} teams={data.teams} leagueLabel={context.label} onOpenPlayer={onOpenPlayer} />}
     </>
   )
 }
@@ -401,6 +419,8 @@ function App() {
     })
     setMode(cached.preferences.settings.rankingMode ?? 'overall')
     setLeagueId(context.id)
+    if (context.leagueType === 'keeper-redraft') setView('draft')
+    else if (view === 'draft') setView('rankings')
     setTradeDraft(null)
   }
 
@@ -415,9 +435,11 @@ function App() {
     try {
       const preset = SUPPORTED_LEAGUES.find((item) => item.id === id)!
       const leagueRequest = observePromise(prefetch.league ?? fetchLeagueBundle(id))
-      const valueRequest = observePromise(prefetch.values ?? fetchValues(preset.marketFormat))
+      const valueRequest = observePromise(prefetch.values ?? (preset.leagueType === 'keeper-redraft'
+        ? fetchRedraftValues(preset.marketFormat)
+        : fetchValues(preset.marketFormat)))
       const currentSeasonValueRequest = observePromise(prefetch.currentSeasonValues ?? fetchCurrentSeasonValues(preset.marketFormat).catch(() => null))
-      const projectionRequest = observePromise(prefetch.projections ?? fetchProjections())
+      const projectionRequest = observePromise(prefetch.projections ?? (preset.leagueType === 'keeper-redraft' ? Promise.resolve(null) : fetchProjections()))
       const leagueBundle = await leagueRequest
       const context = leagueContext(leagueBundle)
       const existingPreference = stateOverride?.preferences.find((item) => item.leagueId === id) ?? prefetch.preferences
@@ -425,7 +447,11 @@ function App() {
         && context.marketFormat.tep === preset.marketFormat.tep
         && context.marketFormat.numTeams === preset.marketFormat.numTeams
       const [valueBundle, currentSeasonValueBundle, projectionBundle] = await Promise.all([
-        presetMatches ? valueRequest : fetchValues(context.marketFormat),
+        presetMatches
+          ? valueRequest
+          : context.leagueType === 'keeper-redraft'
+            ? fetchRedraftValues(context.marketFormat)
+            : fetchValues(context.marketFormat),
         presetMatches ? currentSeasonValueRequest : fetchCurrentSeasonValues(context.marketFormat).catch(() => null),
         projectionRequest,
       ])
@@ -441,19 +467,20 @@ function App() {
       })
       const managerProfiles = buildManagerProfiles(transactions, teams, valueBundle.players, valueBundle.picks)
       const authenticatedHandle = stateOverride?.user.email.split('@')[0]?.toLowerCase()
-      const inferredRosterId = authenticatedHandle
+      const authenticatedRosterId = authenticatedHandle
         ? teams.find((team) => team.ownerName.toLowerCase() === authenticatedHandle || team.ownerName.toLowerCase().startsWith(authenticatedHandle))?.rosterId ?? null
         : null
+      const presetRosterId = teams.find((team) => team.ownerName.toLowerCase() === preset.ownerHandle)?.rosterId ?? null
       const basePreference: LeaguePreferences = {
         leagueId: id,
         leagueName: leagueBundle.league.name,
-        myRosterId: existingPreference?.myRosterId ?? inferredRosterId,
+        myRosterId: existingPreference?.myRosterId ?? authenticatedRosterId ?? presetRosterId,
         watchlist: existingPreference?.watchlist ?? [],
         settings: { ...(existingPreference?.settings ?? {}) },
       }
       const initialRosterId = basePreference.myRosterId ?? teams[0]?.rosterId
       const initialTeam = teams.find((team) => team.rosterId === initialRosterId) ?? teams[0]
-      if (initialTeam && !basePreference.settings.teamStrategy) {
+      if (context.leagueType === 'dynasty' && initialTeam && !basePreference.settings.teamStrategy) {
         const inferred = resolveTeamStrategy(initialTeam)
         basePreference.settings.teamStrategy = {
           mode: 'auto',
@@ -481,6 +508,8 @@ function App() {
       })
       setMode(basePreference.settings.rankingMode ?? 'overall')
       setLeagueId(id)
+      if (context.leagueType === 'keeper-redraft') setView('draft')
+      else if (view === 'draft') setView('rankings')
       try { window.localStorage.setItem(LAST_LEAGUE_KEY, id) } catch { /* Device storage is an optional acceleration only. */ }
       setTradeDraft(null)
       writeCachedLeagueCore(id, { leagueBundle, valueBundle, currentSeasonValueBundle, projectionBundle, preferences: basePreference })
@@ -522,9 +551,11 @@ function App() {
       const preset = SUPPORTED_LEAGUES.find((item) => item.id === initialLeague)!
       const statePromise = fetchUserState()
       const leaguePromise = observePromise(fetchLeagueBundle(initialLeague))
-      const valuePromise = observePromise(fetchValues(preset.marketFormat))
+      const valuePromise = observePromise(preset.leagueType === 'keeper-redraft'
+        ? fetchRedraftValues(preset.marketFormat)
+        : fetchValues(preset.marketFormat))
       const currentSeasonValuePromise = observePromise(fetchCurrentSeasonValues(preset.marketFormat).catch(() => null))
-      const projectionPromise = observePromise(fetchProjections())
+      const projectionPromise = observePromise(preset.leagueType === 'keeper-redraft' ? Promise.resolve(null) : fetchProjections())
       const state = await statePromise
       setUserState(state)
       const savedLeagueId = state?.preferences.find((item) => isSupportedLeagueId(item.leagueId))?.leagueId
@@ -538,7 +569,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!data) return
+    if (!data || data.leagueContext.leagueType !== 'dynasty') return
     const activeLeagueId = data.leagueBundle.league.league_id
     let cancelled = false
     const timer = window.setTimeout(() => {
@@ -587,7 +618,7 @@ function App() {
   }, [data?.leagueBundle.league.league_id])
 
   useEffect(() => {
-    if (!data) return
+    if (!data || data.leagueContext.leagueType !== 'dynasty') return
     const activeLeagueId = data.leagueBundle.league.league_id
     const startOnce = (kind: string, work: () => Promise<void>) => {
       const key = `${activeLeagueId}:${kind}`
@@ -701,11 +732,11 @@ function App() {
   }
 
   const selectLeague = (nextLeagueId: SupportedLeagueId) => {
-    if (selectedPlayerId) {
-      window.history.replaceState(null, '', playerAddress(window.location.search, nextLeagueId, selectedPlayerId))
-    } else if (selectedTeamId) {
-      window.history.replaceState(null, '', teamAddress(window.location.search, nextLeagueId, selectedTeamId))
-    }
+    const preset = SUPPORTED_LEAGUES.find((item) => item.id === nextLeagueId)!
+    setSelectedPlayerId(null)
+    setSelectedTeamId(null)
+    window.history.replaceState(null, '', teamAddress(window.location.search, nextLeagueId, null))
+    setView(preset.leagueType === 'keeper-redraft' ? 'draft' : 'rankings')
     const cached = readCachedLeagueCore(nextLeagueId)
     if (cached) showCachedLeague(cached)
     void loadLeague(nextLeagueId, userState, { preferences: cached?.preferences })
@@ -805,11 +836,16 @@ function App() {
     }
   }
 
+  const activeLeagueType = data?.leagueContext.leagueType
+    ?? SUPPORTED_LEAGUES.find((preset) => preset.id === leagueId)?.leagueType
+    ?? 'dynasty'
+
   return (
     <div className="app">
       <AppHeader
         view={view}
         setView={navigateWorkspace}
+        leagueType={activeLeagueType}
       />
       {data && <LeagueRibbon data={data} loading={loading} onSelectLeague={selectLeague} onOpenPlayer={openPlayer} />}
       {loading && !data ? (
@@ -819,7 +855,14 @@ function App() {
       ) : data ? (
         <>
           {error && <div className="inline-error">Sync failed: {error}. Showing the last loaded league.</div>}
-          {view === 'rankings' ? (
+          {data.leagueContext.leagueType === 'keeper-redraft' ? (
+            <RedraftDraftView
+              leagueBundle={data.leagueBundle}
+              leagueContext={data.leagueContext}
+              values={data.valueBundle}
+              myRosterId={data.preferences.myRosterId}
+            />
+          ) : view === 'rankings' ? (
             <RankingsView
               teams={data.teams}
               mode={mode}
@@ -920,7 +963,9 @@ function App() {
           )}
           <footer>
             <span>RosterLab <b>·</b> League-relative analysis</span>
-            <span>Sleeper rosters + <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a> values + linked NFL reporting</span>
+            <span>{data.leagueContext.leagueType === 'keeper-redraft'
+              ? <>Sleeper draft state + <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a> current-season market data</>
+              : <>Sleeper rosters + <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a> values + linked NFL reporting</>}</span>
           </footer>
         </>
       ) : null}
