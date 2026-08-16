@@ -10,6 +10,7 @@ import { tradeTapeResponse } from './routes/trade-tape'
 import { teamHistoryResponse } from './routes/team-history'
 import { decisionsResponse } from './routes/decisions'
 import { sportsbookResponse } from './routes/sportsbook'
+import { redraftDraftPoolResponse } from './routes/redraft-draft-pool'
 
 const routes: Record<string, (request: Request, env: Env) => Promise<Response>> = {
   '/api/alerts': alertsResponse,
@@ -23,6 +24,7 @@ const routes: Record<string, (request: Request, env: Env) => Promise<Response>> 
   '/api/team-history': teamHistoryResponse,
   '/api/decisions': decisionsResponse,
   '/api/sportsbook': sportsbookResponse,
+  '/api/redraft-draft-pool': (request) => redraftDraftPoolResponse(request),
 }
 
 const worker = {

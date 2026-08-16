@@ -14,6 +14,7 @@ import type {
   MarketTapeRequest,
   PickValue,
   ProjectionBundle,
+  RedraftDraftPool,
   SleeperDraft,
   SleeperDraftPick,
   SleeperPlayer,
@@ -47,6 +48,7 @@ const journalRequests = new Map<string, Promise<JournalBundle>>()
 const edgeStateRequests = new Map<string, Promise<EdgeStateBundle>>()
 const teamHistoryRequests = new Map<string, Promise<TeamHistoryBundle>>()
 const researchStateRequests = new Map<string, Promise<ResearchPipelineBundle>>()
+const redraftDraftPoolRequests = new Map<string, Promise<RedraftDraftPool>>()
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init)
@@ -146,6 +148,18 @@ export async function fetchRedraftValues(options: {
 }): Promise<ValueBundle> {
   const currentSeason = await fetchCurrentSeasonValues(options)
   return { players: currentSeason.players, picks: [], meta: currentSeason.meta }
+}
+
+export async function fetchRedraftDraftPool(season: string): Promise<RedraftDraftPool> {
+  const existing = redraftDraftPoolRequests.get(season)
+  if (existing) return existing
+  const request = fetchJson<RedraftDraftPool>(`/api/redraft-draft-pool?season=${encodeURIComponent(season)}`)
+    .catch((error) => {
+      redraftDraftPoolRequests.delete(season)
+      throw error
+    })
+  redraftDraftPoolRequests.set(season, request)
+  return request
 }
 
 export async function fetchProjections(): Promise<ProjectionBundle | null> {
