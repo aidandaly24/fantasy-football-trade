@@ -16,7 +16,7 @@
   box-shadow: var(--shadow);
 }
 
-.redraft-hero h1 { max-width: 780px; margin: 14px 0 12px; font-family: 'Newsreader', Georgia, serif; font-size: clamp(42px, 5.2vw, 72px); font-weight: 600; line-height: .94; letter-spacing: -.055em; }
+.redraft-hero h1 { max-width: 780px; margin: 14px 0 12px; font-family: 'Newsreader', Georgia, serif; font-size: clamp(38px, 4.4vw, 60px); font-weight: 600; line-height: .98; letter-spacing: -.05em; }
 .redraft-hero p { max-width: 760px; margin: 0; color: #bdc3b8; font-size: 13px; line-height: 1.65; }
 .redraft-hero-status { min-width: 260px; padding: 15px 17px; display: flex; align-items: center; gap: 12px; color: var(--acid); background: #222620; border: 1px solid #3b4037; border-radius: 14px; }
 .redraft-hero-status span { display: grid; gap: 4px; }
@@ -38,6 +38,46 @@
 .redraft-panel-heading h2 { margin: 5px 0 0; font-size: 16px; letter-spacing: -.025em; }
 .redraft-panel-heading > svg { color: var(--green); }
 .redraft-method-chip { flex: 0 0 auto; padding: 7px 9px; color: var(--ink-soft); background: #eeece4; border: 1px solid var(--line); border-radius: 999px; font: 8px 'DM Mono', monospace; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+.redraft-rankings-panel { margin-bottom: 22px; overflow: hidden; }
+.redraft-rankings-heading { min-height: 88px; }
+.redraft-board-controls { padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; background: #efede6; border-bottom: 1px solid var(--line); }
+.redraft-position-filters { display: flex; flex-wrap: wrap; gap: 7px; }
+.redraft-position-filters button { min-height: 34px; padding: 7px 10px; display: inline-flex; align-items: center; gap: 7px; color: var(--ink-soft); background: var(--panel); border: 1px solid var(--line); border-radius: 9px; font: 8px 'DM Mono', monospace; cursor: pointer; }
+.redraft-position-filters button small { min-width: 20px; padding: 2px 5px; color: inherit; background: #eeece4; border-radius: 99px; font: 7px 'DM Mono', monospace; }
+.redraft-position-filters button.active { color: #f8f7f0; background: var(--dark); border-color: var(--dark); }
+.redraft-position-filters button.active small { color: var(--dark); background: var(--acid); }
+.redraft-board-search { width: min(310px, 100%); min-height: 36px; padding: 0 11px; display: flex; align-items: center; gap: 8px; color: var(--ink-soft); background: var(--panel); border: 1px solid var(--line); border-radius: 9px; }
+.redraft-board-search:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px rgba(35, 116, 90, .09); }
+.redraft-board-search input { width: 100%; padding: 9px 0; color: var(--ink); background: transparent; border: 0; outline: 0; font-size: 9px; }
+.redraft-board-search input::placeholder { color: #9c9a92; }
+
+.redraft-full-board { max-height: 820px; overflow: auto; }
+.redraft-full-board-head, .redraft-full-board > article {
+  min-width: 860px;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: 58px minmax(220px, 1.45fr) 92px minmax(120px, .75fr) minmax(120px, .72fr) minmax(110px, .68fr);
+  align-items: center;
+  gap: 14px;
+}
+.redraft-full-board-head { position: sticky; z-index: 2; top: 0; min-height: 38px; color: var(--ink-soft); background: #e9e7df; border-bottom: 1px solid var(--line); font-size: 7px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; }
+.redraft-full-board > article { min-height: 58px; border-bottom: 1px solid var(--line); }
+.redraft-full-board > article:hover { background: rgba(216, 255, 104, .1); }
+.redraft-full-board > article > b { color: var(--ink-soft); font: 10px 'DM Mono', monospace; }
+.redraft-full-board > article > span { min-width: 0; display: grid; gap: 4px; }
+.redraft-full-board > article > span > strong { font: 10px 'DM Mono', monospace; }
+.redraft-full-board > article > span > small { color: var(--ink-soft); font-size: 7px; }
+.redraft-full-player strong { overflow: hidden; font-family: inherit !important; font-size: 10px !important; text-overflow: ellipsis; white-space: nowrap; }
+.redraft-position-tag { justify-self: start; padding: 7px 9px; border-radius: 8px; }
+.redraft-position-tag strong { font-size: 8px !important; }
+.redraft-position-tag.position-rb { color: #86520b; background: #f8ead5; }
+.redraft-position-tag.position-wr { color: #195a78; background: #e1f0f7; }
+.redraft-position-tag.position-qb { color: #783b32; background: #f6e5e2; }
+.redraft-position-tag.position-te { color: #38612f; background: #e8f2e4; }
+.redraft-full-board > p { margin: 0; padding: 28px 20px; color: var(--ink-soft); font-size: 9px; }
 
 .pick-window-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .pick-window-list > div { min-height: 104px; padding: 17px; display: grid; align-content: center; gap: 5px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -101,6 +141,8 @@
 .redraft-round-plan > article > span small { color: var(--ink-soft); font: 7px 'DM Mono', monospace; }
 .redraft-round-plan > article > em { grid-column: 2; color: var(--ink-soft); font: 7px 'DM Mono', monospace; font-style: normal; }
 .redraft-round-plan > p, .redraft-builds > p { margin: 0; padding: 26px; color: var(--ink-soft); font-size: 9px; }
+.redraft-round-plan-full > article:nth-last-child(-n + 2) { border-bottom: 1px solid var(--line); }
+.redraft-round-plan-full > article:last-child { border-bottom: 0; }
 
 .redraft-keeper-lanes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .redraft-keeper-lanes article { min-height: 142px; padding: 18px; display: grid; align-content: center; gap: 7px; border-right: 1px solid var(--line); }
@@ -162,6 +204,8 @@
   .redraft-scorecard article:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
   .redraft-grid-top, .redraft-grid-bottom { grid-template-columns: 1fr; }
   .redraft-builds { grid-template-columns: 1fr; }
+  .redraft-board-controls { align-items: stretch; flex-direction: column; }
+  .redraft-board-search { width: 100%; }
 }
 
 @media (max-width: 680px) {
@@ -208,4 +252,24 @@
   .redraft-round-plan > article:last-child, .redraft-keeper-lanes article:last-child { border-bottom: 0; }
   .redraft-builds > article > div { grid-template-columns: 1fr; }
   .redraft-builds > article > div > span { border-right: 0; }
+  .redraft-full-board { max-height: 690px; }
+  .redraft-full-board-head { display: none; }
+  .redraft-full-board > article {
+    min-width: 0;
+    min-height: 108px;
+    padding: 14px 16px;
+    grid-template-columns: 44px minmax(0, 1fr) 76px;
+    grid-template-areas:
+      'rank player position'
+      '. market turn'
+      '. projection projection';
+    gap: 10px;
+  }
+  .redraft-full-board > article > b { grid-area: rank; }
+  .redraft-full-player { grid-area: player; }
+  .redraft-position-tag { grid-area: position; justify-self: end; }
+  .redraft-full-board > article > span:nth-of-type(3) { grid-area: market; }
+  .redraft-full-board > article > span:nth-of-type(4) { grid-area: turn; }
+  .redraft-full-board > article > span:nth-of-type(5) { grid-area: projection; }
+  .redraft-position-filters button { flex: 1 1 auto; justify-content: center; }
 }

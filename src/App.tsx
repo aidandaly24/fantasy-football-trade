@@ -271,7 +271,9 @@ function LeagueRibbon({ data, loading, onSelectLeague, onOpenPlayer }: {
           <span>{league.total_rosters} teams</span>
           <span>{context.scoring.receptionPpr}-PPR · {context.scoring.passingTd}-pt pass TD</span>
           <span>{context.roster.skillStartingSlots} skill starters · {context.roster.benchSlots} bench</span>
-          <span className="ribbon-source">Powered by <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a></span>
+          {context.leagueType === 'keeper-redraft'
+            ? <span className="ribbon-source">Draft data from Sleeper</span>
+            : <span className="ribbon-source">Powered by <a href="https://tradyr.app" target="_blank" rel="noreferrer">Tradyr</a></span>}
         </div>
       </div>
       {context.leagueType === 'dynasty' && <PlayerSearch key={context.id} teams={data.teams} leagueLabel={context.label} onOpenPlayer={onOpenPlayer} />}
@@ -859,7 +861,6 @@ function App() {
             <RedraftDraftView
               leagueBundle={data.leagueBundle}
               leagueContext={data.leagueContext}
-              values={data.valueBundle}
               myRosterId={data.preferences.myRosterId}
             />
           ) : view === 'rankings' ? (

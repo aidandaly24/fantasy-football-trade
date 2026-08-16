@@ -33,7 +33,7 @@ describe('keeper-redraft pre-draft model', () => {
     expect(snakeOverallPick(2, 4, 10)).toBe(17)
     expect(snakeOverallPick(3, 4, 10)).toBe(24)
     expect(buildRedraftDraftPlan(leagueBundle(), 7).pickWindows.map((pick) => pick.overallPick))
-      .toEqual([4, 17, 24, 37, 44, 57])
+      .toEqual([4, 17, 24, 37, 44, 57, 64, 77, 84, 97, 104, 117, 124])
   })
 
   it('keeps fixed starters and shared flex pressure separate', () => {

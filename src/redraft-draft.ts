@@ -93,7 +93,7 @@ export function buildRedraftDraftPlan(bundle: LeagueBundle, myRosterId: number |
     leagueKeepers,
     pickWindows: draftSlot === null
       ? []
-      : Array.from({ length: Math.min(6, rounds) }, (_, index) => ({
+      : Array.from({ length: rounds }, (_, index) => ({
           round: index + 1,
           draftSlot,
           overallPick: snakeOverallPick(index + 1, draftSlot, teamCount),
