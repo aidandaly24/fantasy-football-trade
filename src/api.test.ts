@@ -88,6 +88,37 @@ describe('Tradyr player coverage', () => {
     expect(fetchMock.mock.calls.map(([input]) => new URL(String(input)).searchParams.get('offset'))).toEqual([null, '45', '90'])
   })
 
+  it('rebuilds global ranks when every provider page restarts rank at one', async () => {
+    const total = 80
+    const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {
+      const url = new URL(String(input))
+      const offset = Number(url.searchParams.get('offset') ?? 0)
+      const data = Array.from(
+        { length: Math.max(0, Math.min(50, total - offset)) },
+        (_, index) => ({ ...tradyrPlayer(offset + index), rank: index + 1 }),
+      )
+      return Promise.resolve(Response.json({
+        data,
+        meta: {
+          generatedAt: '2026-08-16T00:00:00.000Z',
+          sources: ['fantasycalc'],
+          attribution: 'Powered by Tradyr',
+          total,
+          limit: 50,
+          offset,
+        },
+      }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await fetchTradyrPlayers(new URLSearchParams({ format: 'redraft', limit: '1000' }))
+
+    expect(result.data).toHaveLength(total)
+    expect(result.data[49]).toMatchObject({ name: 'Player 49', rank: 50 })
+    expect(result.data[50]).toMatchObject({ name: 'Player 50', rank: 51 })
+    expect(result.data[79]).toMatchObject({ name: 'Player 79', rank: 80 })
+  })
+
   it('rejects an incomplete market response instead of returning partial prices', async () => {
     const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {
       const url = new URL(String(input))

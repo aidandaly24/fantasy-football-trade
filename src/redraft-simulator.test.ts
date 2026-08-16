@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { draftPickLabel, draftPlayersForLeague, draftSlotAtOverallPick, leagueProjectedPoints, runRedraftMockDrafts } from './redraft-simulator'
+import { availableRedraftRankings, draftPickLabel, draftPlayersForLeague, draftSlotAtOverallPick, leagueProjectedPoints, runRedraftMockDrafts } from './redraft-simulator'
 import type { LeagueBundle, RedraftDraftPool, RedraftDraftProjection } from './types'
 
 function bundle(): LeagueBundle {
@@ -100,5 +100,21 @@ describe('snake mock draft model', () => {
     const result = runRedraftMockDrafts(league, pool(), 4, { simulations: 16, scenarioSimulations: 8 })
     expect(result.currentOverallPick).toBe(4)
     expect(result.candidates.map((candidate) => candidate.player.playerId)).not.toContain('1')
+  })
+
+  it('builds a complete ADP board with stable overall and position ranks', () => {
+    const league = bundle()
+    league.rosters[0].keepers = ['1']
+    league.draftPicks = [
+      { player_id: '2', picked_by: 'owner-2', roster_id: 2, pick_no: 1, round: 1, draft_slot: 1 },
+    ]
+
+    const rankings = availableRedraftRankings(pool(), league)
+
+    expect(rankings).toHaveLength(178)
+    expect(rankings.map((player) => player.playerId)).not.toContain('1')
+    expect(rankings.map((player) => player.playerId)).not.toContain('2')
+    expect(rankings[0]).toMatchObject({ playerId: '3', overallRank: 3, position: 'QB', positionRank: 1 })
+    expect(rankings.find((player) => player.playerId === '4')).toMatchObject({ overallRank: 4, positionRank: 1 })
   })
 })

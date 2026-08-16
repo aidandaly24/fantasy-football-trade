@@ -12,6 +12,11 @@ export type MockDraftPlayer = {
   projectedPoints: number
 }
 
+export type RedraftRanking = MockDraftPlayer & {
+  overallRank: number
+  positionRank: number
+}
+
 export type MockCandidate = {
   player: MockDraftPlayer
   availableAtPickProbability: number
@@ -98,6 +103,21 @@ export function draftPlayersForLeague(pool: RedraftDraftPool, bundle: LeagueBund
     adp: player.stats.adpPpr,
     projectedPoints: leagueProjectedPoints(player, bundle.league.scoring_settings),
   })).sort((left, right) => left.adp - right.adp || right.projectedPoints - left.projectedPoints)
+}
+
+export function availableRedraftRankings(pool: RedraftDraftPool, bundle: LeagueBundle): RedraftRanking[] {
+  const unavailable = new Set([
+    ...bundle.draftPicks.map((pick) => pick.player_id),
+    ...bundle.rosters.flatMap((roster) => roster.keepers ?? []),
+  ])
+  const positionRanks = new Map<DraftablePosition, number>()
+  return draftPlayersForLeague(pool, bundle)
+    .map((player, index): RedraftRanking => {
+      const positionRank = (positionRanks.get(player.position) ?? 0) + 1
+      positionRanks.set(player.position, positionRank)
+      return { ...player, overallRank: index + 1, positionRank }
+    })
+    .filter((player) => !unavailable.has(player.playerId))
 }
 
 function rosterSlots(bundle: LeagueBundle): Slots {

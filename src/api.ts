@@ -102,6 +102,15 @@ function dedupeTradyrPlayers(players: TradyrPlayer[]): TradyrPlayer[] {
   return [...unique.values()]
 }
 
+function rebuildPaginatedTradyrRanks(
+  pages: Array<{ offset: number; page: TradyrResponse<TradyrPlayer[]> }>,
+): TradyrPlayer[] {
+  const ordered = [...pages]
+    .sort((left, right) => left.offset - right.offset)
+    .flatMap(({ page }) => page.data)
+  return dedupeTradyrPlayers(ordered).map((player, index) => ({ ...player, rank: index + 1 }))
+}
+
 /**
  * Tradyr may enforce a smaller anonymous page size than the requested limit.
  * Fetch every reported page with a small overlap because the provider can
@@ -150,7 +159,10 @@ export async function fetchTradyrPlayers(params: URLSearchParams): Promise<Trady
   const complete = pages.some(({ offset, page }) => offset + page.data.length >= maxTotal)
   if (!complete) throw new Error(`Tradyr player coverage incomplete (${pages.length} pages for ${maxTotal} rows)`)
 
-  const data = dedupeTradyrPlayers(pages.flatMap(({ page }) => page.data))
+  // Anonymous Tradyr pages restart `rank` at 1 on every response. Preserve the
+  // provider's global row order across the overlapping pages, then rebuild the
+  // overall rank once after deduplication. Position ranks are already global.
+  const data = rebuildPaginatedTradyrRanks(pages)
   const generatedAt = pages.map(({ page }) => page.meta.generatedAt).filter(Boolean).sort().at(-1) ?? first.meta.generatedAt
   return {
     data,
