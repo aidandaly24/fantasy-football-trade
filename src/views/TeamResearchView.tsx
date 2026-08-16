@@ -1,7 +1,7 @@
 import { ArrowLeft, CalendarClock, ChevronRight, DatabaseZap, Layers3, RefreshCw, TrendingUp } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { backfillTeamHistory, fetchEdgeState, fetchTeamHistory } from '../api'
-import { AssetBadge, Avatar, formatValue } from '../components/domain-ui'
+import { AssetBadge, Avatar, formatAssetValue, formatValue } from '../components/domain-ui'
 import type { LeagueContext } from '../league-context'
 import { buildTeamRankComparisons } from '../rank-comparison'
 import { rosterProfile } from '../rankings'
@@ -86,7 +86,7 @@ function FullAssetRow({ asset, index, onOpenPlayer }: { asset: Asset; index: num
         ? [asset.team, asset.age ? `Age ${asset.age.toFixed(1)}` : null].filter(Boolean).join(' · ')
         : asset.slot ? 'Exact draft slot' : `Unresolved midpoint · ${formatValue(asset.valueLow ?? asset.value)}–${formatValue(asset.valueHigh ?? asset.value)} provider range`}</small>
     </span>
-    <b className="asset-value">{formatValue(asset.value)}</b>
+    <b className="asset-value">{formatAssetValue(asset)}</b>
     {asset.kind === 'player' && <ChevronRight size={16} aria-hidden="true" />}
   </>
   return asset.kind === 'player'
@@ -123,6 +123,7 @@ export function TeamResearchView({ team, teams, leagueContext, onBack, onOpenPla
   const allocationMax = Math.max(1, ...allocation.map((bucket) => bucket.value))
   const players = useMemo(() => [...team.players].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)), [team.players])
   const picks = useMemo(() => [...team.picks].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)), [team.picks])
+  const pricedPlayers = players.filter((asset) => asset.marketValueAvailable !== false).length
 
   useEffect(() => {
     let cancelled = false
@@ -187,7 +188,7 @@ export function TeamResearchView({ team, teams, leagueContext, onBack, onOpenPla
       <div className="team-fact-strip">
         <span><small>Market rank</small><b>#{comparison?.marketRank ?? '—'}</b></span>
         <span><small>Power rank</small><b>#{comparison?.powerRank ?? '—'}</b></span>
-        <span><small>Player market</small><b>{formatValue(team.metrics.core)}</b></span>
+        <span><small>{team.marketCoverage?.complete === false ? `Player market · ${team.marketCoverage.priced}/${team.marketCoverage.total} priced` : 'Player market'}</small><b>{formatValue(team.metrics.core)}</b></span>
         <span><small>Draft capital</small><b>{formatValue(team.metrics.picks)}</b></span>
         <span><small>Covered lineup</small><b>{team.metrics.lineup.toFixed(1)} PPG</b></span>
       </div>
@@ -218,7 +219,7 @@ export function TeamResearchView({ team, teams, leagueContext, onBack, onOpenPla
     </section>
 
     <section className="team-research-section panel">
-      <div className="panel-heading"><div><span className="eyebrow">Current construction</span><h2>Where the market value lives</h2></div><span className="method-note">Current Tradyr composite · positions remain separate</span></div>
+      <div className="panel-heading"><div><span className="eyebrow">Current construction</span><h2>Where the market value lives</h2></div><span className="method-note">Current Tradyr composite · {pricedPlayers}/{players.length} players priced</span></div>
       <div className="team-allocation-chart">
         {allocation.map((bucket) => <div className="team-allocation-row" key={bucket.label}>
           <span><b>{bucket.label}</b><small>{bucket.count} asset{bucket.count === 1 ? '' : 's'}</small></span>
@@ -229,7 +230,7 @@ export function TeamResearchView({ team, teams, leagueContext, onBack, onOpenPla
     </section>
 
     <section className="team-research-section panel">
-      <div className="panel-heading"><div><span className="eyebrow">Settled Sleeper roster</span><h2>Players</h2></div><span className="method-note">{players.length} players · tap any player for research</span></div>
+      <div className="panel-heading"><div><span className="eyebrow">Settled Sleeper roster</span><h2>Players</h2></div><span className="method-note">{pricedPlayers}/{players.length} market-priced · tap any player for research</span></div>
       <div className="asset-stack team-full-roster">{players.map((asset, index) => <FullAssetRow asset={asset} index={index} onOpenPlayer={onOpenPlayer} key={asset.id} />)}</div>
     </section>
 

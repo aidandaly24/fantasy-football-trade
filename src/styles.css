@@ -1215,6 +1215,16 @@ a {
   border-radius: 9px;
 }
 
+.trade-asset-row.unpriced:not(.selected) {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.trade-asset-row.unpriced:not(.selected):hover {
+  background: transparent;
+  border-radius: 0;
+}
+
 .trade-asset-row.selected {
   background: #f1f6df;
   border-color: #d6e4ad;

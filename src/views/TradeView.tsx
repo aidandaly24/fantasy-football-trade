@@ -18,7 +18,7 @@ import {
   type TradeModelWeights,
   type WeightedTradeEvidence,
 } from '../trade-models'
-import { AssetBadge, Avatar, formatValue } from '../components/domain-ui'
+import { AssetBadge, Avatar, formatAssetValue, formatValue } from '../components/domain-ui'
 import { AssetResearchPanel } from '../components/AssetResearchPanel'
 import { evaluateForwardPortfolioTrade, evaluateRebuildPortfolioTrade } from '../asset-returns'
 import type { AssetReturnHealthBundle, ForwardHorizonDays, ForwardPortfolioTradeDelta, PortfolioTradeDelta } from '../asset-returns'
@@ -44,25 +44,27 @@ function TradeAssetRow({
   selected: boolean
   onToggle: (id: string) => void
 }) {
+  const unpriced = asset.kind === 'player' && asset.marketValueAvailable === false
   return (
     <button
       type="button"
-      className={`trade-asset-row ${selected ? 'selected' : ''}`}
-      onClick={() => onToggle(asset.id)}
+      className={`trade-asset-row ${selected ? 'selected' : ''} ${unpriced ? 'unpriced' : ''}`}
+      aria-disabled={unpriced && !selected}
+      onClick={() => { if (!unpriced || selected) onToggle(asset.id) }}
     >
       <AssetBadge position={asset.position} />
       <span className="trade-asset-copy">
         <strong>{asset.name}</strong>
         <small>
           {asset.kind === 'player'
-            ? [asset.team, assetRoleLabel(asset), asset.projectedPpg !== undefined ? `${asset.projectedPpg.toFixed(1)} ML PPG` : null, asset.rank ? `#${asset.rank} overall` : 'Unranked'].filter(Boolean).join(' · ')
+            ? [asset.team, assetRoleLabel(asset), asset.projectedPpg !== undefined ? `${asset.projectedPpg.toFixed(1)} ML PPG` : null, unpriced ? 'Market price unavailable' : asset.rank ? `#${asset.rank} overall` : 'Unranked'].filter(Boolean).join(' · ')
             : asset.slot
               ? 'Known slot'
               : `Unresolved midpoint · ${formatValue(asset.valueLow ?? asset.value)}–${formatValue(asset.valueHigh ?? asset.value)} range`}
         </small>
       </span>
-      <b>{formatValue(asset.value)}</b>
-      <span className="asset-add">{selected ? <Check size={15} /> : '+'}</span>
+      <b>{formatAssetValue(asset)}</b>
+      <span className="asset-add">{selected ? <Check size={15} /> : unpriced ? '—' : '+'}</span>
     </button>
   )
 }

@@ -2,7 +2,7 @@ import { ChevronRight, Info, Radar } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { selectMarketDislocations } from '../dislocations'
 import type { DislocationCategory, DislocationLens, MarketDislocation } from '../dislocations'
-import { AssetBadge, formatValue } from '../components/domain-ui'
+import { AssetBadge, formatAssetValue, formatValue } from '../components/domain-ui'
 
 const LENSES: Array<{ id: DislocationLens; label: string; description: string }> = [
   { id: 'frontier', label: 'Supported frontier', description: 'Non-dominated across the visible, measured facts.' },
@@ -59,7 +59,7 @@ export function DislocationBoard({
           <article key={candidate.key}>
             <header className="dislocation-player">
               <AssetBadge position={candidate.asset.position} />
-              <span><strong>{candidate.asset.name}</strong><small>{candidate.owner.teamName} · {formatValue(candidate.asset.value)} composite</small></span>
+              <span><strong>{candidate.asset.name}</strong><small>{candidate.owner.teamName} · {formatAssetValue(candidate.asset)} composite</small></span>
               <div className="dislocation-tags">
                 {candidate.frontier && <i className="frontier">Pareto</i>}
                 {candidate.categories.map((category) => <i key={category}>{CATEGORY_LABELS[category]}</i>)}
