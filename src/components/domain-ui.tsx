@@ -34,6 +34,12 @@ export function formatValue(value: number): string {
   return new Intl.NumberFormat('en-US').format(Object.is(rounded, -0) ? 0 : rounded)
 }
 
+export function formatAssetValue(asset: Asset): string {
+  return asset.kind === 'player' && asset.marketValueAvailable === false
+    ? 'Unpriced'
+    : formatValue(asset.value)
+}
+
 export function signedPercent(value: number): string {
   return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
 }

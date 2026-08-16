@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildOwnedPicks, currentRoleValue, evaluateTrade, futurePickContext, optimizeLineup, packageValue, projectedLineupPpg, rosterProfile, scoreTeams } from './rankings'
-import type { Asset, LeagueBundle, PickValue, Team } from './types'
+import { buildOwnedPicks, buildTeams, currentRoleValue, evaluateTrade, futurePickContext, optimizeLineup, packageValue, projectedLineupPpg, rosterProfile, scoreTeams } from './rankings'
+import type { Asset, LeagueBundle, PickValue, Team, ValueBundle } from './types'
 
 function asset(id: string, position: Asset['position'], value: number): Asset {
   return {
@@ -55,6 +55,45 @@ describe('optimizeLineup', () => {
 
     expect(currentRoleValue(expensiveBackup)).toBe(420)
     expect(optimizeLineup([starter, expensiveBackup], ['RB']).map((player) => player.id)).toEqual(['backup'])
+  })
+})
+
+describe('current market coverage', () => {
+  it('marks provider-missing players as unpriced and keeps the team total explicitly partial', () => {
+    const leagueBundle = {
+      league: {
+        season: '2026',
+        roster_positions: ['QB', 'WR'],
+        settings: { draft_rounds: 3 },
+      },
+      rosters: [{ roster_id: 1, owner_id: 'owner', players: ['101', '202'], starters: [], taxi: [], reserve: [] }],
+      users: [{ user_id: 'owner', display_name: 'Owner', metadata: { team_name: 'Team' } }],
+      tradedPicks: [],
+      draft: null,
+      draftPicks: [],
+    } as unknown as LeagueBundle
+    const values = {
+      players: [{
+        slug: 'priced-player', name: 'Priced Player', position: 'QB', team: 'NFL', age: 24,
+        composite: 500, confidence: 1, rank: 1, posRank: 1,
+        sources: { ktc: 1_000, fantasycalc: 900 }, sleeperId: '101',
+      }],
+      picks: [],
+      meta: { generatedAt: '2026-08-16T00:00:00.000Z', sources: [], attribution: 'Tradyr' },
+    } satisfies ValueBundle
+    const sleeperPlayers = new Map([
+      ['101', { player_id: '101', full_name: 'Priced Player', position: 'QB' }],
+      ['202', { player_id: '202', full_name: 'Missing Player', position: 'WR' }],
+    ])
+
+    const built = buildTeams(leagueBundle, values, sleeperPlayers)
+    const priced = built[0].players.find((player) => player.id === '101')
+    const missing = built[0].players.find((player) => player.id === '202')
+
+    expect(priced?.marketValueAvailable).toBe(true)
+    expect(missing).toMatchObject({ value: 0, marketValueAvailable: false })
+    expect(built[0].marketCoverage).toEqual({ priced: 1, total: 2, complete: false })
+    expect(built[0].metrics.core).toBe(500)
   })
 })
 

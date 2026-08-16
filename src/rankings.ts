@@ -65,6 +65,7 @@ function toAsset(
     position: (['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].includes(position) ? position : 'NA') as Asset['position'],
     team: tradyr?.team ?? sleeper?.team ?? (isDefense ? id : null),
     value: tradyr?.composite ?? 0,
+    marketValueAvailable: Boolean(tradyr),
     confidence: tradyr?.confidence ?? 0,
     age: tradyr?.age ?? sleeper?.age ?? null,
     rank: tradyr?.rank ?? null,
@@ -355,6 +356,8 @@ export function buildTeams(
         }),
       )
       .sort((a, b) => b.value - a.value)
+    const marketPlayers = players.filter((asset) => SKILL_POSITIONS.has(asset.position))
+    const pricedMarketPlayers = marketPlayers.filter((asset) => asset.marketValueAvailable !== false).length
     const team: Team = {
       rosterId: roster.roster_id,
       ownerId: roster.owner_id,
@@ -362,6 +365,11 @@ export function buildTeams(
       teamName: user?.metadata?.team_name || user?.display_name || `Team ${roster.roster_id}`,
       avatar: sleeperAvatar(user?.metadata?.avatar || user?.avatar),
       players,
+      marketCoverage: {
+        priced: pricedMarketPlayers,
+        total: marketPlayers.length,
+        complete: pricedMarketPlayers === marketPlayers.length,
+      },
       picks: [],
       optimizedStarters: [],
       metrics: { ...EMPTY_METRICS },

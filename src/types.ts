@@ -177,6 +177,15 @@ export type ApiMeta = {
   generatedAt: string
   sources: string[]
   attribution: string
+  total?: number
+  limit?: number
+  offset?: number
+  coverage?: {
+    expected: number
+    returned: number
+    complete: boolean
+    pages: number
+  }
 }
 
 export type Asset = {
@@ -187,6 +196,10 @@ export type Asset = {
   position: 'QB' | 'RB' | 'WR' | 'TE' | 'PICK' | 'K' | 'DEF' | 'NA'
   team: string | null
   value: number
+  /** False only when the current market provider did not return a row for this
+   * player. The numeric value remains zero for legacy arithmetic, but product
+   * surfaces must treat the price as unavailable rather than a real zero. */
+  marketValueAvailable?: boolean
   confidence: number
   age: number | null
   rank: number | null
@@ -254,6 +267,11 @@ export type Team = {
   teamName: string
   avatar: string | null
   players: Asset[]
+  marketCoverage?: {
+    priced: number
+    total: number
+    complete: boolean
+  }
   picks: Asset[]
   optimizedStarters: Asset[]
   metrics: TeamMetrics

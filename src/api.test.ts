@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchIntel, fetchJournal, fetchSleeperPlayers, fetchValues, selectSleeperPlayers } from './api'
-import type { SleeperPlayer } from './types'
+import { fetchIntel, fetchJournal, fetchSleeperPlayers, fetchTradyrPlayers, fetchValues, selectSleeperPlayers } from './api'
+import type { SleeperPlayer, TradyrPlayer } from './types'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -34,6 +34,80 @@ describe('Sleeper player catalog selection', () => {
     expect(fetchMock).toHaveBeenCalledWith('https://api.sleeper.app/v1/players/nfl', undefined)
     expect(first.get('101')?.full_name).toBe('First Player')
     expect(second.get('202')?.full_name).toBe('Second Player')
+  })
+})
+
+function tradyrPlayer(index: number): TradyrPlayer {
+  return {
+    slug: `player-${index}`,
+    name: `Player ${index}`,
+    position: 'WR',
+    team: 'NFL',
+    age: 24,
+    composite: 500 - index,
+    confidence: 1,
+    rank: index + 1,
+    posRank: index + 1,
+    sources: { ktc: 1_000 - index, fantasycalc: 900 - index },
+    sleeperId: String(10_000 + index),
+  }
+}
+
+describe('Tradyr player coverage', () => {
+  it('retrieves every provider page with overlap and deduplicates boundary rows', async () => {
+    const total = 110
+    const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {
+      const url = new URL(String(input))
+      const offset = Number(url.searchParams.get('offset') ?? 0)
+      const data = Array.from(
+        { length: Math.max(0, Math.min(50, total - offset)) },
+        (_, index) => tradyrPlayer(offset + index),
+      )
+      return Promise.resolve(Response.json({
+        data,
+        meta: {
+          generatedAt: `2026-08-16T00:00:${String(offset).padStart(2, '0')}.000Z`,
+          sources: ['keeptradecut', 'fantasycalc'],
+          attribution: 'Powered by Tradyr',
+          total,
+          limit: 50,
+          offset,
+        },
+      }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await fetchTradyrPlayers(new URLSearchParams({
+      format: 'dynasty', numQbs: '2', tep: 'true', limit: '1000',
+    }))
+
+    expect(result.data).toHaveLength(total)
+    expect(new Set(result.data.map((player) => player.sleeperId)).size).toBe(total)
+    expect(result.meta.coverage).toEqual({ expected: total, returned: total, complete: true, pages: 3 })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock.mock.calls.map(([input]) => new URL(String(input)).searchParams.get('offset'))).toEqual([null, '45', '90'])
+  })
+
+  it('rejects an incomplete market response instead of returning partial prices', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {
+      const url = new URL(String(input))
+      const offset = Number(url.searchParams.get('offset') ?? 0)
+      return Promise.resolve(Response.json({
+        data: offset === 0 ? Array.from({ length: 50 }, (_, index) => tradyrPlayer(index)) : [],
+        meta: {
+          generatedAt: '2026-08-16T00:00:00.000Z',
+          sources: ['keeptradecut', 'fantasycalc'],
+          attribution: 'Powered by Tradyr',
+          total: 120,
+          limit: 50,
+          offset,
+        },
+      }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchTradyrPlayers(new URLSearchParams({ format: 'dynasty', limit: '1000' })))
+      .rejects.toThrow('Tradyr player coverage incomplete')
   })
 })
 

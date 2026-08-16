@@ -7,7 +7,7 @@ import { buildTeamRankComparisons } from '../rank-comparison'
 import type { TeamRankComparison } from '../rank-comparison'
 import { rosterProfile } from '../rankings'
 import type { RankingMode, Team } from '../types'
-import { AssetBadge, Avatar, formatValue, MetricBar } from '../components/domain-ui'
+import { AssetBadge, Avatar, formatAssetValue, formatValue, MetricBar } from '../components/domain-ui'
 
 const modeCopy: Record<RankingMode, { label: string; description: string }> = {
   overall: {
@@ -89,7 +89,11 @@ function RankingBoard({
               <span className="rank-score-block">
                 <span className="rank-score-line">
                   <b>{formatValue(score)}</b>
-                  <small>{mode === 'contender' ? 'lineup power' : 'current value'}</small>
+                  <small>{mode === 'contender'
+                    ? 'lineup power'
+                    : mode === 'overall' && team.marketCoverage?.complete === false
+                      ? `partial value · ${team.marketCoverage.priced}/${team.marketCoverage.total} players priced`
+                      : 'current value'}</small>
                 </span>
               </span>
               <ChevronRight size={18} aria-hidden="true" />
@@ -134,7 +138,7 @@ function TeamPreview({ team, teams, onOpenPlayer, onOpenTeam }: { team: Team; te
       <div className="scout-section metrics-grid">
         <MetricBar label="Current-season lineup power" value={formatValue(team.metrics.contender)} />
         <MetricBar label="Covered model PPG" value={team.metrics.lineup.toFixed(1)} />
-        <MetricBar label="Player market value" value={formatValue(team.metrics.core)} />
+        <MetricBar label={team.marketCoverage?.complete === false ? `Player market (${team.marketCoverage.priced}/${team.marketCoverage.total} priced)` : 'Player market value'} value={formatValue(team.metrics.core)} />
         <MetricBar label="Bench market value" value={formatValue(team.metrics.depth)} />
         <MetricBar label="Draft-capital value" value={formatValue(team.metrics.picks)} />
       </div>
@@ -161,7 +165,7 @@ function TeamPreview({ team, teams, onOpenPlayer, onOpenTeam }: { team: Team; te
                   {[asset.team, asset.age ? `Age ${asset.age.toFixed(1)}` : null].filter(Boolean).join(' · ')}
                 </small>
               </span>
-              <b className="asset-value">{formatValue(asset.value)}</b>
+              <b className="asset-value">{formatAssetValue(asset)}</b>
               {asset.kind === 'player' && <ChevronRight size={16} aria-hidden="true" />}
             </>
             return <button type="button" className="scout-asset scout-player-link" key={asset.id} onClick={() => onOpenPlayer(asset.id)} aria-label={`Research ${asset.name}`}>{content}</button>

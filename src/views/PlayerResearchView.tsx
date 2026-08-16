@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowLeftRight, Bookmark, BookmarkCheck, Info, ShieldCheck }
 import { useState } from 'react'
 import type { AssetReturnHealthBundle, ForwardHorizonDays } from '../asset-returns'
 import { AssetResearchPanel } from '../components/AssetResearchPanel'
-import { AssetBadge, formatValue } from '../components/domain-ui'
+import { AssetBadge, formatAssetValue, formatValue } from '../components/domain-ui'
 import { ProjectionRangeChart } from '../components/ProjectionRangeChart'
 import { SportsbookEvidencePanel } from '../components/SportsbookEvidencePanel'
 import type { LeagueContext } from '../league-context'
@@ -60,7 +60,7 @@ export function PlayerResearchView({
       <section className="player-research-section panel">
         <div className="panel-heading"><div><span className="eyebrow">Current market</span><h2>Price sources stay separate</h2></div><span className="method-note">Collected {dateLabel(profile.marketAsOf)}</span></div>
         <div className="player-market-grid">
-          <article><small>Tradyr composite</small><strong>{formatValue(asset.value)}</strong><span>{asset.rank === null ? 'Overall rank unavailable' : `Overall rank #${asset.rank}`}</span></article>
+          <article><small>Tradyr composite</small><strong>{formatAssetValue(asset)}</strong><span>{asset.rank === null ? 'Overall rank unavailable' : `Overall rank #${asset.rank}`}</span></article>
           <article><small>KeepTradeCut</small><strong>{sourceValue(asset.marketSources?.ktc)}</strong><span>Current attributed provider value</span></article>
           <article><small>FantasyCalc</small><strong>{sourceValue(asset.marketSources?.fantasycalc)}</strong><span>Current attributed provider value</span></article>
           <article><small>Current-season power</small><strong>{sourceValue(asset.currentSeasonValue)}</strong><span>{asset.currentSeasonPosRank ? `${asset.position}${asset.currentSeasonPosRank}` : 'Same-format rank unavailable'}</span></article>
@@ -81,7 +81,7 @@ export function PlayerResearchView({
 
       <section className="player-research-section panel">
         <div className="panel-heading"><div><span className="eyebrow">Owner context</span><h2>{owner.teamName}</h2></div><span className="method-note">Current settled Sleeper roster</span></div>
-        <div className="player-depth-list">{profile.positionDepth.map((player, index) => <span key={player.id} className={player.id === asset.id ? 'selected' : ''}><b>#{index + 1}</b><strong>{player.name}</strong><em>{formatValue(player.value)}</em></span>)}</div>
+        <div className="player-depth-list">{profile.positionDepth.map((player, index) => <span key={player.id} className={player.id === asset.id ? 'selected' : ''}><b>#{index + 1}</b><strong>{player.name}</strong><em>{formatAssetValue(player)}</em></span>)}</div>
         <div className="portfolio-boundary"><ShieldCheck size={16} /><span>This page shows current ownership, price, production, and promoted return evidence. It does not estimate whether @{owner.ownerName} will accept an offer.</span></div>
       </section>
     </main>
