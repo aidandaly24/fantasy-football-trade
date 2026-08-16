@@ -4,6 +4,7 @@ import type { AssetReturnHealthBundle, ForwardHorizonDays } from '../asset-retur
 import { AssetResearchPanel } from '../components/AssetResearchPanel'
 import { AssetBadge, formatValue } from '../components/domain-ui'
 import { ProjectionRangeChart } from '../components/ProjectionRangeChart'
+import { SportsbookEvidencePanel } from '../components/SportsbookEvidencePanel'
 import type { LeagueContext } from '../league-context'
 import type { PlayerResearchProfile } from '../player-research'
 
@@ -70,6 +71,8 @@ export function PlayerResearchView({
         <div className="panel-heading"><div><span className="eyebrow">Covered production</span><h2>Football outlook is not market profit</h2></div><span className="method-note">{projection ? `${projection.productionModel ?? 'Production model'} · ${projection.gamesObserved} games` : 'Unavailable'}</span></div>
         {projection ? <><ProjectionRangeChart projection={projection} /><div className="player-production-grid"><article><small>Expected PPG</small><strong>{projection.expectedPpg.toFixed(1)}</strong></article><article><small>Floor</small><strong>{projection.floorPpg.toFixed(1)}</strong></article><article><small>Ceiling</small><strong>{projection.ceilingPpg.toFixed(1)}</strong></article><article><small>Source season</small><strong>{projection.sourceSeason}</strong></article></div><ul className="player-driver-list">{projection.drivers?.map((driver) => <li key={driver}>{driver}</li>)}</ul></> : <div className="player-evidence-empty"><Info size={18} /><span>No covered production projection is available. Missing production is not treated as zero.</span></div>}
       </section>
+
+      <SportsbookEvidencePanel assets={[asset]} />
 
       <section className="player-research-section panel">
         <div className="panel-heading"><div><span className="eyebrow">Forward market evidence</span><h2>Select the intended holding period</h2></div><label className="holding-period-control"><span>Holding period</span><select value={holdingPeriodDays} onChange={(event) => setHoldingPeriodDays(Number(event.target.value) as ForwardHorizonDays)}><option value={30}>30 days</option><option value={90}>90 days</option><option value={180}>180 days</option><option value={365}>365 days</option></select></label></div>

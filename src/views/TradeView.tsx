@@ -31,6 +31,7 @@ import type { TradeDecisionDraft, TradeDecisionStatus } from '../decision-journa
 import { buildPickOpportunityRead } from '../pick-opportunity'
 import type { PickOpportunityRead } from '../pick-opportunity'
 import type { RookieBoardBundle } from '../rookies'
+import { SportsbookEvidencePanel } from '../components/SportsbookEvidencePanel'
 
 type TradeEvaluation = ReturnType<typeof evaluateTrade>
 
@@ -947,6 +948,7 @@ export function TradeView({
       </section>
 
       <RosterImpact teamA={teamA} teamB={teamB} sideA={assetsA} sideB={assetsB} result={result} horizonYears={strategy.horizonYears} />
+      {ready && <SportsbookEvidencePanel assets={[...assetsA, ...assetsB]} context="trade" />}
       {portfolio && forwardPortfolio && strategyTeam && <RebuildPortfolioPanel portfolio={portfolio} forward={forwardPortfolio} team={strategyTeam} incoming={strategyIncoming} bundle={assetReturnHealth} numQbs={leagueContext.marketFormat.numQbs} horizonYears={strategy.horizonYears} holdingPeriodDays={holdingPeriodDays} onHoldingPeriodChange={setHoldingPeriodDays} />}
       {!portfolio && forwardPortfolio && strategyTeam && <ForwardMarketPanel forward={forwardPortfolio} incoming={strategyIncoming} bundle={assetReturnHealth} numQbs={leagueContext.marketFormat.numQbs} horizonYears={strategy.horizonYears} holdingPeriodDays={holdingPeriodDays} onHoldingPeriodChange={setHoldingPeriodDays} />}
       {ready && strategyTeam && <CatalystTimingPanel read={catalystRead} />}

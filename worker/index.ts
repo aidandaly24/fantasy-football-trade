@@ -9,6 +9,7 @@ import { rookieResponse } from './routes/rookies'
 import { tradeTapeResponse } from './routes/trade-tape'
 import { teamHistoryResponse } from './routes/team-history'
 import { decisionsResponse } from './routes/decisions'
+import { sportsbookResponse } from './routes/sportsbook'
 
 const routes: Record<string, (request: Request, env: Env) => Promise<Response>> = {
   '/api/alerts': alertsResponse,
@@ -21,6 +22,7 @@ const routes: Record<string, (request: Request, env: Env) => Promise<Response>> 
   '/api/trade-tape': tradeTapeResponse,
   '/api/team-history': teamHistoryResponse,
   '/api/decisions': decisionsResponse,
+  '/api/sportsbook': sportsbookResponse,
 }
 
 const worker = {

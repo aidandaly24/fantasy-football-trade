@@ -24,6 +24,7 @@ flowchart LR
   W --> S
   W --> T
   W --> N["NFL RSS and Sleeper trends"]
+  W --> O["Current sportsbook API"]
   ML["Offline Python pipelines"] --> A["Versioned model artifacts and reports"]
   A --> UI
   CLICK["Authenticated refresh actions"] --> W
@@ -49,6 +50,7 @@ Offline training does not run in the request path.
 | `src/counterparty-utility.ts` | League-relative seller roster facts and bounded three-way bridge candidates, kept separate from price and acceptance |
 | `src/player-research.ts` | Pure league-scoped player dossier and restorable league/player address contract; no fetching or valuation rules |
 | `src/catalyst-timing.ts` | Current report-to-player joins and descriptive event cohorts with a hard model-promotion gate |
+| `src/sportsbook.ts` | Provider-neutral line normalization, exact-name identity rules, no-vig consensus, and shadow/model contracts |
 | `src/pick-opportunity.ts` | Pick price-range and pipeline-derived rookie opportunity read without converting prospect production to value |
 | `src/decision-journal.ts` | Portable private proposal, evidence-snapshot, thesis, hold, exit, and status contracts |
 | `src/leagues/` | Fixed-league private decision policies; shared dispatch with separate Phil power-climb and BC value-build rules |
@@ -63,10 +65,11 @@ Offline training does not run in the request path.
 | `worker/generated/` | Sanitized generated artifacts bundled only into authenticated Worker routes |
 | `worker/http.ts` | Shared HTTP boundary helpers |
 | `worker/intel-feed.ts` | RSS and Sleeper trend collection adapter |
+| `worker/sportsbook-provider.ts` | Server-side The Odds API adapter with bounded event/market requests and ten-minute isolate caching |
 | `worker/*-store.ts` | D1 schemas, normalization, persistence, refreshes, and read models by capability |
 | `db/schema.ts` | Drizzle schema used to generate checked-in migrations |
 | `drizzle/` | Ordered D1 migrations shipped with the Sites build |
-| `ml/` | Offline production, rookie, source-audit, historical trade, return, and evaluation pipelines; `asset_potential.py` is a blocked shadow experiment and has no runtime consumer |
+| `ml/` | Offline production, rookie, source-audit, historical trade, return, sportsbook-challenger, and evaluation pipelines; blocked experiments have no runtime influence |
 | `public/data/` | Browser-safe generated artifacts for models intentionally public to the deployed asset layer |
 | `.openai/hosting.json` | Logical Sites project and D1 binding declaration |
 | `build/sites-vite-plugin.ts` | Copies Sites configuration and migrations into the deployment bundle |
@@ -127,6 +130,7 @@ instead of reimplementing ranking or valuation rules in JSX.
 | `/api/decisions` | `GET`, `POST`, `PATCH` | D1 | Requires identity; stores and updates the user's private pre-trade decision record and exact evidence snapshot |
 | `/api/intel` | `GET` | None | Requires identity; generic feed is cached privately for five minutes |
 | `/api/rookies` | `GET` | None | Requires identity; returns the checked-in sanitized rookie-production artifact with no-store caching |
+| `/api/sportsbook` | `POST` | None | Requires identity and same origin; fetches selected-player current markets with the server-side secret and private five-minute response caching |
 
 Write routes reject cross-origin requests. Private JSON responses use
 `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`.
@@ -191,6 +195,9 @@ user-triggered:
 - Research and the Sleeper journal have explicit same-origin sync actions.
 - Trade Lab's historical-tape button scans a fixed FantasyCalc anchor sample,
   deduplicates completed trades, and records success, partial failure, or error.
+- Sportsbook evidence is fetched only when the user presses its player-page or
+  Trade Lab refresh button. Ten-minute provider caching prevents repeated clicks
+  from multiplying event requests; there is no background odds collector.
 
 These triggers may refresh evidence; they cannot execute trades, contact other
 managers, train sklearn inside a request, or promote an artifact. If Sites later
