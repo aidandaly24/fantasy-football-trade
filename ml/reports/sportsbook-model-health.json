@@ -1,0 +1,91 @@
+{
+  "version": "sportsbook-shadow-v1",
+  "generatedAt": "2026-08-15T01:03:20Z",
+  "status": "needs-data",
+  "enabled": false,
+  "target": "Incremental weekly PPR accuracy over the existing production model",
+  "rows": 0,
+  "trainRows": 0,
+  "testRows": 0,
+  "seasons": [],
+  "anchors": [
+    "early-week",
+    "pregame"
+  ],
+  "metrics": {
+    "baselineMae": null,
+    "sportsbookOnlyMae": null,
+    "combinedMae": null,
+    "combinedLift": null
+  },
+  "gates": [
+    {
+      "id": "point-in-time",
+      "label": "Point-in-time snapshots",
+      "requirement": "Every eligible line predates kickoff.",
+      "passed": false,
+      "actual": 0
+    },
+    {
+      "id": "multi-season",
+      "label": "Chronological seasons",
+      "requirement": "At least two seasons with the latest untouched for testing.",
+      "passed": false,
+      "actual": 0
+    },
+    {
+      "id": "coverage",
+      "label": "Position coverage",
+      "requirement": "Held-out QB, RB, WR, and TE coverage.",
+      "passed": false,
+      "actual": 0
+    },
+    {
+      "id": "incremental-lift",
+      "label": "Incremental held-out lift",
+      "requirement": "Combined features beat the existing forecast on the untouched season.",
+      "passed": false,
+      "actual": null
+    }
+  ],
+  "evaluations": [
+    {
+      "anchor": "early-week",
+      "rows": 0,
+      "trainRows": 0,
+      "testRows": 0,
+      "seasons": [],
+      "positions": [],
+      "baselineMae": null,
+      "sportsbookOnlyMae": null,
+      "combinedMae": null,
+      "combinedLift": null,
+      "enabled": false,
+      "status": "needs-data"
+    },
+    {
+      "anchor": "pregame",
+      "rows": 0,
+      "trainRows": 0,
+      "testRows": 0,
+      "seasons": [],
+      "positions": [],
+      "baselineMae": null,
+      "sportsbookOnlyMae": null,
+      "combinedMae": null,
+      "combinedLift": null,
+      "enabled": false,
+      "status": "needs-data"
+    }
+  ],
+  "inputAudit": {
+    "rawRows": 0,
+    "eligibleRows": 0,
+    "rejectedRows": 0
+  },
+  "notes": [
+    "Current lines may be displayed as shadow evidence but contribute zero recommendation weight.",
+    "Early-week and final pregame models are evaluated independently to prevent closing-line leakage.",
+    "A betting line is a market threshold, not an expected mean or a long-term dynasty valuation."
+  ]
+}

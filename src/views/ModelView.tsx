@@ -1,9 +1,12 @@
 import { AlertTriangle, Check, Info } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { fetchSportsbookModelHealth } from '../api'
 import type { LeagueContext } from '../league-context'
 import type { Asset, ModelHealthBundle } from '../types'
 import { AssetBadge, signedPercent } from '../components/domain-ui'
 import type { TradeModelHealthBundle } from '../trade-models'
 import type { AssetReturnHealthBundle } from '../asset-returns'
+import type { SportsbookModelHealth } from '../sportsbook'
 
 const baselineLabels: Record<string, string> = {
   repeatPrior: 'Repeat prior season',
@@ -26,6 +29,14 @@ const sliceLabels: Record<string, string> = {
 }
 
 export function ModelView({ health, tradeHealth, assetReturnHealth, leagueContext }: { health: ModelHealthBundle | null; tradeHealth: TradeModelHealthBundle | null; assetReturnHealth: AssetReturnHealthBundle | null; leagueContext: LeagueContext }) {
+  const [sportsbookHealth, setSportsbookHealth] = useState<SportsbookModelHealth | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void fetchSportsbookModelHealth().then((value) => {
+      if (!cancelled) setSportsbookHealth(value)
+    })
+    return () => { cancelled = true }
+  }, [])
   if (!health) {
     return (
       <main className="page-shell model-page">
@@ -62,6 +73,17 @@ export function ModelView({ health, tradeHealth, assetReturnHealth, leagueContex
       </section>
 
       <div className="league-context-note panel"><span><strong>Active output layer · {leagueContext.label}</strong> · {leagueContext.labels.projection}</span><small>The promotion metrics below audit the generic-PPR base model. The deterministic TE bonus is kept outside training so the same validated forecast can serve both fixed leagues without pretending there are two separately validated models.</small></div>
+
+      {sportsbookHealth && <section className="panel sportsbook-model-audit">
+        <div className="panel-heading"><div><span className="eyebrow">Sportsbook challenger · shadow</span><h2>Current lines are visible; model influence is blocked</h2></div><span className="method-note">{sportsbookHealth.rows.toLocaleString()} historical rows · {sportsbookHealth.status}</span></div>
+        <div className="sportsbook-model-summary">
+          <article><small>Target</small><strong>Weekly PPR lift</strong><span>{sportsbookHealth.target}</span></article>
+          <article><small>Prediction anchors</small><strong>{sportsbookHealth.anchors.length}</strong><span>{sportsbookHealth.anchors.join(' · ')}</span></article>
+          <article><small>Current influence</small><strong>{sportsbookHealth.enabled ? 'Enabled' : 'Zero weight'}</strong><span>Dynasty price and trade verdict remain unchanged.</span></article>
+        </div>
+        <div className="sportsbook-gate-grid">{sportsbookHealth.gates.map((gate) => <article className={gate.passed ? 'passed' : 'failed'} key={gate.id}><span>{gate.passed ? <Check size={15} /> : <AlertTriangle size={15} />}</span><div><strong>{gate.label}</strong><small>{gate.requirement}</small></div><b>{gate.actual === null ? 'Unavailable' : String(gate.actual)}</b></article>)}</div>
+        <div className="model-note sportsbook-boundary"><Info size={16} /><span>Early-week and pregame lines train as different challengers. Closing information can never leak into an earlier decision timestamp, and no manually chosen weight can bypass these gates.</span></div>
+      </section>}
 
       {assetReturnHealth && <section className="panel asset-return-audit">
         <div className="panel-heading"><div><span className="eyebrow">V7.4 asset return audit</span><h2>Each horizon earns promotion separately</h2></div><span className="method-note">FantasyCalc value history · {assetReturnHealth.dataAsOf}</span></div>

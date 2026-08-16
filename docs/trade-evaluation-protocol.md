@@ -17,6 +17,7 @@ Evaluate every proposed trade through separate lanes:
 | Asset return | What same-source market return and tracked-asset downside are supported for each asset? | That exact horizon and QB-format model passes every embargoed holdout gate. |
 | Counterparty utility | What current roster need, surplus, lineup effect, and completed-trade facts make an offer relevant to the other manager? | Always as an inspectable negotiation read; never as acceptance probability or a change to price. |
 | Catalyst timing | Is there a dated current report and matching historical event cohort? | Only after a separate chronological market-event challenger proves incremental held-out lift. Current cohorts are advisory. |
+| Sportsbook expectations | What do current game totals and player-prop markets imply about the near-term environment and usage? | Current lines may be shown as shadow context. They affect covered production only after the exact early-week or pregame challenger adds chronological held-out lift; they never overwrite dynasty price. |
 | Rookie opportunity cost | Which current-class prospects might still be available at an exact pick? | Only as an advisory candidate basket under declared availability rules. Production percentile never becomes pick price, and a failed exact-slot gate remains visible. |
 
 Do not combine the lanes into a hidden grade. The user may weight promoted
@@ -81,7 +82,10 @@ For any trade recommendation, report:
    ranking.
 6. Read current catalysts only as timing context unless the market-event gate
    is enabled.
-7. Before contacting the manager, save the proposal and write the thesis, hold
+7. Read sportsbook lines as a separate near-term market lane. A posted line is
+   a threshold rather than an expected mean, and closing data cannot be used at
+   an earlier decision anchor. Unavailable props remain unavailable.
+8. Before contacting the manager, save the proposal and write the thesis, hold
    period, and exit/failure condition. Update the record when it is offered,
    countered, accepted, rejected, or withdrawn so future evaluation has real
    decision labels rather than reconstructed intent.

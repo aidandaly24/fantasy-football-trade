@@ -14,6 +14,7 @@ interchangeable.
 | Rookie production model | Expected position-relative rookie-season PPR production | Current-class board plus advisory exact-slot opportunity baskets; never pick price or profit |
 | Future rookie-class tape | Same-horizon prospect population and source coverage | Private block-status evidence only; no future pick valuation while its pinned source is missing |
 | News and trends | Time-sensitive factual catalyst evidence | Advisory signals and watchlist alerts |
+| Sportsbook expectations | Current game totals, spreads, and player-prop consensus | User-refreshed shadow evidence for near-term usage and scoring environment; zero trade weight until a chronological challenger validates |
 | Completed-trade journal | Factual league transaction ledger | Historical manager context and outcome tracking |
 | Historical market tape | Dated market observations | Calibration and shadow learning research |
 | Trade outcomes | Change after an observed entry snapshot | Evaluation at declared checkpoints |
@@ -78,6 +79,28 @@ event classifier, and stores only confidently matched events for alerts.
 Source reliability constants and headline rules are advisory heuristics, not a
 trained return model. They cannot change market price or a production forecast
 without a separate historical validation gate.
+
+### Sportsbook expectations
+
+The private Worker can read current NFL game and player-prop markets from The
+Odds API when the hosted `ODDS_API_KEY` secret is configured. The client sends
+only selected rostered players; the Worker groups them by event, requests only
+position-relevant markets, caches provider responses for ten minutes, and
+returns aggregate line, range, bookmaker count, and two-way no-vig probability
+where both prices exist. The provider key never reaches the browser.
+
+The player and Trade Lab panels are manual-refresh shadow lanes. They do not
+alter `Asset.value`, rankings, current-season power, production PPG, trade
+verdicts, or saved model weights. Missing events, unmatched exact player names,
+and unposted props remain visible rather than being estimated.
+
+Historical evaluation is offline in `ml/sportsbook_model.py`. Its private JSONL
+tape must retain observation time, kickoff, season, actual PPR, the existing
+baseline forecast, game context, and normalized markets. Early-week and final
+pregame anchors are evaluated independently on the latest untouched season.
+Closing lines are never eligible for an earlier prediction. The report compares
+the existing forecast, sportsbook-only features, and a combined challenger;
+only real incremental held-out lift can advance this evidence lane.
 
 ### Offline football data
 

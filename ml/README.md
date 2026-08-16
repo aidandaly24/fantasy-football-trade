@@ -14,6 +14,25 @@ The first version does not train on news, trade acceptance, league chat, or a
 black-box final trade grade. Those stay outside the model until the production
 forecast earns trust.
 
+## Sportsbook projection challenger
+
+Current game totals and player props are a separate shadow evidence lane. The
+site fetches them only on demand through its private Worker. Historical model
+work reads a private point-in-time JSONL tape and compares the existing weekly
+forecast, sportsbook-only features, and their combined challenger at separate
+early-week and pregame anchors:
+
+```sh
+npm run ml:sportsbook
+```
+
+The default input is `data/raw/sportsbook/snapshots.jsonl`. Raw lines remain
+ignored; the aggregate health report is retained at
+`ml/reports/sportsbook-model-health.json` and copied to
+`public/data/sportsbook-model-health.json`. With no historical tape the report
+honestly stays `needs-data`, and current lines contribute zero recommendation
+weight.
+
 ## Historical return source audit
 
 The return model has a separate, offline source audition. It does not feed the

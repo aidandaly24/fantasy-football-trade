@@ -29,6 +29,7 @@ import type { RookieBoardBundle } from './rookies'
 import type { TradeDecision, TradeDecisionBundle, TradeDecisionDraft, TradeDecisionStatus } from './decision-journal'
 import type { TradeModelHealthBundle, TradeTapeRefreshState } from './trade-models'
 import type { AssetReturnHealthBundle } from './asset-returns'
+import type { SportsbookBundle, SportsbookModelHealth, SportsbookPlayerRequest } from './sportsbook'
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const TRADYR_BASE = 'https://api.tradyr.app/v1'
@@ -175,6 +176,22 @@ export async function fetchTradeModelHealth(): Promise<TradeModelHealthBundle | 
 export async function fetchAssetReturnHealth(): Promise<AssetReturnHealthBundle | null> {
   assetReturnHealthRequest ??= fetchJson<AssetReturnHealthBundle>('/data/asset-return-health.json').catch(() => null)
   return assetReturnHealthRequest
+}
+
+export async function fetchSportsbookModelHealth(): Promise<SportsbookModelHealth | null> {
+  try {
+    return await fetchJson<SportsbookModelHealth>('/data/sportsbook-model-health.json')
+  } catch {
+    return null
+  }
+}
+
+export async function refreshSportsbookEvidence(players: SportsbookPlayerRequest[]): Promise<SportsbookBundle> {
+  return fetchJson<SportsbookBundle>('/api/sportsbook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ players }),
+  })
 }
 
 export async function fetchTradeTapeState(): Promise<TradeTapeRefreshState> {

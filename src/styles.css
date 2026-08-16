@@ -4119,3 +4119,78 @@ footer a {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Sportsbook expectations remain an inspectable shadow lane, never a hidden trade adjustment. */
+.sportsbook-panel { margin-top: 18px; overflow: hidden; }
+.sportsbook-refresh { min-height: 38px; padding: 0 13px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: #edf0e8; background: var(--dark); border: 0; border-radius: 9px; font-size: 8px; font-weight: 900; white-space: nowrap; }
+.sportsbook-refresh:disabled { cursor: wait; opacity: .55; }
+.sportsbook-empty { min-height: 112px; padding: 22px 24px; display: flex; align-items: center; gap: 14px; color: var(--ink-soft); background: #f5f3ec; border-top: 1px solid var(--line); }
+.sportsbook-empty > svg { flex: 0 0 auto; color: var(--blue); }
+.sportsbook-empty > div { display: grid; gap: 5px; }
+.sportsbook-empty strong { color: var(--ink); font-size: 10px; }
+.sportsbook-empty span { font-size: 8px; line-height: 1.55; }
+.sportsbook-empty code { padding: 2px 4px; color: var(--ink); background: rgba(109, 141, 247, .12); border-radius: 4px; font-family: 'DM Mono', monospace; }
+.sportsbook-empty.error > svg { color: var(--red); }
+.sportsbook-player-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.sportsbook-player-card { min-width: 0; background: #f8f7f2; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.sportsbook-player-card:nth-child(even) { border-right: 0; }
+.sportsbook-player-card > header { min-height: 74px; padding: 14px 16px; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; background: var(--panel); }
+.sportsbook-player-card > header > span { min-width: 0; display: grid; gap: 3px; }
+.sportsbook-player-card > header strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+.sportsbook-player-card > header small { color: var(--ink-soft); font-size: 7px; text-transform: capitalize; }
+.sportsbook-player-card > header > b { font-family: 'DM Mono', monospace; font-size: 8px; white-space: nowrap; }
+.sportsbook-game-context { display: grid; grid-template-columns: 1.6fr repeat(3, minmax(0, .7fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.sportsbook-game-context > span { min-width: 0; padding: 10px 12px; display: grid; gap: 4px; border-right: 1px solid var(--line); }
+.sportsbook-game-context > span:last-child { border-right: 0; }
+.sportsbook-game-context small { color: var(--ink-soft); font-size: 6px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
+.sportsbook-game-context b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; }
+.sportsbook-market-list { display: grid; }
+.sportsbook-market-list > div { min-height: 58px; padding: 10px 13px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); }
+.sportsbook-market-list > div:last-child { border-bottom: 0; }
+.sportsbook-market-list > div > span { display: grid; gap: 3px; }
+.sportsbook-market-list small { color: var(--ink-soft); font-size: 7px; font-weight: 850; }
+.sportsbook-market-list strong { font-family: 'DM Mono', monospace; font-size: 13px; }
+.sportsbook-market-list em { max-width: 210px; color: var(--ink-soft); font-size: 7px; font-style: normal; line-height: 1.45; text-align: right; }
+.sportsbook-player-card > p { min-height: 92px; margin: 0; padding: 20px; display: grid; place-items: center; color: var(--ink-soft); font-size: 8px; line-height: 1.5; text-align: center; }
+.sportsbook-source-row { min-height: 45px; padding: 9px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; color: var(--ink-soft); background: #f0eee7; font-size: 7px; }
+.sportsbook-source-row a { display: inline-flex; align-items: center; gap: 4px; color: var(--blue); font-weight: 850; text-decoration: none; white-space: nowrap; }
+.sportsbook-boundary { margin: 0; border-width: 1px 0 0; border-radius: 0; }
+.sportsbook-model-audit { margin-bottom: 22px; overflow: hidden; }
+.sportsbook-model-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.sportsbook-model-summary article { min-height: 118px; padding: 17px 19px; display: grid; align-content: center; gap: 6px; border-right: 1px solid var(--line); }
+.sportsbook-model-summary article:last-child { border-right: 0; }
+.sportsbook-model-summary small { color: var(--ink-soft); font-size: 7px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; }
+.sportsbook-model-summary strong { font-size: 14px; }
+.sportsbook-model-summary span { color: var(--ink-soft); font-size: 8px; line-height: 1.45; }
+.sportsbook-gate-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sportsbook-gate-grid article { min-height: 92px; padding: 14px 17px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.sportsbook-gate-grid article:nth-child(even) { border-right: 0; }
+.sportsbook-gate-grid article > span { width: 24px; height: 24px; display: grid; place-items: center; color: var(--red); background: rgba(185, 66, 58, .09); border-radius: 50%; }
+.sportsbook-gate-grid article.passed > span { color: var(--green); background: rgba(35, 116, 90, .09); }
+.sportsbook-gate-grid article > div { display: grid; gap: 4px; }
+.sportsbook-gate-grid strong { font-size: 9px; }
+.sportsbook-gate-grid small { color: var(--ink-soft); font-size: 7px; line-height: 1.45; }
+.sportsbook-gate-grid b { font-family: 'DM Mono', monospace; font-size: 8px; }
+
+@media (max-width: 900px) {
+  .sportsbook-player-grid { grid-template-columns: 1fr; }
+  .sportsbook-player-card { border-right: 0; }
+  .sportsbook-model-summary { grid-template-columns: 1fr; }
+  .sportsbook-model-summary article { border-right: 0; border-bottom: 1px solid var(--line); }
+  .sportsbook-model-summary article:last-child { border-bottom: 0; }
+}
+
+@media (max-width: 620px) {
+  .sportsbook-panel .panel-heading { align-items: flex-start; gap: 12px; }
+  .sportsbook-refresh { width: 100%; }
+  .sportsbook-player-card > header { grid-template-columns: 30px minmax(0, 1fr); }
+  .sportsbook-player-card > header > b { grid-column: 2; }
+  .sportsbook-game-context { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sportsbook-game-context > span:nth-child(even) { border-right: 0; }
+  .sportsbook-game-context > span:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
+  .sportsbook-market-list > div { grid-template-columns: 1fr; gap: 5px; }
+  .sportsbook-market-list em { max-width: none; text-align: left; }
+  .sportsbook-source-row { align-items: flex-start; flex-direction: column; }
+  .sportsbook-gate-grid { grid-template-columns: 1fr; }
+  .sportsbook-gate-grid article { border-right: 0; }
+}
