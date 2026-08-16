@@ -279,6 +279,40 @@ export type CurrentSeasonValueBundle = {
   meta: ApiMeta
 }
 
+export type RedraftProjectionStats = {
+  adpPpr: number
+  ptsPpr: number | null
+  passYd: number
+  passTd: number
+  passInt: number
+  pass2pt: number
+  rushYd: number
+  rushTd: number
+  rush2pt: number
+  rec: number
+  recYd: number
+  recTd: number
+  rec2pt: number
+  fumLost: number
+}
+
+export type RedraftDraftProjection = {
+  playerId: string
+  name: string
+  position: 'QB' | 'RB' | 'WR' | 'TE'
+  team: string | null
+  injuryStatus: string | null
+  company: string | null
+  stats: RedraftProjectionStats
+}
+
+export type RedraftDraftPool = {
+  season: string
+  generatedAt: string
+  source: string
+  players: RedraftDraftProjection[]
+}
+
 export type PlayerProjection = {
   name: string
   position: 'QB' | 'RB' | 'WR' | 'TE'

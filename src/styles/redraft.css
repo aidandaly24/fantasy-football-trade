@@ -62,6 +62,76 @@
 .redraft-plan-rules p { margin: 0; font-size: 9px; line-height: 1.6; }
 .redraft-boundary-note { margin: 0; padding: 15px 20px; color: #354027; background: rgba(216, 255, 104, .2); border-top: 1px solid var(--line); font-size: 9px; font-weight: 700; line-height: 1.55; }
 
+.redraft-pick-panel { margin-bottom: 22px; overflow: hidden; }
+.redraft-pick-panel .redraft-panel-heading { min-height: 88px; }
+.redraft-loading, .redraft-unavailable { min-height: 170px; padding: 28px; display: flex; align-items: center; justify-content: center; gap: 11px; color: var(--ink-soft); font-size: 10px; }
+.redraft-loading svg { color: var(--green); }
+.redraft-unavailable { color: var(--red); background: rgba(189, 74, 61, .05); }
+
+.redraft-candidate-board { overflow-x: auto; }
+.redraft-candidate-head, .redraft-candidate-board > article {
+  min-width: 900px;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: 56px minmax(205px, 1.4fr) minmax(125px, .8fr) minmax(95px, .58fr) minmax(105px, .64fr) minmax(125px, .78fr);
+  align-items: center;
+  gap: 13px;
+}
+.redraft-candidate-head { min-height: 36px; color: var(--ink-soft); background: #eeece4; border-bottom: 1px solid var(--line); font-size: 7px; font-weight: 900; text-transform: uppercase; letter-spacing: .065em; }
+.redraft-candidate-board > article { min-height: 72px; border-bottom: 1px solid var(--line); }
+.redraft-candidate-board > article:last-child { border-bottom: 0; }
+.redraft-candidate-board > article > b { width: 32px; height: 32px; display: grid; place-items: center; color: var(--dark); background: var(--acid); border-radius: 50%; font: 11px 'DM Mono', monospace; }
+.redraft-candidate-board > article > span { display: grid; gap: 4px; }
+.redraft-candidate-board > article > span > strong { font: 12px 'DM Mono', monospace; }
+.redraft-candidate-board > article > span > small { color: var(--ink-soft); font-size: 7px; line-height: 1.3; }
+.redraft-player-cell strong { font-family: inherit !important; font-size: 11px !important; }
+.redraft-probability { position: relative; padding-bottom: 7px; }
+.redraft-probability::after, .redraft-probability i { position: absolute; bottom: 0; left: 0; height: 3px; border-radius: 99px; content: ''; }
+.redraft-probability::after { width: 100%; background: #dedcd4; }
+.redraft-probability i { z-index: 1; max-width: 100%; background: var(--green); }
+
+.redraft-round-panel, .redraft-keeper-panel, .redraft-build-panel { overflow: hidden; }
+.redraft-round-plan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.redraft-round-plan > article { min-height: 112px; padding: 15px 17px; display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: center; gap: 8px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.redraft-round-plan > article:nth-child(even) { border-right: 0; }
+.redraft-round-plan > article:nth-last-child(-n + 2) { border-bottom: 0; }
+.redraft-round-plan > article > b { align-self: start; color: var(--green); font: 11px 'DM Mono', monospace; }
+.redraft-round-plan > article > span { min-width: 0; display: grid; gap: 4px; }
+.redraft-round-plan > article > span strong { overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.redraft-round-plan > article > span small { color: var(--ink-soft); font: 7px 'DM Mono', monospace; }
+.redraft-round-plan > article > em { grid-column: 2; color: var(--ink-soft); font: 7px 'DM Mono', monospace; font-style: normal; }
+.redraft-round-plan > p, .redraft-builds > p { margin: 0; padding: 26px; color: var(--ink-soft); font-size: 9px; }
+
+.redraft-keeper-lanes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.redraft-keeper-lanes article { min-height: 142px; padding: 18px; display: grid; align-content: center; gap: 7px; border-right: 1px solid var(--line); }
+.redraft-keeper-lanes article:last-child { border-right: 0; }
+.redraft-keeper-lanes small { color: var(--ink-soft); font-size: 7px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
+.redraft-keeper-lanes strong { font-family: 'Newsreader', Georgia, serif; font-size: 34px; font-weight: 600; }
+.redraft-keeper-lanes span { color: var(--green); font: 8px 'DM Mono', monospace; }
+.redraft-keeper-advice { margin: 0; padding: 16px 18px; color: #354027; background: rgba(216, 255, 104, .2); border-top: 1px solid var(--line); font-size: 9px; font-weight: 700; line-height: 1.55; }
+
+.redraft-build-panel { margin-top: 22px; }
+.redraft-builds { padding: 18px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; background: #eeece4; }
+.redraft-builds > article { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 13px; overflow: hidden; }
+.redraft-builds > article > header { min-height: 76px; padding: 14px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); }
+.redraft-builds header span { min-width: 0; display: grid; gap: 4px; }
+.redraft-builds header small { color: var(--ink-soft); font-size: 7px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
+.redraft-builds header strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.redraft-builds header em { flex: 0 0 auto; color: var(--green); font: 7px 'DM Mono', monospace; font-style: normal; }
+.redraft-builds > article > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.redraft-builds > article > div > span { min-height: 51px; padding: 9px 10px; display: grid; grid-template-columns: 31px minmax(0, 1fr); align-content: center; gap: 2px 6px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.redraft-builds > article > div > span:nth-child(even) { border-right: 0; }
+.redraft-builds > article > div b { grid-row: 1 / 3; color: var(--green); font: 7px 'DM Mono', monospace; }
+.redraft-builds > article > div strong { overflow: hidden; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.redraft-builds > article > div small { color: var(--ink-soft); font-size: 6px; }
+.redraft-builds footer { padding: 12px 14px; display: flex; justify-content: space-between; gap: 10px; color: var(--ink-soft); background: #f5f3ed; font-size: 7px; }
+.redraft-builds footer b { color: var(--ink); font: 9px 'DM Mono', monospace; }
+
+.redraft-model-boundary { margin-top: 22px; padding: 19px 21px; color: #c3c9be; background: var(--dark); border: 1px solid #343930; border-radius: 16px; }
+.redraft-model-boundary > strong { color: var(--acid); font-size: 9px; text-transform: uppercase; letter-spacing: .07em; }
+.redraft-model-boundary p { margin: 10px 0 0; font-size: 8px; line-height: 1.55; }
+.redraft-model-boundary small { margin-top: 14px; display: block; color: #8f968b; font: 7px 'DM Mono', monospace; }
+
 .redraft-board { max-height: 708px; overflow-y: auto; }
 .redraft-board > div { min-height: 54px; padding: 8px 17px; display: grid; grid-template-columns: 30px minmax(0, 1fr) 64px; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
 .redraft-board > div > b { width: 25px; height: 25px; display: grid; place-items: center; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 50%; font: 9px 'DM Mono', monospace; }
@@ -91,6 +161,7 @@
   .redraft-scorecard article:nth-child(2) { border-right: 0; }
   .redraft-scorecard article:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
   .redraft-grid-top, .redraft-grid-bottom { grid-template-columns: 1fr; }
+  .redraft-builds { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 680px) {
@@ -108,4 +179,33 @@
   .redraft-plan-rules article:last-child { border-bottom: 0; }
   .redraft-panel-heading { align-items: flex-start; flex-direction: column; }
   .redraft-method-chip { white-space: normal; }
+  .redraft-candidate-head { display: none; }
+  .redraft-candidate-board > article {
+    min-width: 0;
+    min-height: 176px;
+    padding: 15px 17px;
+    grid-template-columns: 42px repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'rank player player'
+      '. available projection'
+      '. lineup survival';
+    align-content: center;
+    gap: 12px 10px;
+  }
+  .redraft-candidate-board > article > b { grid-area: rank; align-self: start; }
+  .redraft-player-cell { grid-area: player; }
+  .redraft-availability { grid-area: available; }
+  .redraft-projection { grid-area: projection; }
+  .redraft-lineup { grid-area: lineup; }
+  .redraft-survival { grid-area: survival; }
+  .redraft-candidate-board > article > span:not(.redraft-player-cell) { padding: 9px; background: #f1efe8; border-radius: 8px; }
+  .redraft-probability { padding-bottom: 14px !important; }
+  .redraft-probability::after, .redraft-probability i { right: 9px; bottom: 8px; left: 9px; }
+  .redraft-probability::after { width: auto; }
+  .redraft-round-plan, .redraft-keeper-lanes { grid-template-columns: 1fr; }
+  .redraft-round-plan > article, .redraft-keeper-lanes article { border-right: 0; border-bottom: 1px solid var(--line); }
+  .redraft-round-plan > article:nth-last-child(-n + 2) { border-bottom: 1px solid var(--line); }
+  .redraft-round-plan > article:last-child, .redraft-keeper-lanes article:last-child { border-bottom: 0; }
+  .redraft-builds > article > div { grid-template-columns: 1fr; }
+  .redraft-builds > article > div > span { border-right: 0; }
 }
