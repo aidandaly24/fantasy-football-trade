@@ -1,5 +1,4 @@
 import type {
-  ApiMeta,
   CurrentSeasonValueBundle,
   EventModelHealthBundle,
   EdgeStateBundle,
@@ -12,14 +11,12 @@ import type {
   LeagueUser,
   ModelHealthBundle,
   MarketTapeRequest,
-  PickValue,
   ProjectionBundle,
   RedraftDraftPool,
   SleeperDraft,
   SleeperDraftPick,
   SleeperPlayer,
   SleeperRoster,
-  TradyrPlayer,
   TradedPick,
   TeamHistoryBundle,
   UserState,
@@ -33,7 +30,6 @@ import type { AssetReturnHealthBundle } from './asset-returns'
 import type { SportsbookBundle, SportsbookModelHealth, SportsbookPlayerRequest } from './sportsbook'
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
-const TRADYR_BASE = 'https://api.tradyr.app/v1'
 let sleeperPlayerCatalog: Promise<Record<string, SleeperPlayer>> | null = null
 let projectionRequest: Promise<ProjectionBundle | null> | null = null
 const valueRequests = new Map<string, Promise<ValueBundle>>()
@@ -83,100 +79,6 @@ export async function fetchLeagueBundle(leagueId: string): Promise<LeagueBundle>
   return { league, rosters, users, tradedPicks, draft, draftPicks }
 }
 
-type TradyrResponse<T> = { data: T; meta: ApiMeta }
-
-const TRADYR_PAGE_OVERLAP = 5
-const TRADYR_PAGE_CONCURRENCY = 4
-
-function tradyrPlayerKey(player: TradyrPlayer): string {
-  const sleeperId = String(player.sleeperId ?? '')
-  return /^\d+$/.test(sleeperId) ? `sleeper:${sleeperId}` : `slug:${player.slug}`
-}
-
-function dedupeTradyrPlayers(players: TradyrPlayer[]): TradyrPlayer[] {
-  const unique = new Map<string, TradyrPlayer>()
-  players.forEach((player) => {
-    const key = tradyrPlayerKey(player)
-    if (!unique.has(key)) unique.set(key, player)
-  })
-  return [...unique.values()]
-}
-
-function rebuildPaginatedTradyrRanks(
-  pages: Array<{ offset: number; page: TradyrResponse<TradyrPlayer[]> }>,
-): TradyrPlayer[] {
-  const ordered = [...pages]
-    .sort((left, right) => left.offset - right.offset)
-    .flatMap(({ page }) => page.data)
-  return dedupeTradyrPlayers(ordered).map((player, index) => ({ ...player, rank: index + 1 }))
-}
-
-/**
- * Tradyr may enforce a smaller anonymous page size than the requested limit.
- * Fetch every reported page with a small overlap because the provider can
- * repeat a handful of unjoinable rows at page boundaries. Missing or failed
- * pages reject the whole market request instead of silently becoming zeroes.
- */
-export async function fetchTradyrPlayers(params: URLSearchParams): Promise<TradyrResponse<TradyrPlayer[]>> {
-  const first = await fetchJson<TradyrResponse<TradyrPlayer[]>>(`${TRADYR_BASE}/players?${params}`)
-  const reportedTotal = Number(first.meta.total)
-  const reportedLimit = Number(first.meta.limit)
-  const total = Number.isFinite(reportedTotal) && reportedTotal >= 0 ? reportedTotal : first.data.length
-  const pageSize = Number.isFinite(reportedLimit) && reportedLimit > 0 ? reportedLimit : first.data.length
-
-  if (total <= first.data.length || pageSize <= 0) {
-    const data = dedupeTradyrPlayers(first.data)
-    return {
-      data,
-      meta: {
-        ...first.meta,
-        coverage: { expected: total, returned: data.length, complete: true, pages: 1 },
-      },
-    }
-  }
-
-  const stride = Math.max(1, pageSize - Math.min(TRADYR_PAGE_OVERLAP, pageSize - 1))
-  const offsets: number[] = []
-  for (let offset = stride; offset < total; offset += stride) offsets.push(offset)
-
-  const additional: Array<{ offset: number; page: TradyrResponse<TradyrPlayer[]> }> = []
-  for (let index = 0; index < offsets.length; index += TRADYR_PAGE_CONCURRENCY) {
-    const batch = offsets.slice(index, index + TRADYR_PAGE_CONCURRENCY)
-    const pages = await Promise.all(batch.map(async (offset) => {
-      const pageParams = new URLSearchParams(params)
-      pageParams.set('limit', String(pageSize))
-      pageParams.set('offset', String(offset))
-      return {
-        offset,
-        page: await fetchJson<TradyrResponse<TradyrPlayer[]>>(`${TRADYR_BASE}/players?${pageParams}`),
-      }
-    }))
-    additional.push(...pages)
-  }
-
-  const pages = [{ offset: Number(first.meta.offset) || 0, page: first }, ...additional]
-  const maxTotal = Math.max(total, ...pages.map(({ page }) => Number(page.meta.total) || 0))
-  const complete = pages.some(({ offset, page }) => offset + page.data.length >= maxTotal)
-  if (!complete) throw new Error(`Tradyr player coverage incomplete (${pages.length} pages for ${maxTotal} rows)`)
-
-  // Anonymous Tradyr pages restart `rank` at 1 on every response. Preserve the
-  // provider's global row order across the overlapping pages, then rebuild the
-  // overall rank once after deduplication. Position ranks are already global.
-  const data = rebuildPaginatedTradyrRanks(pages)
-  const generatedAt = pages.map(({ page }) => page.meta.generatedAt).filter(Boolean).sort().at(-1) ?? first.meta.generatedAt
-  return {
-    data,
-    meta: {
-      ...first.meta,
-      generatedAt,
-      total: maxTotal,
-      limit: pageSize,
-      offset: 0,
-      coverage: { expected: maxTotal, returned: data.length, complete: true, pages: pages.length },
-    },
-  }
-}
-
 export async function fetchValues(options: {
   numQbs: 1 | 2
   tep: boolean
@@ -189,17 +91,9 @@ export async function fetchValues(options: {
     format: 'dynasty',
     numQbs: String(options.numQbs),
     tep: String(options.tep),
-    limit: '1000',
-  })
-  const pickParams = new URLSearchParams({
-    numQbs: String(options.numQbs),
     numTeams: String(options.numTeams),
   })
-
-  const request = Promise.all([
-    fetchTradyrPlayers(params),
-    fetchJson<TradyrResponse<PickValue[]>>(`${TRADYR_BASE}/picks?${pickParams}`),
-  ]).then(([players, picks]) => ({ players: players.data, picks: picks.data, meta: players.meta }))
+  const request = fetchJson<ValueBundle>(`/api/market?${params}`)
     .catch((error) => {
       valueRequests.delete(cacheKey)
       throw error
@@ -219,10 +113,10 @@ export async function fetchCurrentSeasonValues(options: {
     format: 'redraft',
     numQbs: String(options.numQbs),
     tep: String(options.tep),
-    limit: '1000',
+    numTeams: '12',
   })
-  const request = fetchTradyrPlayers(params)
-    .then((players) => ({ players: players.data, meta: players.meta }))
+  const request = fetchJson<ValueBundle>(`/api/market?${params}`)
+    .then((bundle) => ({ players: bundle.players, meta: bundle.meta }))
     .catch((error) => {
       currentSeasonValueRequests.delete(cacheKey)
       throw error

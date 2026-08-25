@@ -18,11 +18,10 @@ pipelines. Independent services have not earned their operational cost.
 flowchart LR
   U["Authenticated user"] --> UI["React and Vite client"]
   UI --> S["Sleeper public API"]
-  UI --> T["Tradyr public API"]
-  UI --> W["Cloudflare Worker API"]
+  UI --> W["Private Cloudflare Worker API"]
+  W --> T["Tradyr authenticated API"]
   W --> D1["Private D1 data"]
   W --> S
-  W --> T
   W --> N["NFL RSS and Sleeper trends"]
   W --> O["Current sportsbook API"]
   ML["Offline Python pipelines"] --> A["Versioned model artifacts and reports"]
@@ -42,7 +41,8 @@ Offline training does not run in the request path.
 | `src/views/` | Stateful UI for each product tab; one focused module per view |
 | `src/components/` | Small presentation helpers shared across views |
 | `src/styles/` | View-owned journal and evidence styles; `src/styles.css` retains shared and older view rules |
-| `src/api.ts` | Browser-side adapters for Sleeper, Tradyr, static artifacts, and private Worker routes |
+| `src/api.ts` | Browser-side adapters for Sleeper, static artifacts, and private Worker routes |
+| `worker/tradyr-market.ts` | Authenticated Tradyr catalog adapter with complete-coverage validation |
 | `src/types.ts` | Shared browser/domain data contracts |
 | `src/rankings.ts` | Team construction, direct rankings, and source-separated trade scenarios |
 | `src/team-power.ts` | Reusable legal-lineup optimizer, redraft power table, coverage, and trade deltas |

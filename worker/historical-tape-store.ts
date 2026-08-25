@@ -163,9 +163,10 @@ function canonicalSlug(name: string, position: string): string {
   return `${normalized}-${position.toLowerCase()}`
 }
 
-async function fetchHistory(slug: string): Promise<TradyrResponse<HistoryData> | null> {
+async function fetchHistory(slug: string, apiKey?: string): Promise<TradyrResponse<HistoryData> | null> {
+  const authorization = apiKey?.trim() ? { Authorization: `Bearer ${apiKey.trim()}` } : {}
   const response = await fetch(`${TRADYR_BASE}/players/${encodeURIComponent(slug)}/history`, {
-    headers: { 'User-Agent': 'RosterLab/5.0 private historical tape audit' },
+    headers: { ...authorization, 'User-Agent': 'RosterLab/5.0 private historical tape audit' },
   })
   if (response.status === 404) return null
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
@@ -243,7 +244,11 @@ WHERE user_id=? AND league_id=? AND provider=?`).bind(
   ).run()
 }
 
-export async function refreshHistoricalTapeAudits(db: D1Database, now = new Date()): Promise<void> {
+export async function refreshHistoricalTapeAudits(
+  db: D1Database,
+  now = new Date(),
+  apiKey?: string,
+): Promise<void> {
   await ensureHistoricalTapeSchema(db)
   const unqueued = await db.prepare(`SELECT m.user_id, m.league_id, m.num_qbs, m.tep, m.num_teams
 FROM market_tape_configs m
@@ -268,7 +273,10 @@ started_at=COALESCE(started_at, ?), updated_at=? WHERE user_id=? AND league_id=?
     startedAt, startedAt, config.user_id, config.league_id, PROVIDER,
   ).run()
   try {
-    const catalog = await fetchCatalog({ num_qbs: config.num_qbs, tep: config.tep, num_teams: config.num_teams })
+    const catalog = await fetchCatalog(
+      { num_qbs: config.num_qbs, tep: config.tep, num_teams: config.num_teams },
+      apiKey,
+    )
     const pending = await db.prepare(`SELECT asset_id, asset_name, position, current_composite, status,
 attempt_count, observation_count, label_count, span_days, median_gap_days, scale_status
 FROM historical_tape_assets
@@ -281,7 +289,7 @@ ORDER BY attempt_count, position, asset_id LIMIT ?`).bind(
       if (!detail) return { asset, detail: null, slug: null, response: null, missing: true, error: null }
       const slug = detail.slug ?? canonicalSlug(detail.name ?? asset.asset_name, detail.position ?? asset.position)
       try {
-        const response = await fetchHistory(slug)
+        const response = await fetchHistory(slug, apiKey)
         return { asset, detail, slug, response, missing: !response, error: null }
       } catch (error) {
         return { asset, detail, slug, response: null, missing: false, error }

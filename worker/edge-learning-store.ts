@@ -17,8 +17,8 @@ import type {
   TeamMarketHistoryPoint,
 } from '../src/types'
 import type { D1Database, D1PreparedStatement } from './user-store'
+import { fetchMarketBundle } from './tradyr-market'
 
-const TRADYR_BASE = 'https://api.tradyr.app/v1'
 const AUTO_REFRESH_MS = 12 * 3_600_000
 const MAX_TAPE_ROWS = 75_000
 
@@ -431,28 +431,27 @@ export type MarketCatalog = {
   provenance: { version?: string; sources: string[]; attribution?: string }
 }
 
-async function requestJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { headers: { 'User-Agent': 'RosterLab/4.9 private market tape' } })
-  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
-  return response.json<T>()
-}
-
-export async function fetchCatalog(config: { num_qbs: 1 | 2; tep: number; num_teams: number }): Promise<MarketCatalog> {
-  const playerParams = new URLSearchParams({ format: 'dynasty', numQbs: String(config.num_qbs), tep: String(Boolean(config.tep)), limit: '1000' })
-  const pickParams = new URLSearchParams({ numQbs: String(config.num_qbs), numTeams: String(config.num_teams) })
-  const [players, picks] = await Promise.all([
-    requestJson<TradyrResponse<TradyrPlayer[]>>(`${TRADYR_BASE}/players?${playerParams}`),
-    requestJson<TradyrResponse<TradyrPick[]>>(`${TRADYR_BASE}/picks?${pickParams}`),
-  ])
+export async function fetchCatalog(
+  config: { num_qbs: 1 | 2; tep: number; num_teams: number },
+  apiKey?: string,
+  fetcher: typeof fetch = fetch,
+): Promise<MarketCatalog> {
+  const key = apiKey?.trim()
+  if (!key) throw new Error('Tradyr authentication is not configured')
+  const bundle = await fetchMarketBundle({
+    format: 'dynasty',
+    numQbs: config.num_qbs,
+    tep: Boolean(config.tep),
+    numTeams: config.num_teams,
+  }, key, fetcher)
   return {
-    players: new Map(players.data.filter((player) => player.sleeperId).map((player) => [String(player.sleeperId), player.composite])),
-    playerDetails: new Map(players.data.filter((player) => player.sleeperId).map((player) => [String(player.sleeperId), player])),
-    picks: picks.data,
-    sourceVersion: players.meta?.generatedAt ?? new Date().toISOString(),
+    players: new Map(bundle.players.filter((player) => player.sleeperId).map((player) => [String(player.sleeperId), player.composite])),
+    playerDetails: new Map(bundle.players.filter((player) => player.sleeperId).map((player) => [String(player.sleeperId), player])),
+    picks: bundle.picks,
+    sourceVersion: bundle.meta.generatedAt,
     provenance: {
-      version: players.meta?.version,
-      sources: players.meta?.sources ?? [],
-      attribution: players.meta?.attribution,
+      sources: bundle.meta.sources,
+      attribution: bundle.meta.attribution,
     },
   }
 }
@@ -478,7 +477,11 @@ export function resolveCatalogValue(snapshot: MarketSnapshotRecord, catalog: Mar
   return Math.round(candidates.reduce((sum, pick) => sum + pick.composite, 0) / candidates.length)
 }
 
-export async function refreshTrackedMarketTapes(db: D1Database, now = new Date()): Promise<void> {
+export async function refreshTrackedMarketTapes(
+  db: D1Database,
+  now = new Date(),
+  apiKey?: string,
+): Promise<void> {
   await ensureEdgeLearningSchema(db)
   const configs = await db.prepare(`SELECT user_id, league_id, num_qbs, tep, num_teams, last_auto_refresh_at
 FROM market_tape_configs ORDER BY COALESCE(last_auto_refresh_at, seeded_at) ASC LIMIT 100`).all<TapeConfig>()
@@ -487,7 +490,7 @@ FROM market_tape_configs ORDER BY COALESCE(last_auto_refresh_at, seeded_at) ASC 
   for (const config of due) {
     try {
       const key = `${config.num_qbs}:${config.tep}:${config.num_teams}`
-      if (!catalogs.has(key)) catalogs.set(key, fetchCatalog(config))
+      if (!catalogs.has(key)) catalogs.set(key, fetchCatalog(config, apiKey))
       const catalog = await catalogs.get(key)!
       const latestRows = await db.prepare(`SELECT snapshot_date, asset_id, asset_name, kind, position,
 owner_roster_id, current_value, projection_30, confidence, event_type, news_direction,

@@ -7,4 +7,5 @@ export interface Env {
   ASSETS: AssetsBinding
   DB?: D1Database
   ODDS_API_KEY?: string
+  TRADYR_API_KEY?: string
 }
