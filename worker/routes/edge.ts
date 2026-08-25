@@ -38,7 +38,7 @@ export async function edgeResponse(request: Request, env: Env): Promise<Response
       const tape = normalizeMarketTapeInput(input.marketTape)
       await saveMarketTape(env.DB, user.id, leagueId, tape)
       await queueHistoricalTapeAudit(env.DB, user.id, leagueId, tape)
-      await refreshHistoricalTapeAudits(env.DB)
+      await refreshHistoricalTapeAudits(env.DB, new Date(), env.TRADYR_API_KEY)
       await rebuildEdgeLearningState(env.DB, user.id, leagueId)
     } else {
       return privateJson({ message: 'Invalid edge action' }, 400)

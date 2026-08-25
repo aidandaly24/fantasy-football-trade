@@ -48,6 +48,14 @@ sources. The application reads dynasty player/pick values for asset and trade
 comparisons and separately reads the matching redraft player bucket for the
 current-season lineup-power index. KeepTradeCut is not scraped directly.
 
+The hosted application requests complete player and pick catalogs through its
+private Worker. A `TRADYR_API_KEY` Sites secret authenticates the upstream
+request and never reaches browser code. The Worker requests the documented
+1,000-row catalog, validates reported coverage before returning any values, and
+fails closed when the provider caps or truncates a response. Exact-player and
+trade-evaluation endpoints are useful for targeted research but do not replace
+the complete catalog required for league rankings and acquisition discovery.
+
 The power index is the direct sum of redraft composites in the best legal
 QB/RB/WR/TE/FLEX/SUPER_FLEX lineup. It is a same-format relative market proxy,
 not projected fantasy points. Missing redraft coverage stays missing and is
