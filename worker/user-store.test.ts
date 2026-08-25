@@ -82,6 +82,17 @@ describe('private user state', () => {
     expect(authenticatedUser(request)?.id).toBe('user-a')
   })
 
+  it('uses the verified Sites email when the platform omits its user ID header', () => {
+    const request = new Request('https://example.com/api/preferences', {
+      headers: { 'oai-authenticated-user-email': 'A@Example.com' },
+    })
+    expect(authenticatedUser(request)).toEqual({
+      id: 'email:a@example.com',
+      email: 'a@example.com',
+      name: 'a@example.com',
+    })
+  })
+
   it('isolates the same league preference by authenticated user ID', async () => {
     const db = new FakeDatabase()
     await ensureUserSchema(db)

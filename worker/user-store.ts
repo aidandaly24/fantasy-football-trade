@@ -81,8 +81,8 @@ function safeDecodeName(request: Request, email: string): string {
 
 export function authenticatedUser(request: Request): AuthenticatedUser | null {
   const id = request.headers.get('oai-authenticated-user-id')?.trim()
-  const email = request.headers.get('oai-authenticated-user-email')?.trim()
-  if (id && email) return { id, email, name: safeDecodeName(request, email) }
+  const email = request.headers.get('oai-authenticated-user-email')?.trim().toLowerCase()
+  if (email) return { id: id || `email:${email}`, email, name: safeDecodeName(request, email) }
   const hostname = new URL(request.url).hostname
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return { id: 'local-development', email: 'local@rosterlab.test', name: 'Local development' }
