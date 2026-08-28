@@ -1,8 +1,8 @@
 # RosterLab
 
-RosterLab is a private dynasty fantasy football research desk for Sleeper leagues. It imports league data, builds league-relative power rankings, resolves current draft-pick ownership, evaluates proposed trades, and inventories the entire league by current market value with covered production and linked news evidence shown separately.
+RosterLab is a dynasty fantasy football research desk for Sleeper leagues. It imports league data, builds league-relative power rankings, resolves current draft-pick ownership, evaluates proposed trades, and inventories the entire league by current market value with covered production and linked news evidence shown separately. 
 
-The league ribbon has one-click controls for BC League (`1336087922847289344`) and Emperor Phil (`1312112570039037952`). There is intentionally no free-form league ID input; adding another league requires an explicit code and evidence review.
+Currently this is only setup for my leagues, but I am working to make the site/models useful for all leagues. The league ribbon has one-click controls for BC League (`1336087922847289344`) and Emperor Phil (`1312112570039037952`). There is intentionally no free-form league ID input; adding another league requires an explicit code and evidence review.
 
 ## Data sources
 
@@ -10,7 +10,7 @@ The league ribbon has one-click controls for BC League (`1336087922847289344`) a
 - [Tradyr's public API](https://api.tradyr.app/docs) supplies permitted, attributed composite dynasty values derived from KeepTradeCut and FantasyCalc. KeepTradeCut is not scraped.
 - Linked NFL reporting and Sleeper add/drop velocity supply advisory catalysts. Reports are deduplicated and classified; private watchlist events are saved only after a confident player match.
 
-## Private trade research
+## Trade Research
 
 - Manager-direction labels are manual context or a neutral placeholder. Completed-trade flow is displayed factually, but it does not create calibrated contender probabilities or reprice picks.
 - The Evidence Board is ordered by current composite market value. Covered production and linked news are displayed separately and do not secretly change its order or prices.
