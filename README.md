@@ -8,7 +8,15 @@ Currently this is only setup for my leagues, but I am working to make the site/m
 
 - [Sleeper's public API](https://docs.sleeper.com/) supplies league settings, managers, rosters, draft order, and traded picks.
 - [Tradyr's public API](https://api.tradyr.app/docs) supplies permitted, attributed composite dynasty values derived from KeepTradeCut and FantasyCalc. KeepTradeCut is not scraped.
+- [DynastyProcess data](https://github.com/dynastyprocess/data) supplies the open current-week expert consensus and stable player-ID map used by Lineup Lab; [nflverse data](https://github.com/nflverse/nflverse-data) supplies the NFL schedule.
 - Linked NFL reporting and Sleeper add/drop velocity supply advisory catalysts. Reports are deduplicated and classified; private watchlist events are saved only after a confident player match.
+
+## Weekly Lineup Lab
+
+- The two dynasty leagues share one legal-lineup engine but keep their own exact starter slots, PPR/TEP, quarterback, kicker, and defense settings visible.
+- Current Sleeper ownership, submitted starters, reserve/taxi state, injury labels, matchup, and schedule are joined on demand to the latest open weekly consensus.
+- Weekly expert ranks are converted to generic PPR point estimates by the source. RosterLab adds only the evidence-backed TE reception premium and labels unsupported scoring components provisional.
+- Stale weekly ranks are never reused for a new season or week. Missing projections are shown as uncovered, with the enabled preseason model used only as an explicit fallback.
 
 ## Trade Research
 

@@ -12,6 +12,7 @@ import { decisionsResponse } from './routes/decisions'
 import { sportsbookResponse } from './routes/sportsbook'
 import { redraftDraftPoolResponse } from './routes/redraft-draft-pool'
 import { marketResponse } from './routes/market'
+import { weeklyLineupResponse } from './routes/weekly-lineup'
 
 const routes: Record<string, (request: Request, env: Env) => Promise<Response>> = {
   '/api/alerts': alertsResponse,
@@ -27,6 +28,7 @@ const routes: Record<string, (request: Request, env: Env) => Promise<Response>> 
   '/api/sportsbook': sportsbookResponse,
   '/api/redraft-draft-pool': (request) => redraftDraftPoolResponse(request),
   '/api/market': marketResponse,
+  '/api/weekly-lineup': weeklyLineupResponse,
 }
 
 const worker = {

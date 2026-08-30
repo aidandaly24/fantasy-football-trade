@@ -23,6 +23,7 @@ export type LeagueContext = {
     receptionPpr: number
     tePremiumPerReception: number
     passingTd: number
+    passingInterception: number
   }
   roster: {
     startingSlots: number
@@ -64,6 +65,7 @@ export function leagueContext(bundle: LeagueBundle): LeagueContext {
   const receptionPpr = score(bundle, 'rec', 1)
   const tePremiumPerReception = score(bundle, 'bonus_rec_te', 0)
   const passingTd = score(bundle, 'pass_td', 4)
+  const passingInterception = score(bundle, 'pass_int', -2)
   const startingSlots = league.roster_positions.filter((slot) => slot !== 'BN').length
   const skillStartingSlots = league.roster_positions.filter((slot) => SKILL_STARTERS.has(slot)).length
   const benchSlots = league.roster_positions.filter((slot) => slot === 'BN').length
@@ -94,7 +96,7 @@ export function leagueContext(bundle: LeagueBundle): LeagueContext {
     leagueName: league.name,
     contextKey,
     marketFormat: { numQbs, tep: tePremiumPerReception > 0, numTeams },
-    scoring: { receptionPpr, tePremiumPerReception, passingTd },
+    scoring: { receptionPpr, tePremiumPerReception, passingTd, passingInterception },
     roster: { startingSlots, skillStartingSlots, benchSlots, taxiSlots, reserveSlots, rookieDraftRounds },
     labels: {
       format: `${numTeams}-team ${numQbs === 2 ? 'superflex' : '1QB'} · ${receptionPpr}-PPR · +${tePremiumPerReception} TE premium`,

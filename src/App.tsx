@@ -1,4 +1,4 @@
-import { ArrowLeftRight, BarChart3, BookOpen, CircleGauge, ClipboardList, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
+import { ArrowLeftRight, BarChart3, BookOpen, CalendarCheck2, CircleGauge, ClipboardList, GraduationCap, Radar, RefreshCw, Target } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { fetchAssetReturnHealth, fetchCurrentSeasonValues, fetchEdgeState, fetchEventModelHealth, fetchIntel, fetchJournal, fetchLeagueBundle, fetchModelHealth, fetchProjections, fetchRedraftValues, fetchResearchState, fetchRookieBoard, fetchTradeModelHealth, fetchUserState, fetchValues, saveLeaguePreferences, syncJournal } from './api'
 import type { AssetReturnHealthBundle } from './asset-returns'
@@ -19,6 +19,7 @@ import type { TradeModelHealthBundle } from './trade-models'
 import type { CurrentSeasonValueBundle, EventModelHealthBundle, JournalBundle, LeagueBundle, LeaguePreferences, ModelHealthBundle, PlayerProjection, ProjectionBundle, RankingMode, Team, UserState, ValueBundle } from './types'
 import { EdgeView } from './views/EdgeView'
 import { IntelView } from './views/IntelView'
+import { LineupView } from './views/LineupView'
 import { ModelView } from './views/ModelView'
 import { PlayerResearchView } from './views/PlayerResearchView'
 import { RankingsView } from './views/RankingsView'
@@ -71,7 +72,7 @@ type LeagueLoadPrefetch = {
   preferences?: LeaguePreferences
 }
 
-type View = 'rankings' | 'draft' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model' | 'player' | 'team'
+type View = 'rankings' | 'draft' | 'lineup' | 'trade' | 'journal' | 'intel' | 'strategy' | 'rookies' | 'model' | 'player' | 'team'
 
 const STARTUP_WORKSPACES: Record<View, { eyebrow: string; title: string; description: string; status: string }> = {
   rankings: {
@@ -85,6 +86,12 @@ const STARTUP_WORKSPACES: Record<View, { eyebrow: string; title: string; descrip
     title: 'Build the board before the clock starts.',
     description: 'The draft room is open. Live settings, draft order, keeper state, and current-season market values are filling in now.',
     status: 'Refreshing draft facts…',
+  },
+  lineup: {
+    eyebrow: 'Weekly decision desk',
+    title: 'Set the lineup from current evidence.',
+    description: 'The Lineup Lab is open. Current rosters, matchups, schedules, injuries, and covered projections are filling in now.',
+    status: 'Refreshing weekly evidence…',
   },
   trade: {
     eyebrow: 'Trade laboratory',
@@ -201,7 +208,7 @@ function AppHeader({
           <span className="brand-mark"><span>R</span></span>
           <span><strong>Roster</strong>Lab</span>
         </button>
-        <nav aria-label="Primary navigation">
+        <nav className={isRedraft ? 'single-workspace-nav' : undefined} aria-label="Primary navigation">
           {isRedraft ? (
             <button type="button" className="active" onClick={() => setView('draft')}>
               <ClipboardList size={17} /> <span>Draft room</span>
@@ -210,6 +217,9 @@ function AppHeader({
             <>
               <button type="button" className={view === 'rankings' || view === 'team' ? 'active' : ''} onClick={() => setView('rankings')}>
                 <BarChart3 size={17} /> <span>Home</span>
+              </button>
+              <button type="button" className={view === 'lineup' ? 'active' : ''} onClick={() => setView('lineup')}>
+                <CalendarCheck2 size={17} /> <span>Lineup</span>
               </button>
               <button type="button" className={view === 'trade' ? 'active' : ''} onClick={() => setView('trade')}>
                 <ArrowLeftRight size={17} /> <span>Trade</span>
@@ -738,7 +748,7 @@ function App() {
     setSelectedPlayerId(null)
     setSelectedTeamId(null)
     window.history.replaceState(null, '', teamAddress(window.location.search, nextLeagueId, null))
-    setView(preset.leagueType === 'keeper-redraft' ? 'draft' : 'rankings')
+    setView(preset.leagueType === 'keeper-redraft' ? 'draft' : view === 'lineup' ? 'lineup' : 'rankings')
     const cached = readCachedLeagueCore(nextLeagueId)
     if (cached) showCachedLeague(cached)
     void loadLeague(nextLeagueId, userState, { preferences: cached?.preferences })
@@ -879,7 +889,17 @@ function App() {
             />
           ) : (
             <>
-              {view === 'team' ? (() => {
+              {view === 'lineup' ? (
+                <LineupView
+                  key={`lineup-${data.leagueContext.id}`}
+                  teams={data.teams}
+                  leagueBundle={data.leagueBundle}
+                  leagueContext={data.leagueContext}
+                  myRosterId={data.preferences.myRosterId ?? data.teams[0].rosterId}
+                  playerProjections={data.playerProjections}
+                  onOpenPlayer={openPlayer}
+                />
+              ) : view === 'team' ? (() => {
                 const team = selectedTeamId ? data.teams.find((candidate) => candidate.rosterId === selectedTeamId) : null
                 if (!team) return <main className="page-shell"><section className="error-card panel"><span className="eyebrow">Team unavailable</span><h1>This roster is not present in {data.leagueContext.label}.</h1><p>The copied address may be stale, or the roster ID may belong only to the other league.</p><button type="button" onClick={closeTeam}>Back to Home</button></section></main>
                 return <TeamResearchView key={`${data.leagueContext.id}:${team.rosterId}`} team={team} teams={data.teams} leagueContext={data.leagueContext} onBack={closeTeam} onOpenPlayer={openPlayer} />
