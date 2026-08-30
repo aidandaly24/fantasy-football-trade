@@ -7,19 +7,25 @@ export type RookieBoardPlayer = {
   position: RookiePosition
   nflTeam: string | null
   college: string | null
-  draftBoardRank: number
-  rookieMarketRank: number
+  draftBoardRank: number | null
+  rookieMarketRank: number | null
+  currentMarket?: {
+    rank: number
+    value: number
+    overallRank: number | null
+    team: string | null
+  } | null
   lateCandidate: boolean
   inValidatedSleeperBasket: boolean
-  expectedRookieProductionPercentile: number
-  marketOnlyExpectedProductionPercentile: number
-  evidenceAdjustment: number
-  modelDisagreement: number
+  expectedRookieProductionPercentile: number | null
+  marketOnlyExpectedProductionPercentile: number | null
+  evidenceAdjustment: number | null
+  modelDisagreement: number | null
   historicalResidualBand80: {
     lower: number
     upper: number
     meaning: string
-  }
+  } | null
   evidence: {
     nflDraftOverall: number | null
     collegeSeasonsObserved: number
@@ -120,9 +126,24 @@ export type RookieBoardBundle = {
   pickOpportunity: RookiePickOpportunity
   futureClassOpportunity: FutureRookieClassOpportunity
   promotionBlockers: string[]
+  currentMarket?: {
+    status: 'live' | 'unavailable'
+    generatedAt: string | null
+    sources: string[]
+    attribution: string | null
+    format: {
+      numQbs: 1 | 2
+      tep: boolean
+    }
+    coverage: {
+      expected: number
+      returned: number
+      complete: boolean
+    } | null
+  }
 }
 
-export type RookieBoardSort = 'board' | 'market' | 'production' | 'adjustment'
+export type RookieBoardSort = 'current' | 'board' | 'market' | 'production' | 'adjustment'
 
 export function rookiePlayerKey(player: RookieBoardPlayer): string {
   return player.id
@@ -144,13 +165,15 @@ export function selectRookieBoardPlayers(
     descending ? right - left : left - right
   )
   return [...filtered].sort((left, right) => {
-    const primary = options.sort === 'board'
-      ? compareNumber(left.draftBoardRank, right.draftBoardRank)
+    const primary = options.sort === 'current'
+      ? compareNumber(left.currentMarket?.rank ?? Number.MAX_SAFE_INTEGER, right.currentMarket?.rank ?? Number.MAX_SAFE_INTEGER)
+      : options.sort === 'board'
+      ? compareNumber(left.draftBoardRank ?? Number.MAX_SAFE_INTEGER, right.draftBoardRank ?? Number.MAX_SAFE_INTEGER)
       : options.sort === 'market'
-        ? compareNumber(left.rookieMarketRank, right.rookieMarketRank)
+        ? compareNumber(left.rookieMarketRank ?? Number.MAX_SAFE_INTEGER, right.rookieMarketRank ?? Number.MAX_SAFE_INTEGER)
         : options.sort === 'production'
-          ? compareNumber(left.expectedRookieProductionPercentile, right.expectedRookieProductionPercentile, true)
-          : compareNumber(left.evidenceAdjustment, right.evidenceAdjustment, true)
+          ? compareNumber(left.expectedRookieProductionPercentile ?? -1, right.expectedRookieProductionPercentile ?? -1, true)
+          : compareNumber(left.evidenceAdjustment ?? Number.NEGATIVE_INFINITY, right.evidenceAdjustment ?? Number.NEGATIVE_INFINITY, true)
     return primary || left.name.localeCompare(right.name)
   })
 }

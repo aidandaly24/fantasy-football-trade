@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import type { Env } from '../env'
 import { rookieResponse } from './rookies'
+
+const env = {
+  ASSETS: { fetch: async () => new Response('unused') },
+  TRADYR_API_KEY: 'test-secret',
+} satisfies Env
 
 function authenticatedRequest(method = 'GET'): Request {
   return new Request('https://rosterlab.example/api/rookies', {
@@ -23,6 +29,52 @@ describe('private rookie board route', () => {
     expect((body.pickOpportunity as Record<string, unknown>).exactSlotPromotion).toBe(false)
     expect((body.futureClassOpportunity as Record<string, unknown>).downstreamEnabled).toBe(false)
     expect(JSON.stringify(body)).not.toContain('currentShadowBoard')
+  })
+
+  it('overlays a complete current rookie market without changing the model anchor rank', async () => {
+    const baseResponse = await rookieResponse(authenticatedRequest())
+    const base = await baseResponse.json() as { board: Array<Record<string, unknown>> }
+    const first = base.board.find((player) => typeof player.sleeperId === 'string')!
+    const nameLinked = base.board.find((player) => player.sleeperId === null)!
+    const fetcher = vi.fn().mockResolvedValue(Response.json({
+      data: [
+        {
+          slug: 'current-rookie-wr', name: first.name, position: first.position, team: 'NEW', composite: 777,
+          rank: 1, sleeperId: first.sleeperId,
+        },
+        {
+          slug: 'name-linked-rookie', name: nameLinked.name, position: nameLinked.position, team: 'LINK', composite: 222,
+          rank: 2, sleeperId: '99901',
+        },
+        {
+          slug: 'market-only-rookie', name: 'Market Only', position: 'WR', team: 'NEW', composite: 111,
+          rank: 3, sleeperId: '99902',
+        },
+      ],
+      meta: { generatedAt: '2026-08-30T12:00:00Z', total: 3, sources: ['keeptradecut', 'fantasycalc'], attribution: 'Powered by Tradyr' },
+    }))
+
+    const response = await rookieResponse(
+      authenticatedRequest(),
+      env,
+      undefined,
+      undefined,
+      fetcher as typeof fetch,
+    )
+    const body = await response.json() as { board: Array<Record<string, unknown>>; currentMarket: Record<string, unknown> }
+    const current = body.board.find((player) => player.sleeperId === first.sleeperId)!
+    const linked = body.board.find((player) => player.name === nameLinked.name)!
+    const marketOnly = body.board.find((player) => player.name === 'Market Only')!
+
+    expect(response.status).toBe(200)
+    expect(body.currentMarket).toMatchObject({ status: 'live', generatedAt: '2026-08-30T12:00:00Z' })
+    expect(current.rookieMarketRank).toBe(first.rookieMarketRank)
+    expect(current.currentMarket).toEqual({ rank: 1, value: 777, overallRank: null, team: 'NEW' })
+    expect(linked.sleeperId).toBe('99901')
+    expect(marketOnly).toMatchObject({ sleeperId: '99902', draftBoardRank: null, expectedRookieProductionPercentile: null })
+    expect(body.board).toHaveLength(base.board.length + 1)
+    expect(String(fetcher.mock.calls[0][0])).toContain('format=rookie')
+    expect(fetcher.mock.calls[0][1].headers.Authorization).toBe('Bearer test-secret')
   })
 
   it('rejects hosted requests without identity headers', async () => {

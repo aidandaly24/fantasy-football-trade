@@ -75,7 +75,7 @@
 
 .rookie-metric-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -226,6 +226,21 @@
 .rookie-table tr:last-child td,
 .rookie-validation-table tr:last-child td {
   border-bottom: 0;
+}
+
+.rookie-market-value,
+.rookie-unpriced {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink-soft);
+  font-family: 'DM Mono', monospace;
+  font-size: 7px;
+}
+
+.rookie-unpriced {
+  margin-top: 0;
+  color: var(--orange);
+  font-weight: 800;
 }
 
 .rookie-player-trigger {
@@ -451,6 +466,94 @@
 
 .rookie-validation {
   overflow: hidden;
+}
+
+.rookie-draft-review {
+  overflow: hidden;
+}
+
+.rookie-draft-method,
+.rookie-draft-unavailable {
+  padding: 13px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--ink-soft);
+  background: #f3f1e9;
+  border-bottom: 1px solid var(--line);
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+.rookie-draft-method svg,
+.rookie-draft-unavailable svg {
+  flex: 0 0 auto;
+  color: var(--orange);
+}
+
+.rookie-draft-method strong {
+  color: var(--ink);
+}
+
+.rookie-draft-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8px;
+}
+
+.rookie-draft-table th,
+.rookie-draft-table td {
+  padding: 12px 13px;
+  text-align: right;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.rookie-draft-table th {
+  color: var(--ink-soft);
+  background: #f3f1ea;
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.rookie-draft-table th:nth-child(2),
+.rookie-draft-table td:nth-child(2) {
+  min-width: 270px;
+  text-align: left;
+  white-space: normal;
+}
+
+.rookie-draft-table td > strong,
+.rookie-draft-table td > small {
+  display: block;
+}
+
+.rookie-draft-table td > small {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+.rookie-draft-table tr.is-user td {
+  background: rgba(216, 255, 104, 0.16);
+}
+
+.rookie-draft-table .positive {
+  color: var(--green);
+}
+
+.rookie-draft-table .negative {
+  color: var(--red);
+}
+
+.rookie-draft-unavailable {
+  min-height: 110px;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 0;
 }
 
 .rookie-validation-body {

@@ -37,7 +37,7 @@ const currentSeasonValueRequests = new Map<string, Promise<CurrentSeasonValueBun
 let modelHealthRequest: Promise<ModelHealthBundle | null> | null = null
 let eventModelHealthRequest: Promise<EventModelHealthBundle | null> | null = null
 let assetReturnHealthRequest: Promise<AssetReturnHealthBundle | null> | null = null
-let rookieBoardRequest: Promise<RookieBoardBundle> | null = null
+const rookieBoardRequests = new Map<string, Promise<RookieBoardBundle>>()
 let intelRequest: Promise<IntelFeed> | null = null
 let intelCachedAt = 0
 const journalRequests = new Map<string, Promise<JournalBundle>>()
@@ -202,12 +202,17 @@ export async function refreshTradeTape(): Promise<TradeTapeRefreshState> {
   return fetchJson<TradeTapeRefreshState>('/api/trade-tape', { method: 'POST' })
 }
 
-export async function fetchRookieBoard(): Promise<RookieBoardBundle> {
-  rookieBoardRequest ??= fetchJson<RookieBoardBundle>('/api/rookies').catch((error) => {
-    rookieBoardRequest = null
+export async function fetchRookieBoard(options: { numQbs: 1 | 2; tep: boolean }): Promise<RookieBoardBundle> {
+  const cacheKey = `${options.numQbs}:${options.tep}`
+  const existing = rookieBoardRequests.get(cacheKey)
+  if (existing) return existing
+  const params = new URLSearchParams({ numQbs: String(options.numQbs), tep: String(options.tep) })
+  const request = fetchJson<RookieBoardBundle>(`/api/rookies?${params}`).catch((error) => {
+    rookieBoardRequests.delete(cacheKey)
     throw error
   })
-  return rookieBoardRequest
+  rookieBoardRequests.set(cacheKey, request)
+  return request
 }
 
 export async function fetchUserState(): Promise<UserState | null> {

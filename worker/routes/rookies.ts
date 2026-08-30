@@ -3,6 +3,7 @@ import rookieBoardArtifact from '../generated/rookie-board.json'
 import futureRookieStatus from '../generated/future-rookie-status.json'
 import type { Env } from '../env'
 import { methodNotAllowed, privateJson } from '../http'
+import { fetchRookieMarketBundle } from '../tradyr-market'
 import { authenticatedUser } from '../user-store'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -19,6 +20,10 @@ function isNullableString(value: unknown): value is string | null {
 
 function isNullableFiniteNumber(value: unknown): value is number | null {
   return value === null || isFiniteNumber(value)
+}
+
+function normalizedName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
 function isRookiePlayer(value: unknown): value is RookieBoardPlayer {
@@ -134,9 +139,10 @@ function isRookieBoardBundle(value: unknown): value is RookieBoardBundle {
 
 export async function rookieResponse(
   request: Request,
-  _env?: Env,
+  env?: Env,
   artifact: unknown = rookieBoardArtifact,
   futureArtifact: unknown = futureRookieStatus,
+  fetcher: typeof fetch = fetch,
 ): Promise<Response> {
   if (request.method !== 'GET') return methodNotAllowed('GET')
   if (!authenticatedUser(request)) return privateJson({ message: 'Authenticated site access required' }, 401)
@@ -147,5 +153,93 @@ export async function rookieResponse(
   if (!combined.draftEvidenceEnabled || combined.target.status !== 'backtest-passed') {
     return privateJson({ message: 'Validated rookie evidence is currently disabled' }, 503)
   }
-  return privateJson(combined)
+
+  const params = new URL(request.url).searchParams
+  const numQbs: 1 | 2 = params.get('numQbs') === '1' ? 1 : 2
+  const tep = params.get('tep') === 'true'
+  const apiKey = env?.TRADYR_API_KEY?.trim()
+  const market = apiKey
+    ? await fetchRookieMarketBundle({ numQbs, tep }, apiKey, fetcher).catch(() => null)
+    : null
+  const marketBySleeperId = new Map(
+    (market?.players ?? []).filter((player) => player.sleeperId).map((player) => [String(player.sleeperId), player]),
+  )
+  const marketByName = new Map(
+    (market?.players ?? []).map((player) => [normalizedName(player.name), player]),
+  )
+  const representedMarketKeys = new Set<string>()
+  const board = combined.board.map((player) => {
+    const current = (player.sleeperId ? marketBySleeperId.get(player.sleeperId) : undefined)
+      ?? marketByName.get(normalizedName(player.name))
+    if (current) representedMarketKeys.add(current.sleeperId ? `sleeper:${current.sleeperId}` : `slug:${current.slug}`)
+    return {
+      ...player,
+      sleeperId: player.sleeperId ?? current?.sleeperId ?? null,
+      nflTeam: current?.team ?? player.nflTeam,
+      currentMarket: current
+        ? {
+            rank: current.rank,
+            value: current.composite,
+            overallRank: current.overallRank ?? null,
+            team: current.team,
+          }
+        : null,
+    }
+  })
+  for (const current of market?.players ?? []) {
+    const key = current.sleeperId ? `sleeper:${current.sleeperId}` : `slug:${current.slug}`
+    if (representedMarketKeys.has(key)) continue
+    board.push({
+      id: key,
+      sleeperId: current.sleeperId,
+      name: current.name,
+      position: current.position,
+      nflTeam: current.team,
+      college: null,
+      draftBoardRank: null,
+      rookieMarketRank: null,
+      currentMarket: {
+        rank: current.rank,
+        value: current.composite,
+        overallRank: current.overallRank ?? null,
+        team: current.team,
+      },
+      lateCandidate: false,
+      inValidatedSleeperBasket: false,
+      expectedRookieProductionPercentile: null,
+      marketOnlyExpectedProductionPercentile: null,
+      evidenceAdjustment: null,
+      modelDisagreement: null,
+      historicalResidualBand80: null,
+      evidence: {
+        nflDraftOverall: null,
+        collegeSeasonsObserved: 0,
+        finalCollegeScrimmageShare: null,
+        maxCollegeScrimmageShare: null,
+        finalCollegeTargetShare: null,
+        forty: null,
+        collegeDataPresent: false,
+        combineDataPresent: false,
+      },
+    })
+  }
+
+  return privateJson({
+    ...combined,
+    board,
+    currentMarket: {
+      status: market ? 'live' : 'unavailable',
+      generatedAt: market?.meta.generatedAt ?? null,
+      sources: market?.meta.sources ?? [],
+      attribution: market?.meta.attribution ?? null,
+      format: { numQbs, tep },
+      coverage: market?.meta.coverage
+        ? {
+            expected: market.meta.coverage.expected,
+            returned: market.meta.coverage.returned,
+            complete: market.meta.coverage.complete,
+          }
+        : null,
+    },
+  })
 }

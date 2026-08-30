@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Env } from '../env'
-import { fetchMarketBundle } from '../tradyr-market'
+import { fetchMarketBundle, fetchRookieMarketBundle } from '../tradyr-market'
 import { marketResponse } from './market'
 
 const env = {
@@ -110,5 +110,26 @@ describe('authenticated market catalog boundary', () => {
     expect(bundle.players).toHaveLength(140)
     expect(bundle.picks).toEqual([])
     expect(fetcher).toHaveBeenCalledTimes(1)
+  })
+
+  it('loads one complete format-matched rookie catalog without requesting picks', async () => {
+    const rookies = Array.from({ length: 73 }, (_, index) => player(index))
+    const fetcher = vi.fn().mockResolvedValue(Response.json({
+      data: rookies,
+      meta: { generatedAt: '2026-08-30T00:00:00Z', total: rookies.length, sources: ['keeptradecut', 'fantasycalc'] },
+    }))
+
+    const bundle = await fetchRookieMarketBundle(
+      { numQbs: 2, tep: true },
+      'test-secret',
+      fetcher as typeof fetch,
+    )
+
+    expect(bundle.players).toHaveLength(73)
+    expect(bundle.meta.coverage).toEqual({ expected: 73, returned: 73, complete: true, pages: 1 })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(String(fetcher.mock.calls[0][0])).toContain('format=rookie')
+    expect(String(fetcher.mock.calls[0][0])).toContain('numQbs=2')
+    expect(String(fetcher.mock.calls[0][0])).toContain('tep=true')
   })
 })
