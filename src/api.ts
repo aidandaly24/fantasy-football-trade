@@ -16,6 +16,7 @@ import type {
   SleeperDraft,
   SleeperDraftPick,
   SleeperPlayer,
+  SleeperMatchup,
   SleeperRoster,
   TradedPick,
   TeamHistoryBundle,
@@ -28,6 +29,7 @@ import type { TradeDecision, TradeDecisionBundle, TradeDecisionDraft, TradeDecis
 import type { TradeModelHealthBundle, TradeTapeRefreshState } from './trade-models'
 import type { AssetReturnHealthBundle } from './asset-returns'
 import type { SportsbookBundle, SportsbookModelHealth, SportsbookPlayerRequest } from './sportsbook'
+import type { WeeklyProjectionBundle } from './weekly-lineup'
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 let sleeperPlayerCatalog: Promise<Record<string, SleeperPlayer>> | null = null
@@ -45,6 +47,7 @@ const edgeStateRequests = new Map<string, Promise<EdgeStateBundle>>()
 const teamHistoryRequests = new Map<string, Promise<TeamHistoryBundle>>()
 const researchStateRequests = new Map<string, Promise<ResearchPipelineBundle>>()
 const redraftDraftPoolRequests = new Map<string, Promise<RedraftDraftPool>>()
+const weeklyLineupRequests = new Map<string, Promise<WeeklyProjectionBundle>>()
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init)
@@ -77,6 +80,29 @@ export async function fetchLeagueBundle(leagueId: string): Promise<LeagueBundle>
   ])
 
   return { league, rosters, users, tradedPicks, draft, draftPicks }
+}
+
+export async function fetchLeagueMatchups(leagueId: string, week: number): Promise<SleeperMatchup[]> {
+  return fetchJson<SleeperMatchup[]>(`${SLEEPER_BASE}/league/${encodeURIComponent(leagueId)}/matchups/${week}`)
+}
+
+export async function fetchWeeklyLineupData(
+  season: number,
+  week: number,
+  options: { fresh?: boolean } = {},
+): Promise<WeeklyProjectionBundle> {
+  const cacheKey = `${season}:${week}`
+  if (options.fresh) weeklyLineupRequests.delete(cacheKey)
+  const existing = weeklyLineupRequests.get(cacheKey)
+  if (existing) return existing
+  const fresh = options.fresh ? `&refresh=${Date.now()}` : ''
+  const request = fetchJson<WeeklyProjectionBundle>(`/api/weekly-lineup?season=${season}&week=${week}${fresh}`)
+    .catch((error) => {
+      weeklyLineupRequests.delete(cacheKey)
+      throw error
+    })
+  weeklyLineupRequests.set(cacheKey, request)
+  return request
 }
 
 export async function fetchValues(options: {

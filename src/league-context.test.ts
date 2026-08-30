@@ -12,6 +12,7 @@ function bundle(input: {
   reserve?: number
   teams?: number
   passingTd?: number
+  passingInterception?: number
   maxKeepers?: number
 }): LeagueBundle {
   const teams = input.teams ?? 12
@@ -25,7 +26,12 @@ function bundle(input: {
       draft_id: null,
       avatar: null,
       roster_positions: input.positions,
-      scoring_settings: { rec: 1, bonus_rec_te: input.tep, pass_td: input.passingTd ?? 4 },
+      scoring_settings: {
+        rec: 1,
+        bonus_rec_te: input.tep,
+        pass_td: input.passingTd ?? 4,
+        pass_int: input.passingInterception ?? -2,
+      },
       settings: { num_teams: teams, draft_rounds: input.draftRounds, max_keepers: input.maxKeepers, taxi_slots: input.taxi, reserve_slots: input.reserve },
     },
     rosters: [],
@@ -53,6 +59,7 @@ const emperor = bundle({
   draftRounds: 4,
   taxi: 4,
   reserve: 2,
+  passingInterception: -1,
 })
 
 const freakbull = bundle({
@@ -88,7 +95,7 @@ describe('fixed private league context', () => {
     expect(context).toMatchObject({
       leagueType: 'keeper-redraft',
       marketFormat: { numQbs: 1, tep: false, numTeams: 10 },
-      scoring: { receptionPpr: 1, tePremiumPerReception: 0, passingTd: 6 },
+      scoring: { receptionPpr: 1, tePremiumPerReception: 0, passingTd: 6, passingInterception: -2 },
       roster: { startingSlots: 8, skillStartingSlots: 8, benchSlots: 5, rookieDraftRounds: 0 },
     })
     expect(context.labels.market).toContain('current-season redraft')
@@ -101,11 +108,11 @@ describe('fixed private league context', () => {
     expect(bcContext.marketFormat).toEqual({ numQbs: 2, tep: true, numTeams: 12 })
     expect(emperorContext.marketFormat).toEqual(bcContext.marketFormat)
     expect(bcContext).toMatchObject({
-      scoring: { receptionPpr: 1, tePremiumPerReception: 0.75, passingTd: 4 },
+      scoring: { receptionPpr: 1, tePremiumPerReception: 0.75, passingTd: 4, passingInterception: -2 },
       roster: { startingSlots: 9, skillStartingSlots: 9, benchSlots: 10, taxiSlots: 2, reserveSlots: 0, rookieDraftRounds: 3 },
     })
     expect(emperorContext).toMatchObject({
-      scoring: { receptionPpr: 1, tePremiumPerReception: 0.5, passingTd: 4 },
+      scoring: { receptionPpr: 1, tePremiumPerReception: 0.5, passingTd: 4, passingInterception: -1 },
       roster: { startingSlots: 11, skillStartingSlots: 9, benchSlots: 14, taxiSlots: 4, reserveSlots: 2, rookieDraftRounds: 4 },
     })
     expect(emperorContext.contextKey).not.toBe(bcContext.contextKey)

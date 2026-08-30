@@ -34,6 +34,16 @@ export type SleeperRoster = {
   taxi: string[] | null
 }
 
+export type SleeperMatchup = {
+  roster_id: number
+  matchup_id: number | null
+  starters: string[] | null
+  players: string[] | null
+  points?: number
+  starters_points?: number[] | null
+  players_points?: Record<string, number> | null
+}
+
 export type LeagueUser = {
   user_id: string
   display_name: string

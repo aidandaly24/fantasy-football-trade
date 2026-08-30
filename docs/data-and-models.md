@@ -15,6 +15,7 @@ interchangeable.
 | Future rookie-class tape | Same-horizon prospect population and source coverage | Private block-status evidence only; no future pick valuation while its pinned source is missing |
 | News and trends | Time-sensitive factual catalyst evidence | Advisory signals and watchlist alerts |
 | Sportsbook expectations | Current game totals, spreads, and player-prop consensus | User-refreshed shadow evidence for near-term usage and scoring environment; zero trade weight until a chronological challenger validates |
+| Weekly expert consensus | Current-week position rank and rank-derived generic PPR points | Lineup ordering only; joined to Sleeper IDs and visibly adjusted for exact TE premium where reception evidence exists |
 | Completed-trade journal | Factual league transaction ledger | Historical manager context and outcome tracking |
 | Historical market tape | Dated market observations | Calibration and shadow learning research |
 | Trade outcomes | Change after an observed entry snapshot | Evaluation at declared checkpoints |
@@ -87,6 +88,34 @@ event classifier, and stores only confidently matched events for alerts.
 Source reliability constants and headline rules are advisory heuristics, not a
 trained return model. They cannot change market price or a production forecast
 without a separate historical validation gate.
+
+### Weekly lineup evidence
+
+Lineup Lab uses the open DynastyProcess weekly FantasyPros consensus export,
+the DynastyProcess stable player-ID map, and the nflverse schedule. The Worker
+fetches those bounded CSV inputs on demand and caches the source payloads for
+thirty minutes. No background service or weekly database is required.
+
+The weekly export supplies expert ranks and `r2p_pts`, a generic-PPR point
+estimate derived from position rank. It is not a complete projection stat line.
+RosterLab applies the active league's TE reception premium only when the enabled
+production artifact supplies an observed per-team-week reception rate. The BC
+and Emperor Phil lineup screens therefore use their separate starting slots and
+TEP values. Emperor Phil's non-default interception rule plus its kicker and
+defense slots remain explicitly inexact because the source does not expose the
+component stats required to reproduce those rules.
+
+Current Sleeper roster, reserve, taxi, active, injury, submitted-starter, and
+matchup facts determine eligibility and comparison. Confirmed unavailable
+players and byes are excluded. Questionable or doubtful labels do not receive
+invented probability discounts. When the current week's source date does not
+match the requested schedule window, the app refuses to reuse stale weekly
+ranks and falls back only to the already enabled preseason production artifact.
+Uncovered players and slots remain `Uncovered`, never zero.
+
+This is a deterministic lineup assistant, not a win-probability model. It does
+not use sportsbook or news evidence, does not submit a Sleeper lineup, and does
+not claim exact scoring where component inputs are absent.
 
 ### Sportsbook expectations
 

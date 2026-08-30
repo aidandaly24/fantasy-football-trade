@@ -24,6 +24,7 @@ flowchart LR
   W --> S
   W --> N["NFL RSS and Sleeper trends"]
   W --> O["Current sportsbook API"]
+  W --> WP["Open weekly consensus and NFL schedule"]
   ML["Offline Python pipelines"] --> A["Versioned model artifacts and reports"]
   A --> UI
   CLICK["Authenticated refresh actions"] --> W
@@ -46,6 +47,7 @@ Offline training does not run in the request path.
 | `src/types.ts` | Shared browser/domain data contracts |
 | `src/rankings.ts` | Team construction, direct rankings, and source-separated trade scenarios |
 | `src/team-power.ts` | Reusable legal-lineup optimizer, redraft power table, coverage, and trade deltas |
+| `src/weekly-lineup.ts` | Pure weekly candidate, availability, exact-slot, late-swap, and submitted-lineup comparison engine |
 | `src/strategy.ts` | Declared roster strategy, bounded package enumeration, and deterministic Pareto discovery |
 | `src/counterparty-utility.ts` | League-relative seller roster facts and bounded three-way bridge candidates, kept separate from price and acceptance |
 | `src/player-research.ts` | Pure league-scoped player dossier and restorable league/player address contract; no fetching or valuation rules |
@@ -66,6 +68,7 @@ Offline training does not run in the request path.
 | `worker/http.ts` | Shared HTTP boundary helpers |
 | `worker/intel-feed.ts` | RSS and Sleeper trend collection adapter |
 | `worker/sportsbook-provider.ts` | Server-side The Odds API adapter with bounded event/market requests and ten-minute isolate caching |
+| `worker/weekly-lineup-provider.ts` | Bounded open weekly-consensus, stable Sleeper-ID, and NFL-schedule adapter with a thirty-minute isolate cache |
 | `worker/*-store.ts` | D1 schemas, normalization, persistence, refreshes, and read models by capability |
 | `db/schema.ts` | Drizzle schema used to generate checked-in migrations |
 | `drizzle/` | Ordered D1 migrations shipped with the Sites build |
@@ -89,10 +92,10 @@ held behind data or code owned by another view:
    inputs are sufficient to build teams, lineups, and league-relative rankings,
    so React renders the first useful screen immediately after they resolve.
 4. Optional Sleeper role and injury metadata is hydrated from one bulk catalog
-   request only when Trade Lab or Evidence needs it. It never blocks current
+   request only when Lineup Lab, Trade Lab, or Evidence needs it. It never blocks current
    ownership or market values and no per-roster-player request fan-out is
    permitted.
-5. Trade Lab, Journal, News, Evidence, Rookie board, and Model code is split by
+5. Lineup Lab, Trade Lab, Journal, News, Evidence, Rookie board, and Model code is split by
    view. Model health, rookie evidence, event health, and the stored journal load
    only when their owning view opens.
 6. A full multi-season journal sync is manual. Evidence snapshots and research
@@ -112,7 +115,7 @@ trade veto. Neither policy changes provider prices, projection outputs, or the
 meaning of Pareto support. A new policy kind must earn a concrete decision rule
 rather than expanding into a general strategy language.
 
-The primary views are league facts, player research, Trade Lab, Journal, News,
+The primary views are league facts, weekly Lineup Lab, player research, Trade Lab, Journal, News,
 Evidence, Rookie board, and Model. View-local presentation should consume typed domain results
 instead of reimplementing ranking or valuation rules in JSX.
 
@@ -131,6 +134,7 @@ instead of reimplementing ranking or valuation rules in JSX.
 | `/api/intel` | `GET` | None | Requires identity; generic feed is cached privately for five minutes |
 | `/api/rookies` | `GET` | None | Requires identity; returns the checked-in sanitized rookie-production artifact with no-store caching |
 | `/api/sportsbook` | `POST` | None | Requires identity and same origin; fetches selected-player current markets with the server-side secret and private five-minute response caching |
+| `/api/weekly-lineup` | `GET` | None | Requires identity; joins the latest open weekly consensus to stable Sleeper IDs and the requested NFL week schedule with private fifteen-minute response caching |
 
 Write routes reject cross-origin requests. Private JSON responses use
 `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`.
@@ -198,6 +202,9 @@ user-triggered:
 - Sportsbook evidence is fetched only when the user presses its player-page or
   Trade Lab refresh button. Ten-minute provider caching prevents repeated clicks
   from multiplying event requests; there is no background odds collector.
+- Lineup Lab reads the current Sleeper week on demand. The open weekly CSV, ID
+  map, and schedule are cached for thirty minutes inside the Worker; there is no
+  database, historical collector, or background lineup process.
 
 These triggers may refresh evidence; they cannot execute trades, contact other
 managers, train sklearn inside a request, or promote an artifact. If Sites later
