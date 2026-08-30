@@ -49,7 +49,7 @@ function board(): RookieBoardBundle {
 }
 
 describe('completed rookie draft review', () => {
-  it('ranks total market haul first and keeps slot surplus as a separate execution rank', () => {
+  it('ranks total market haul first and separates absolute value added from capital efficiency', () => {
     const review = buildLeagueDraftReview(bundle(), board())
     expect(review.status).toBe('complete')
     expect(review.managers.map((manager) => manager.handle)).toEqual(['@beta', '@alpha'])
@@ -57,13 +57,15 @@ describe('completed rookie draft review', () => {
       currentMarketValue: 80,
       expectedSlotValue: 100,
       marketSurplus: -20,
-      efficiencyRank: 2,
+      valueAddedRank: 2,
+      capitalEfficiencyRank: 2,
     })
     expect(review.managers.find((manager) => manager.handle === '@beta')).toMatchObject({
       currentMarketValue: 100,
       expectedSlotValue: 80,
       marketSurplus: 20,
-      efficiencyRank: 1,
+      valueAddedRank: 1,
+      capitalEfficiencyRank: 1,
     })
   })
 

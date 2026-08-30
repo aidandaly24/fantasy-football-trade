@@ -163,11 +163,11 @@ export function RookieBoardView({
 
       <section className="panel rookie-draft-review">
         <div className="panel-heading"><div><span className="eyebrow">Completed Sleeper draft</span><h2>{leagueContext.label} draft review</h2></div><span className="method-note">Current market-cap haul, not a hidden letter grade</span></div>
-        <div className="rookie-draft-method"><Info size={16} /><span><strong>Method.</strong> {draftReview.method} Roster need, injury status, and the exact-pick rookie model do not change the ranking.</span></div>
+        <div className="rookie-draft-method"><Info size={16} /><span><strong>Method.</strong> {draftReview.method} Roster need and current-season power do not change these market-accounting ranks.</span></div>
         {draftReview.status === 'complete' ? (
           <div className="table-scroll">
             <table className="rookie-draft-table">
-              <thead><tr><th>Rank</th><th>Manager and haul</th><th>Market acquired</th><th>Expected at slots</th><th>Market surplus</th><th>Execution</th><th>Advisory production</th><th>Best value</th></tr></thead>
+              <thead><tr><th>Rank</th><th>Manager and haul</th><th>Market acquired</th><th>Expected at slots</th><th>Market surplus</th><th>Value added</th><th>Capital efficiency</th><th>Advisory production</th><th>Best value</th></tr></thead>
               <tbody>{draftReview.managers.map((manager) => (
                 <tr key={manager.userId} className={manager.rosterId === myRosterId ? 'is-user' : ''}>
                   <td>#{manager.rank}</td>
@@ -175,7 +175,8 @@ export function RookieBoardView({
                   <td>{manager.currentMarketValue.toLocaleString()}<small>{manager.marketCoverage.priced}/{manager.marketCoverage.total} priced</small></td>
                   <td>{manager.expectedSlotValue.toLocaleString()}</td>
                   <td className={manager.marketSurplus >= 0 ? 'positive' : 'negative'}>{signedValue(manager.marketSurplus)}<small>{manager.marketEfficiency === null ? '—' : signedPercent(manager.marketEfficiency)}</small></td>
-                  <td>{manager.efficiencyRank ? `#${manager.efficiencyRank}` : '—'}</td>
+                  <td>{manager.valueAddedRank ? `#${manager.valueAddedRank}` : '—'}</td>
+                  <td>{manager.capitalEfficiencyRank ? `#${manager.capitalEfficiencyRank}` : '—'}</td>
                   <td>{manager.averageExpectedProductionPercentile === null ? 'Unavailable' : percent(manager.averageExpectedProductionPercentile)}</td>
                   <td>{manager.bestValuePick ? <><strong>{manager.bestValuePick.label} {manager.bestValuePick.name}</strong><small>{manager.bestValuePick.marketSurplus === null ? 'Unpriced' : signedValue(manager.bestValuePick.marketSurplus)}</small></> : '—'}</td>
                 </tr>
