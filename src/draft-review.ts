@@ -1,7 +1,7 @@
 import type { LeagueBundle, SleeperDraftPick } from './types'
 import type { RookieBoardBundle, RookieBoardPlayer } from './rookies'
 
-export const DRAFT_REVIEW_METHOD = 'Ranked by total current format-matched rookie market value acquired. Market surplus versus the exact pick slots is the tie-breaker. The production model is advisory and does not affect the ranking.'
+export const DRAFT_REVIEW_METHOD = 'Overall rank uses total current format-matched rookie market value acquired, with current market surplus versus the exact pick slots as the tie-breaker. Value-added rank orders absolute surplus; capital-efficiency rank orders surplus as a percentage of expected slot value. These are current mark-to-market measures because no frozen pre-draft value snapshot is available. The production model remains a separate advisory lane.'
 
 export type DraftPickReview = {
   pickNo: number
@@ -19,7 +19,8 @@ export type DraftPickReview = {
 
 export type ManagerDraftReview = {
   rank: number
-  efficiencyRank: number | null
+  valueAddedRank: number | null
+  capitalEfficiencyRank: number | null
   userId: string
   rosterId: number | null
   handle: string
@@ -132,7 +133,8 @@ export function buildLeagueDraftReview(
     const marketSurplus = currentMarketValue - expectedSlotValue
     return {
       rank: 0,
-      efficiencyRank: null,
+      valueAddedRank: null,
+      capitalEfficiencyRank: null,
       userId,
       rosterId: rosterByUserId.get(userId) ?? null,
       handle: handleByUserId.get(userId) ?? `@unknown-${userId.slice(-4)}`,
@@ -153,9 +155,12 @@ export function buildLeagueDraftReview(
     || left.handle.localeCompare(right.handle)
   ))
   ranked.forEach((manager, index) => { manager.rank = index + 1 })
-  const efficiencyRanked = ranked.filter((manager) => manager.picks.length > 0)
+  const valueAddedRanked = ranked.filter((manager) => manager.picks.length > 0)
     .sort((left, right) => right.marketSurplus - left.marketSurplus || right.currentMarketValue - left.currentMarketValue)
-  efficiencyRanked.forEach((manager, index) => { manager.efficiencyRank = index + 1 })
+  valueAddedRanked.forEach((manager, index) => { manager.valueAddedRank = index + 1 })
+  const capitalEfficiencyRanked = ranked.filter((manager) => manager.marketEfficiency !== null)
+    .sort((left, right) => Number(right.marketEfficiency) - Number(left.marketEfficiency) || right.marketSurplus - left.marketSurplus)
+  capitalEfficiencyRanked.forEach((manager, index) => { manager.capitalEfficiencyRank = index + 1 })
 
   return {
     status: 'complete',
