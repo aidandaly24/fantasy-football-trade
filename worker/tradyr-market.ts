@@ -15,6 +15,22 @@ type UpstreamMeta = Partial<ApiMeta> & {
 
 type UpstreamResponse<T> = { data?: T; meta?: UpstreamMeta }
 
+export type TradyrRookie = {
+  slug: string
+  name: string
+  position: 'QB' | 'RB' | 'WR' | 'TE'
+  team: string | null
+  composite: number
+  rank: number
+  sleeperId: string | null
+  overallRank?: number | null
+}
+
+export type RookieMarketBundle = {
+  players: TradyrRookie[]
+  meta: ApiMeta
+}
+
 async function requestTradyr<T>(url: string, apiKey: string, fetcher: typeof fetch): Promise<UpstreamResponse<T>> {
   const response = await fetcher(url, {
     headers: {
@@ -47,6 +63,40 @@ function uniquePlayers(players: TradyrPlayer[]): TradyrPlayer[] {
 
 function uniquePicks(picks: PickValue[]): PickValue[] {
   return [...new Map(picks.map((pick) => [pick.id, pick])).values()]
+}
+
+export async function fetchRookieMarketBundle(
+  input: Pick<MarketRequest, 'numQbs' | 'tep'>,
+  apiKey: string,
+  fetcher: typeof fetch = fetch,
+): Promise<RookieMarketBundle> {
+  const params = new URLSearchParams({
+    format: 'rookie',
+    numQbs: String(input.numQbs),
+    tep: String(input.tep),
+    limit: '1000',
+  })
+  const response = await requestTradyr<TradyrRookie[]>(`${TRADYR_BASE}/players?${params}`, apiKey, fetcher)
+  const coverage = completeRows(response, 'Tradyr rookie')
+  const players = [...new Map(coverage.rows.map((player) => {
+    const key = player.sleeperId ? `sleeper:${player.sleeperId}` : `slug:${player.slug}`
+    return [key, player]
+  })).values()]
+  if (players.length < coverage.expected) {
+    throw new Error(`Tradyr rookie coverage incomplete after deduplication (${players.length}/${coverage.expected})`)
+  }
+  return {
+    players,
+    meta: {
+      generatedAt: response.meta?.generatedAt ?? new Date().toISOString(),
+      sources: response.meta?.sources ?? [],
+      attribution: response.meta?.attribution ?? 'Powered by Tradyr, https://tradyr.app',
+      total: coverage.expected,
+      limit: response.meta?.limit ?? 1000,
+      offset: 0,
+      coverage: { expected: coverage.expected, returned: players.length, complete: true, pages: 1 },
+    },
+  }
 }
 
 export async function fetchMarketBundle(

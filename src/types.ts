@@ -89,6 +89,7 @@ export type SleeperDraftPick = {
     last_name?: string
     position?: string
     team?: string
+    injury_status?: string
   } | null
 }
 

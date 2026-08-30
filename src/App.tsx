@@ -594,7 +594,7 @@ function App() {
           }
         })
       }).catch(() => undefined)
-      void fetchRookieBoard().then((rookieBoard) => {
+      void fetchRookieBoard(data.leagueContext.marketFormat).then((rookieBoard) => {
         setData((current) => current?.leagueBundle.league.league_id === activeLeagueId ? { ...current, rookieBoard } : current)
       }).catch(() => undefined)
       void fetchModelHealth().then((modelHealth) => {
@@ -631,7 +631,7 @@ function App() {
 
     if ((view === 'rookies' || view === 'trade') && data.rookieBoard === undefined) {
       startOnce('rookies', async () => {
-        const rookieBoard = await fetchRookieBoard().catch(() => null)
+        const rookieBoard = await fetchRookieBoard(data.leagueContext.marketFormat).catch(() => null)
         setData((current) => current?.leagueBundle.league.league_id === activeLeagueId
           ? { ...current, rookieBoard }
           : current)
@@ -954,7 +954,12 @@ function App() {
               ) : view === 'rookies' ? (
                 data.rookieBoard === undefined
                   ? <DeferredWorkspace view="rookies" />
-                  : <RookieBoardView bundle={data.rookieBoard} leagueContext={data.leagueContext} />
+                  : <RookieBoardView
+                      bundle={data.rookieBoard}
+                      leagueContext={data.leagueContext}
+                      leagueBundle={data.leagueBundle}
+                      myRosterId={data.preferences.myRosterId ?? null}
+                    />
               ) : (
                 data.modelHealth === undefined || data.tradeModelHealth === undefined || data.assetReturnHealth === undefined
                   ? <DeferredWorkspace view="model" />
