@@ -110,14 +110,24 @@ describe('weekly lineup engine', () => {
     expect(result).toMatchObject({ complete: true, covered: 3, required: 3, exactScoringCovered: 0 })
   })
 
-  it('keeps a custom-interception QB fallback explicitly inexact', () => {
-    const roster = team([asset('qb', 'QB')])
-    const projections = new Map<string, PlayerProjection>([['qb', {
-      name: 'QB', position: 'QB', sourceSeason: 2025, gamesObserved: 17,
-      expectedPpg: 20, floorPpg: 14, ceilingPpg: 26, confidence: 0.8, leagueAdjusted: true,
+  it('never substitutes season-transition points when the weekly board is not published', () => {
+    const roster = team([asset('ward', 'QB'), asset('burrow', 'QB')])
+    const projections = new Map<string, PlayerProjection>([['ward', {
+      name: 'Cam Ward', position: 'QB', sourceSeason: 2025, gamesObserved: 17,
+      expectedPpg: 10.9, floorPpg: 3.7, ceilingPpg: 14.8, confidence: 0.76,
+    }], ['burrow', {
+      name: 'Joe Burrow', position: 'QB', sourceSeason: 2025, gamesObserved: 8,
+      expectedPpg: 5, floorPpg: 0, ceilingPpg: 12.2, confidence: 0.6,
     }]])
-    const candidate = buildWeeklyCandidates(roster, { ...bundle(), status: 'not-published' }, projections, context(0.5, -1))[0]
-    expect(candidate).toMatchObject({ source: 'preseason-model', points: 20, scoringComplete: false })
+    const candidates = buildWeeklyCandidates(roster, { ...bundle(), status: 'not-published' }, projections, context(0.5, -1))
+    const recommendation = optimizeWeeklyLineup(candidates, ['QB'])
+
+    expect(candidates).toEqual(expect.arrayContaining([
+      expect.objectContaining({ asset: expect.objectContaining({ id: 'ward' }), source: 'unavailable', points: null }),
+      expect.objectContaining({ asset: expect.objectContaining({ id: 'burrow' }), source: 'unavailable', points: null }),
+    ]))
+    expect(recommendation).toMatchObject({ complete: false, covered: 0, weeklySourceCount: 0 })
+    expect(submittedLineupDelta(['burrow'], recommendation, candidates)).toEqual({ incoming: [], outgoing: [], projectedDelta: null })
   })
 
   it('excludes reserve and confirmed-out players rather than discounting them with invented weights', () => {

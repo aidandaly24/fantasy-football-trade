@@ -46,8 +46,7 @@ function points(value: number | null): string {
 
 function sourceLabel(candidate: WeeklyCandidate): string {
   if (candidate.source === 'weekly-consensus') return 'Weekly consensus'
-  if (candidate.source === 'preseason-model') return 'Preseason fallback'
-  return 'No projection'
+  return 'Awaiting weekly projection'
 }
 
 function kickoffLabel(candidate: WeeklyCandidate): string {
@@ -80,12 +79,12 @@ function sourceStatus(bundle: WeeklyProjectionBundle): { tone: string; title: st
   if (bundle.status === 'partial') return {
     tone: 'warning',
     title: `Week ${bundle.week} coverage is partial`,
-    copy: 'RosterLab uses the current weekly board where matched and keeps every fallback visible.',
+    copy: 'RosterLab ranks only players covered by the current weekly board. Uncovered players never inherit preseason points.',
   }
   if (bundle.status === 'not-published') return {
     tone: 'warning',
     title: `The ${bundle.season} weekly board is not published yet`,
-    copy: 'Recommendations are provisional preseason-model fallbacks. Last season’s weekly ranks are never reused.',
+    copy: 'RosterLab will show current roster, schedule and availability facts, but it will not recommend lineup changes yet.',
   }
   return {
     tone: 'error',
@@ -122,7 +121,7 @@ function LineupRows({ recommendation, onOpenPlayer }: {
 }
 
 function BenchRows({ candidates, onOpenPlayer }: { candidates: WeeklyCandidate[]; onOpenPlayer: (playerId: string) => void }) {
-  if (!candidates.length) return <div className="weekly-empty"><ShieldQuestion size={18} /><span>No bench players were found in the current Sleeper roster.</span></div>
+  if (!candidates.length) return <div className="weekly-empty"><ShieldQuestion size={18} /><span>No players were found in the current Sleeper roster.</span></div>
   return <div className="weekly-bench-list">
     {candidates.map((candidate) => <button type="button" key={candidate.asset.id} onClick={() => onOpenPlayer(candidate.asset.id)}>
       <AssetBadge position={candidate.asset.position} />
@@ -218,6 +217,10 @@ export function LineupView({ teams, leagueBundle, leagueContext, myRosterId, pla
   const scoringCaveat = analysis?.recommendation
     ? analysis.recommendation.exactScoringCovered < analysis.recommendation.covered
     : false
+  const weeklyBoardExists = loaded
+    ? (loaded.bundle.status === 'ready' || loaded.bundle.status === 'partial')
+      && loaded.bundle.coverage.matchedSleeperPlayers > 0
+    : false
 
   return <main className="page-shell lineup-page">
     <section className="lineup-hero panel">
@@ -247,7 +250,7 @@ export function LineupView({ teams, leagueBundle, leagueContext, myRosterId, pla
         <span>{loaded.bundle.sourceDate ? `Source date ${loaded.bundle.sourceDate}` : 'No source date'}</span>
       </section>
 
-      <section className="lineup-matchup panel">
+      {weeklyBoardExists ? <section className="lineup-matchup panel">
         <div className="panel-heading"><div><span className="eyebrow">Current matchup</span><h2>Covered lineup comparison</h2></div><span className="method-note">Sleeper Week {week} pairing</span></div>
         <div className="lineup-matchup-grid">
           <TeamProjection label="Your team" team={analysis.myTeam} recommendation={analysis.recommendation} />
@@ -255,15 +258,15 @@ export function LineupView({ teams, leagueBundle, leagueContext, myRosterId, pla
           <TeamProjection label="Opponent" team={analysis.opponent} recommendation={analysis.opponentRecommendation} />
         </div>
         <p className="lineup-boundary">These are projection totals only when every required slot is covered. They are not win probabilities and do not include sportsbook or news adjustments.</p>
-      </section>
+      </section> : null}
 
-      {analysis.recommendation ? <section className="lineup-grid">
+      {weeklyBoardExists && analysis.recommendation ? <section className="lineup-grid">
         <article className="panel lineup-starters">
           <div className="panel-heading"><div><span className="eyebrow">Recommended starters</span><h2>Best covered legal lineup</h2></div><span className="method-note">{analysis.recommendation.covered}/{analysis.recommendation.required} slots covered</span></div>
           <LineupRows recommendation={analysis.recommendation} onOpenPlayer={onOpenPlayer} />
           <div className="lineup-total">
             <span><small>Projected total</small><b>{analysis.recommendation.complete ? `${analysis.recommendation.total.toFixed(1)} pts` : 'Incomplete'}</b></span>
-            <span><small>Weekly / fallback starters</small><b>{analysis.recommendation.weeklySourceCount} / {analysis.recommendation.preseasonSourceCount}</b></span>
+            <span><small>Current-week sources</small><b>{analysis.recommendation.weeklySourceCount}/{analysis.recommendation.covered}</b></span>
             <span><small>Exact scoring coverage</small><b>{analysis.recommendation.exactScoringCovered}/{analysis.recommendation.covered}</b></span>
           </div>
           {scoringCaveat && <p className="lineup-boundary warning"><AlertTriangle size={15} /> Generic weekly points do not fully reproduce this league’s QB, kicker, or defense scoring. Those rows remain useful for ordering, but the site labels the total provisional.</p>}
@@ -272,7 +275,7 @@ export function LineupView({ teams, leagueBundle, leagueContext, myRosterId, pla
         <aside className="lineup-side-stack">
           <section className="panel lineup-changes">
             <div className="panel-heading"><div><span className="eyebrow">Sleeper check</span><h2>Changes to make</h2></div></div>
-            {!analysis.hasSubmittedLineup ? <div className="weekly-empty"><CalendarDays size={18} /><span>No starting lineup is submitted in Sleeper yet.</span></div> : analysis.submitted && (analysis.submitted.incoming.length || analysis.submitted.outgoing.length) ? <>
+            {!analysis.recommendation.complete ? <div className="weekly-empty"><ShieldQuestion size={18} /><span>Current-week coverage is incomplete, so RosterLab is withholding lineup changes.</span></div> : !analysis.hasSubmittedLineup ? <div className="weekly-empty"><CalendarDays size={18} /><span>No starting lineup is submitted in Sleeper yet.</span></div> : analysis.submitted && (analysis.submitted.incoming.length || analysis.submitted.outgoing.length) ? <>
               <div className="lineup-swap-list">
                 {analysis.submitted.incoming.map((incoming, index) => <div key={incoming.asset.id}>
                   <span><small>Bench</small><b>{analysis.submitted?.outgoing[index]?.asset.name ?? 'Current starter'}</b></span>
@@ -297,14 +300,20 @@ export function LineupView({ teams, leagueBundle, leagueContext, myRosterId, pla
         </aside>
       </section> : null}
 
-      {analysis.recommendation ? <section className="lineup-bench panel">
+      {weeklyBoardExists && analysis.recommendation ? <section className="lineup-bench panel">
         <div className="panel-heading"><div><span className="eyebrow">Bench and unavailable</span><h2>What the optimizer left out</h2></div><span className="method-note">Sorted by covered points; statuses are not probability discounts</span></div>
         <BenchRows candidates={analysis.recommendation.bench} onOpenPlayer={onOpenPlayer} />
       </section> : null}
 
+      {!weeklyBoardExists ? <section className="lineup-bench panel">
+        <div className="panel-heading"><div><span className="eyebrow">Current Sleeper facts</span><h2>Roster availability and schedule</h2></div><span className="method-note">No start/sit model is active</span></div>
+        <BenchRows candidates={analysis.myCandidates} onOpenPlayer={onOpenPlayer} />
+        <p className="lineup-boundary warning"><AlertTriangle size={15} /> Your submitted lineup remains unchanged. RosterLab will not compare players until the current Week {week} consensus is available.</p>
+      </section> : null}
+
       <section className="lineup-method panel">
         <Clock3 size={20} />
-        <div><strong>What this version actually knows</strong><p>Current Sleeper ownership, submitted starters, reserve/taxi state, injury labels and NFL schedule are joined to the latest open weekly consensus. The source converts expert rank to estimated PPR points; RosterLab then applies the active league’s TE reception premium only when reception evidence exists. Confirmed unavailable players are excluded. Questionable and doubtful players stay visible because we do not yet have a validated active-probability model.</p></div>
+        <div><strong>What “weekly consensus” means</strong><p>It is a current-week aggregate of multiple fantasy analysts’ rankings, converted to estimated PPR points. It changes with matchup, role and injury information. RosterLab joins it to current Sleeper ownership, submitted starters, reserve/taxi state and the NFL schedule, then applies the active league’s TE reception premium only when reception evidence exists. It never substitutes the season-transition model for a missing weekly projection.</p></div>
         <a href={loaded.bundle.source.url} target="_blank" rel="noreferrer">Inspect source</a>
       </section>
     </> : null}

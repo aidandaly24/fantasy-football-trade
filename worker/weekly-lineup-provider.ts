@@ -202,7 +202,7 @@ export async function fetchWeeklyProjectionBundle(
   const warnings: string[] = []
 
   if (!sourceMatchesRequestedWeek(sourceDate, games)) {
-    warnings.push(`The Week ${week} ${season} consensus has not been published yet; lineup points fall back to RosterLab's preseason production model where covered.`)
+    warnings.push(`The Week ${week} ${season} consensus has not been published yet; RosterLab will not issue start/sit recommendations until current-week projections are available.`)
     if (!scheduleComplete) warnings.push('The NFL schedule is incomplete, so bye-week exclusions are not active.')
     return {
       season,

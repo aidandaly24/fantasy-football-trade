@@ -110,8 +110,10 @@ matchup facts determine eligibility and comparison. Confirmed unavailable
 players and byes are excluded. Questionable or doubtful labels do not receive
 invented probability discounts. When the current week's source date does not
 match the requested schedule window, the app refuses to reuse stale weekly
-ranks and falls back only to the already enabled preseason production artifact.
-Uncovered players and slots remain `Uncovered`, never zero.
+ranks or substitute the season-transition production artifact. Roster and
+availability facts remain visible, but start/sit recommendations stay disabled.
+When a current board is partial, only matched weekly projections enter the
+optimizer; uncovered players and slots remain `Uncovered`, never zero.
 
 This is a deterministic lineup assistant, not a win-probability model. It does
 not use sportsbook or news evidence, does not submit a Sleeper lineup, and does

@@ -56,7 +56,7 @@ export type WeeklyCandidate = {
   points: number | null
   basePoints: number | null
   tepAdjustment: number
-  source: 'weekly-consensus' | 'preseason-model' | 'unavailable'
+  source: 'weekly-consensus' | 'unavailable'
   scoringComplete: boolean
   eligible: boolean
   availability: 'available' | 'questionable' | 'doubtful' | 'out' | 'reserve' | 'taxi' | 'inactive' | 'bye'
@@ -88,7 +88,6 @@ export type WeeklyLineupRecommendation = {
   complete: boolean
   exactScoringCovered: number
   weeklySourceCount: number
-  preseasonSourceCount: number
   closeCalls: WeeklyCloseCall[]
 }
 
@@ -166,10 +165,6 @@ function availability(asset: Asset, game: WeeklyGame | null, scheduleComplete: b
   return { eligible: true, availability: 'available', availabilityNote: status || null }
 }
 
-function finite(value: number | undefined): number | null {
-  return Number.isFinite(value) ? Number(value) : null
-}
-
 function leagueTepAdjustment(asset: Asset, projection: PlayerProjection | undefined, context: LeagueContext): number | null {
   if (asset.position !== 'TE' || context.scoring.tePremiumPerReception === 0) return 0
   if (!Number.isFinite(projection?.receptionsPerTeamWeek)) return null
@@ -190,23 +185,22 @@ export function buildWeeklyCandidates(
       const weekly = bundle.status === 'ready' || bundle.status === 'partial'
         ? bundle.projections[projectionKey(asset)] ?? null
         : null
-      const fallback = projections.get(asset.id)
-      const adjustment = weekly ? leagueTepAdjustment(asset, fallback, context) : 0
-      const basePoints = weekly ? weekly.points : finite(fallback?.restOfSeasonPpg ?? fallback?.expectedPpg)
+      const productionProjection = projections.get(asset.id)
+      const adjustment = weekly ? leagueTepAdjustment(asset, productionProjection, context) : 0
+      // A season-transition forecast answers a different question from a
+      // conditional weekly start/sit projection. Never let it compete with the
+      // current-week consensus inside the optimizer.
+      const basePoints = weekly ? weekly.points : null
       const points = basePoints === null ? null : Number((basePoints + (adjustment ?? 0)).toFixed(2))
       const source: WeeklyCandidate['source'] = weekly
         ? 'weekly-consensus'
-        : basePoints !== null
-          ? 'preseason-model'
-          : 'unavailable'
+        : 'unavailable'
       const standardQuarterbackScoring = context.scoring.passingTd === 4
         && context.scoring.passingInterception === -2
       const exactPositionScoring = asset.position !== 'K'
         && asset.position !== 'DEF'
         && (asset.position !== 'QB' || standardQuarterbackScoring)
-      const scoringComplete = exactPositionScoring && (weekly
-        ? adjustment !== null
-        : Boolean(fallback?.leagueAdjusted))
+      const scoringComplete = exactPositionScoring && Boolean(weekly) && adjustment !== null
       return {
         asset,
         points,
@@ -323,7 +317,6 @@ export function optimizeWeeklyLineup(candidates: WeeklyCandidate[], rosterPositi
     complete: covered === required,
     exactScoringCovered: starters.filter((candidate) => candidate.scoringComplete).length,
     weeklySourceCount: starters.filter((candidate) => candidate.source === 'weekly-consensus').length,
-    preseasonSourceCount: starters.filter((candidate) => candidate.source === 'preseason-model').length,
     closeCalls,
   }
 }
@@ -334,17 +327,19 @@ export function submittedLineupDelta(
   candidates: WeeklyCandidate[],
 ): { incoming: WeeklyCandidate[]; outgoing: WeeklyCandidate[]; projectedDelta: number | null } {
   const currentIds = new Set(starterIds.filter((id) => id && id !== '0'))
+  const submitted = candidates.filter((candidate) => currentIds.has(candidate.asset.id))
+  const submittedComplete = submitted.length === recommendation.required
+    && submitted.every((candidate) => candidate.points !== null)
+  if (!recommendation.complete || !submittedComplete) {
+    return { incoming: [], outgoing: [], projectedDelta: null }
+  }
   const recommendedIds = new Set(recommendation.starters.map((candidate) => candidate.asset.id))
   const incoming = recommendation.starters.filter((candidate) => !currentIds.has(candidate.asset.id))
   const outgoing = candidates.filter((candidate) => currentIds.has(candidate.asset.id) && !recommendedIds.has(candidate.asset.id))
-  const submitted = candidates.filter((candidate) => currentIds.has(candidate.asset.id))
-  const complete = submitted.length === recommendation.required && submitted.every((candidate) => candidate.points !== null)
   const submittedTotal = submitted.reduce((sum, candidate) => sum + (candidate.points ?? 0), 0)
   return {
     incoming,
     outgoing,
-    projectedDelta: complete && recommendation.complete
-      ? Number((recommendation.total - submittedTotal).toFixed(2))
-      : null,
+    projectedDelta: Number((recommendation.total - submittedTotal).toFixed(2)),
   }
 }
