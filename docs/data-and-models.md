@@ -149,6 +149,21 @@ play-participant data, DynastyProcess/FantasyPros historical ECR snapshots, and
 bounded FantasyCalc source research. Each report records provider, retrieval
 date, and available source hashes.
 
+## In-season advanced evidence research
+
+The offline `ml/inseason_pipeline.py` audition joins nflverse weekly player
+stats, NFL Next Gen Stats and FTN charting for position-specific one/four-week
+realized offensive-point forecasts. It tests incremental separation, efficiency
+and charting signals against opportunity baselines on chronological seasons.
+League PPR/TEP and passing coefficients are explicit. Sources, missingness,
+sample denominators, split metrics and paired ablations are retained in
+`ml/reports/inseason-advanced-health.{json,md}`.
+
+This research writes no browser artifact and always remains disabled for live
+recommendations. Historical source vintages, all-route evidence and stronger
+projection/price benchmarks remain visible limitations. See
+[the design and validation contract](inseason-advanced-research.md).
+
 ## Trade scenarios and Pareto discovery
 
 The Trade Lab evaluates an explicit package through separate factual lenses:

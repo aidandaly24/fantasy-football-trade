@@ -9,12 +9,15 @@ const event = {
 }
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   resetSportsbookProviderCacheForTest()
 })
 
 describe('sportsbook provider adapter', () => {
   it('joins a Sleeper team to its event and returns aggregate prop and game context', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-12T12:00:00Z'))
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
       const headers = { 'Content-Type': 'application/json', 'x-requests-used': '30', 'x-requests-remaining': '470', 'x-requests-last': '10' }
