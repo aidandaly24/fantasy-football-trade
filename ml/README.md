@@ -14,6 +14,19 @@ The first version does not train on news, trade acceptance, league chat, or a
 black-box final trade grade. Those stay outside the model until the production
 forecast earns trust.
 
+## In-season advanced-data audition
+
+Run `npm run ml:inseason` for the offline separation/NGS/FTN research pipeline;
+reproduce pinned inputs with `npm run ml:inseason:offline`. Defaults use the
+2018–2025 historical window, 2024 selection, 2025 holdout, 2026 current evidence
+and Phil's offensive PPR/TEP/passing coefficients. Pass `-- --tep 0.75 --pass-int -2`
+to run a different scoring recipe; use a distinct `--report` path to retain it.
+
+The aggregate outputs are `ml/reports/inseason-advanced-health.{json,md}`.
+Raw sources, normalized panel and individual predictions stay under ignored
+`data/raw/inseason` and `data/processed/inseason`. No browser artifact is written.
+See [design and evaluation protocol](../docs/inseason-advanced-research.md).
+
 ## Sportsbook projection challenger
 
 Current game totals and player props are a separate shadow evidence lane. The
